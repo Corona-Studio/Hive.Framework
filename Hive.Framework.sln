@@ -5,6 +5,8 @@ VisualStudioVersion = 17.4.33213.308
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hive.Framework", "Hive.Framework\Hive.Framework.csproj", "{8B108892-E720-4122-8B4A-8C1CA7743771}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hive.Framework.Codec.Abstractions", "Hive.Framework.Codec.Abstractions\Hive.Framework.Codec.Abstractions.csproj", "{4C398EE9-35A2-46F2-A9BE-F377749C2511}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{8B108892-E720-4122-8B4A-8C1CA7743771}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8B108892-E720-4122-8B4A-8C1CA7743771}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8B108892-E720-4122-8B4A-8C1CA7743771}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4C398EE9-35A2-46F2-A9BE-F377749C2511}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4C398EE9-35A2-46F2-A9BE-F377749C2511}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4C398EE9-35A2-46F2-A9BE-F377749C2511}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4C398EE9-35A2-46F2-A9BE-F377749C2511}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
