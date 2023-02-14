@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net7.0</TargetFramework>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DotNext" Version="4.10.0" />
+    <PackageReference Include="DotNext.Unsafe" Version="4.10.0" />
+    <PackageReference Include="protobuf-net" Version="3.1.33" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Hive.Framework.Codec.Abstractions\Hive.Framework.Codec.Abstractions.csproj" />
+    <ProjectReference Include="..\Hive.Framework.Shared\Hive.Framework.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

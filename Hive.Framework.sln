@@ -7,6 +7,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hive.Framework", "Hive.Fram
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hive.Framework.Codec.Abstractions", "Hive.Framework.Codec.Abstractions\Hive.Framework.Codec.Abstractions.csproj", "{4C398EE9-35A2-46F2-A9BE-F377749C2511}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hive.Framework.Codec.Protobuf", "Hive.Framework.Codec.Protobuf\Hive.Framework.Codec.Protobuf.csproj", "{104BD1C4-DD36-4610-85CE-0F0357DB8503}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hive.Framework.Shared", "Hive.Framework.Shared\Hive.Framework.Shared.csproj", "{CBB6DEBC-DCCF-4AD7-A6D1-9377BA6D96F0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +25,14 @@ Global
 		{4C398EE9-35A2-46F2-A9BE-F377749C2511}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4C398EE9-35A2-46F2-A9BE-F377749C2511}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4C398EE9-35A2-46F2-A9BE-F377749C2511}.Release|Any CPU.Build.0 = Release|Any CPU
+		{104BD1C4-DD36-4610-85CE-0F0357DB8503}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{104BD1C4-DD36-4610-85CE-0F0357DB8503}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{104BD1C4-DD36-4610-85CE-0F0357DB8503}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{104BD1C4-DD36-4610-85CE-0F0357DB8503}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CBB6DEBC-DCCF-4AD7-A6D1-9377BA6D96F0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CBB6DEBC-DCCF-4AD7-A6D1-9377BA6D96F0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CBB6DEBC-DCCF-4AD7-A6D1-9377BA6D96F0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CBB6DEBC-DCCF-4AD7-A6D1-9377BA6D96F0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
