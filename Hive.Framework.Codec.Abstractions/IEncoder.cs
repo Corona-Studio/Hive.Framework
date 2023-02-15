@@ -5,11 +5,11 @@ namespace Hive.Framework.Codec.Abstractions
     /// <summary>
     /// 封包编码器接口
     /// </summary>
-    /// <typeparam name="TData"></typeparam>
-    public interface IEncoder<TData>
+    /// <typeparam name="TId">封包 ID 类型（通常为 ushort）</typeparam>
+    public interface IEncoder<TId>
     {
-        IPacketGenerator<TData> PacketGenerator { get; }
+        IPacketIdMapper<TId> PacketIdMapper { get; }
 
-        ReadOnlySpan<TData> Encode<T>(T obj) where T : unmanaged;
+        ReadOnlySpan<byte> Encode<T>(T obj) where T : unmanaged;
     }
 }

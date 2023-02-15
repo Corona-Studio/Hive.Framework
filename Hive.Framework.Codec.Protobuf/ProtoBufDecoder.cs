@@ -1,20 +1,29 @@
 ﻿using System;
+using System.Security.Cryptography;
 using Hive.Framework.Codec.Abstractions;
 using ProtoBuf;
 
 namespace Hive.Framework.Codec.Protobuf;
 
-public class ProtoBufDecoder : IDecoder<byte, ProtoBufResolveInfo>
+public class ProtoBufDecoder : IDecoder<ushort>
 {
-    public IPacketResolver<byte, ProtoBufResolveInfo> PacketResolver { get; init; } = null!;
+    public IPacketIdMapper<ushort> PacketIdMapper { get; init; } = null!;
 
-    public ResolveResultBase<byte, ProtoBufResolveInfo> ResolveData(ReadOnlySpan<byte> data)
+    public object Decode(ReadOnlySpan<byte> data)
     {
-        return PacketResolver.Resolve(data);
-    }
+        // 负载长度
+        // var packetLengthSpan = data[..2];
 
-    public T Decode<T>(ReadOnlySpan<byte> data) where T : unmanaged
-    {
-        return Serializer.Deserialize<T>(data);
+        // 封包类型
+        var packetIdSpan = data.Slice(2, 2);
+        var packetId = BitConverter.ToUInt16(packetIdSpan);
+
+        // 封包数据段
+        var packetData = data[2..];
+
+        // var packetLength = BitConverter.ToUInt16(packetLengthSpan);
+        var packetType = PacketIdMapper.GetPacketType(packetId);
+
+        return Serializer.Deserialize(packetData, packetType);
     }
 }

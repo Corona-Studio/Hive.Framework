@@ -8,14 +8,14 @@ using Hive.Framework.Codec.Abstractions;
 
 namespace Hive.Framework.Codec.Protobuf;
 
-public class ProtoBufPacketIdMapper : IPacketIdMapper<byte>
+public class ProtoBufPacketIdMapper : IPacketIdMapper<ushort>
 {
-    private const byte HashMode = 251; // 小于 255 的质数
+    private const ushort HashMode = 65521; // 小于 65535 的质数
 
-    private readonly Dictionary<Type, byte> _typeIdMapping = new();
-    private readonly Dictionary<byte, Type> _idTypeMapping = new();
+    private readonly Dictionary<Type, ushort> _typeIdMapping = new();
+    private readonly Dictionary<ushort, Type> _idTypeMapping = new();
 
-    private static byte GetIdHash(Type type)
+    private static ushort GetIdHash(Type type)
     {
         var typeName = type.FullName;
 
@@ -23,14 +23,14 @@ public class ProtoBufPacketIdMapper : IPacketIdMapper<byte>
             throw new ArgumentException($"Failed to register type {type}");
 
         var hashCode = BitConverter.ToUInt64(MD5.HashData(Encoding.ASCII.GetBytes(typeName)));
-        var id = (byte)(hashCode % HashMode);
+        var id = (ushort)(hashCode % HashMode);
 
         return id;
     }
 
     public void Register(Type type) => Register(type, out _);
 
-    public void Register(Type type, [UnscopedRef] out byte id)
+    public void Register(Type type, [UnscopedRef] out ushort id)
     {
         if (_typeIdMapping.ContainsKey(type))
             throw new DuplicateNameException($"Failed to register msg type {type}. You already registered it!");
@@ -46,14 +46,14 @@ public class ProtoBufPacketIdMapper : IPacketIdMapper<byte>
         id = newId;
     }
 
-    public byte GetPacketId(Type type)
+    public ushort GetPacketId(Type type)
     {
         if (_typeIdMapping.TryGetValue(type, out var id)) return id;
 
         throw new ArgumentOutOfRangeException($"Cannot get id of msg type {type}");
     }
 
-    public Type GetPacketType(byte id)
+    public Type GetPacketType(ushort id)
     {
         if (_idTypeMapping.TryGetValue(id, out var type)) return type;
 

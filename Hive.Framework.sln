@@ -3,13 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.4.33213.308
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hive.Framework", "Hive.Framework\Hive.Framework.csproj", "{8B108892-E720-4122-8B4A-8C1CA7743771}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.Framework.Codec.Abstractions", "Hive.Framework.Codec.Abstractions\Hive.Framework.Codec.Abstractions.csproj", "{4C398EE9-35A2-46F2-A9BE-F377749C2511}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hive.Framework.Codec.Abstractions", "Hive.Framework.Codec.Abstractions\Hive.Framework.Codec.Abstractions.csproj", "{4C398EE9-35A2-46F2-A9BE-F377749C2511}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.Framework.Codec.Protobuf", "Hive.Framework.Codec.Protobuf\Hive.Framework.Codec.Protobuf.csproj", "{104BD1C4-DD36-4610-85CE-0F0357DB8503}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hive.Framework.Codec.Protobuf", "Hive.Framework.Codec.Protobuf\Hive.Framework.Codec.Protobuf.csproj", "{104BD1C4-DD36-4610-85CE-0F0357DB8503}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hive.Framework.Shared", "Hive.Framework.Shared\Hive.Framework.Shared.csproj", "{CBB6DEBC-DCCF-4AD7-A6D1-9377BA6D96F0}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.Framework.Shared", "Hive.Framework.Shared\Hive.Framework.Shared.csproj", "{CBB6DEBC-DCCF-4AD7-A6D1-9377BA6D96F0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -17,10 +15,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{8B108892-E720-4122-8B4A-8C1CA7743771}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{8B108892-E720-4122-8B4A-8C1CA7743771}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{8B108892-E720-4122-8B4A-8C1CA7743771}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{8B108892-E720-4122-8B4A-8C1CA7743771}.Release|Any CPU.Build.0 = Release|Any CPU
 		{4C398EE9-35A2-46F2-A9BE-F377749C2511}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{4C398EE9-35A2-46F2-A9BE-F377749C2511}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4C398EE9-35A2-46F2-A9BE-F377749C2511}.Release|Any CPU.ActiveCfg = Release|Any CPU

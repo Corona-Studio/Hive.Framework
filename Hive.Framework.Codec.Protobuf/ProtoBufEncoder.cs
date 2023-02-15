@@ -1,11 +1,13 @@
 ﻿using System;
+using System.Buffers;
 using DotNext.Buffers;
 using Hive.Framework.Codec.Abstractions;
-using Hive.Framework.Shared;    
+using Hive.Framework.Shared;
+using ProtoBuf;
 
 namespace Hive.Framework.Codec.Protobuf;
 
-public class ProtoBufEncoder : IEncoder<byte>
+public class ProtoBufEncoder : IEncoder<ushort>
 {
     private static readonly ObjectPool<PooledBufferWriter<byte>> WriterPool;
 
@@ -19,16 +21,36 @@ public class ProtoBufEncoder : IEncoder<byte>
             writer => writer.Clear());
     }
 
-    public IPacketGenerator<byte> PacketGenerator { get; init; } = null!;
+    public IPacketIdMapper<ushort> PacketIdMapper { get; init; } = null!;
 
     public ReadOnlySpan<byte> Encode<T>(T obj) where T : unmanaged
     {
         var writer = WriterPool.Get();
-        
-        PacketGenerator.Generate(obj, writer);
-        
+
+        using var contentMeasure = Serializer.Measure(obj);
+
+        if (contentMeasure.Length > ushort.MaxValue)
+            throw new InvalidOperationException($"Message to large [Length - {contentMeasure.Length}]");
+
+        var packetId = PacketIdMapper.GetPacketId(typeof(T));
+
+        Span<byte> lengthHeader = stackalloc byte[2];
+        Span<byte> typeHeader = stackalloc byte[2];
+
+        // Packet Length
+        BitConverter.TryWriteBytes(lengthHeader, (ushort)contentMeasure.Length);
+        writer.Write(lengthHeader);
+
+        // Packet Id
+        BitConverter.TryWriteBytes(typeHeader, packetId);
+        writer.Write(typeHeader);
+
+        contentMeasure.Serialize(writer);
+
+        var result = writer.WrittenMemory.Span;
+
         WriterPool.Return(writer);
 
-        return writer.WrittenMemory.Span;
+        return result;
     }
 }
