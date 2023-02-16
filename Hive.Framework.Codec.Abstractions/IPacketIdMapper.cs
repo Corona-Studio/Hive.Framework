@@ -5,14 +5,14 @@ namespace Hive.Framework.Codec.Abstractions
     /// <summary>
     /// 封包 类型 / ID 映射器
     /// </summary>
-    /// <typeparam name="T"></typeparam>
-    public interface IPacketIdMapper<T>
+    /// <typeparam name="TId">数据包 ID 类型（通常为 ushort）</typeparam>
+    public interface IPacketIdMapper<TId>
     {
         void Register<TPacket>();
         void Register(Type type);
-        void Register(Type type, out T id);
+        void Register(Type type, out TId id);
 
-        T GetPacketId(Type type);
-        Type GetPacketType(T id);
+        TId GetPacketId(Type type);
+        Type GetPacketType(TId id);
     }
 }

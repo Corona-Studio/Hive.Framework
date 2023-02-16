@@ -10,7 +10,12 @@ using Hive.Framework.Networking.Shared.Helpers;
 
 namespace Hive.Framework.Networking.Shared
 {
-    public abstract class AbstractSession<TId> : ISession<AbstractSession<TId>>, ISender<TId>, IReceiver<TId>
+    /// <summary>
+    /// 连接会话抽象
+    /// </summary>
+    /// <typeparam name="TId">封包 ID 类型（通常为 ushort）</typeparam>
+    /// <typeparam name="TSession">连接会话类型 例如在 TCP 实现下，其类型为 TcpSession{TId}</typeparam>
+    public abstract class AbstractSession<TId, TSession> : ISession<TSession>, ISender<TId>, IHasCodec<TId>
     {
         private const int DefaultBufferSize = 40960;
         private const int PacketHeaderLength = sizeof(ushort); // 包头长度4Byte
@@ -24,7 +29,7 @@ namespace Hive.Framework.Networking.Shared
 
         public IEncoder<TId> Encoder { get; }
         public IDecoder<TId> Decoder { get; }
-        public IDataDispatcher<AbstractSession<TId>> DataDispatcher { get; }
+        public IDataDispatcher<TSession> DataDispatcher { get; }
         public IPEndPoint? LocalEndPoint { get; protected set; }
         public IPEndPoint? RemoteEndPoint { get; protected set; }
 
@@ -33,7 +38,7 @@ namespace Hive.Framework.Networking.Shared
         public bool Running => !_cancellationTokenSource.IsCancellationRequested && _sendingLoopRunning && _receivingLoopRunning;
         public abstract bool IsConnected { get; }
 
-        public AbstractSession(IEncoder<TId> encoder, IDecoder<TId> decoder, IDataDispatcher<AbstractSession<TId>> dataDispatcher)
+        public AbstractSession(IEncoder<TId> encoder, IDecoder<TId> decoder, IDataDispatcher<TSession> dataDispatcher)
         {
             Encoder = encoder;
             Decoder = decoder;
@@ -65,7 +70,7 @@ namespace Hive.Framework.Networking.Shared
             _sendEnqueued = true;
         }
 
-        public void OnReceive<T>(Action<T, AbstractSession<TId>> callback) // 用于兼容旧的基于Action的回调
+        public void OnReceive<T>(Action<T, TSession> callback) // 用于兼容旧的基于Action的回调
         {
             DataDispatcher.Register(callback);
 
@@ -76,7 +81,7 @@ namespace Hive.Framework.Networking.Shared
             _receiveRegistered = true;
         }
 
-        public void RemoveOnReceive<T>(Action<T, AbstractSession<TId>> callback)
+        public void RemoveOnReceive<T>(Action<T, TSession> callback)
         {
             DataDispatcher.Unregister(callback);
         }
@@ -95,17 +100,14 @@ namespace Hive.Framework.Networking.Shared
             TaskHelper.ManagedRun(ReceiveLoop, _cancellationTokenSource.Token);
         }
 
+        protected abstract void DispatchPacket(object? packet, Type? packetType = null);
+
         protected void ProcessPacket(Span<byte> payloadBytes)
         {
             var packet = Decoder.Decode(payloadBytes);
             var packetType = packet.GetType();
 
-            var proceed = DataDispatcher.Dispatch(this, packet, packetType);
-
-            /*
-            if (!proceed)
-                Logger.LogError("There is not receiver receive {TypeName}", messageType.Name);
-            */
+            DispatchPacket(packet, packetType);
         }
 
         /// <summary>

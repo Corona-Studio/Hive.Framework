@@ -1,0 +1,66 @@
+﻿using System.Net;
+using System.Net.Sockets;
+using System.Threading;
+using System.Threading.Tasks;
+using Hive.Framework.Codec.Abstractions;
+using Hive.Framework.Networking.Abstractions;
+using Hive.Framework.Networking.Shared;
+using Hive.Framework.Networking.Shared.Helpers;
+
+namespace Hive.Framework.Networking.Tcp
+{
+    public sealed class TcpAcceptor<TId> : AbstractAcceptor<Socket, TcpSession<TId>, TId>
+    {
+        public Socket? ServerSocket { get; private set; }
+
+        public TcpAcceptor(IPEndPoint endPoint, IEncoder<TId> encoder, IDecoder<TId> decoder, IDataDispatcher<TcpSession<TId>> dataDispatcher) : base(endPoint, encoder, decoder, dataDispatcher)
+        {
+        }
+
+        private void InitSocket()
+        {
+            ServerSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        }
+
+        public override void Start()
+        {
+            if (ServerSocket == null)
+                InitSocket();
+
+            ServerSocket!.Bind(EndPoint);
+            ServerSocket.Listen(EndPoint.Port);
+
+            TaskHelper.ManagedRun(StartAcceptClient, _cancellationTokenSource.Token);
+        }
+
+        public override void Stop()
+        {
+            if (ServerSocket == null) return;
+
+            ServerSocket.Close();
+            ServerSocket.Dispose();
+        }
+
+        private async Task StartAcceptClient()
+        {
+            while (!_cancellationTokenSource.IsCancellationRequested)
+            {
+                var clientSocket = await ServerSocket.AcceptAsync();
+                await DoAcceptClient(clientSocket, _cancellationTokenSource.Token);
+            }
+        }
+
+        public override ValueTask DoAcceptClient(Socket client, CancellationToken cancellationToken)
+        {
+            var clientSession = new TcpSession<TId>(client, Encoder, Decoder, DataDispatcher);
+
+            return default;
+        }
+
+        public override void Dispose()
+        {
+            base.Dispose();
+            Stop();
+        }
+    }
+}

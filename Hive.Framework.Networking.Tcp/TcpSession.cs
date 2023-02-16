@@ -11,13 +11,13 @@ namespace Hive.Framework.Networking.Tcp
     /// <summary>
     /// 基于 Socket 的 TCP 传输层实现
     /// </summary>
-    public sealed class TcpSession<TId> : AbstractSession<TId>
+    public sealed class TcpSession<TId> : AbstractSession<TId, TcpSession<TId>>
     {
         private bool _closed;
 
         public Socket? Socket { get; private set; }
 
-        public TcpSession(Socket socket, IEncoder<TId> encoder, IDecoder<TId> decoder, IDataDispatcher<AbstractSession<TId>> dataDispatcher) : base(encoder, decoder, dataDispatcher)
+        public TcpSession(Socket socket, IEncoder<TId> encoder, IDecoder<TId> decoder, IDataDispatcher<TcpSession<TId>> dataDispatcher) : base(encoder, decoder, dataDispatcher)
         {
             Socket = socket;
             socket.ReceiveBufferSize = 8192 * 4;
@@ -26,12 +26,12 @@ namespace Hive.Framework.Networking.Tcp
             RemoteEndPoint = socket.RemoteEndPoint as IPEndPoint;
         }
 
-        public TcpSession(IPEndPoint endPoint, IEncoder<TId> encoder, IDecoder<TId> decoder, IDataDispatcher<AbstractSession<TId>> dataDispatcher) : base(encoder, decoder, dataDispatcher)
+        public TcpSession(IPEndPoint endPoint, IEncoder<TId> encoder, IDecoder<TId> decoder, IDataDispatcher<TcpSession<TId>> dataDispatcher) : base(encoder, decoder, dataDispatcher)
         {
             Connect(endPoint);
         }
 
-        public TcpSession(string addressWithPort, IEncoder<TId> encoder, IDecoder<TId> decoder, IDataDispatcher<AbstractSession<TId>> dataDispatcher) : base(encoder, decoder, dataDispatcher)
+        public TcpSession(string addressWithPort, IEncoder<TId> encoder, IDecoder<TId> decoder, IDataDispatcher<TcpSession<TId>> dataDispatcher) : base(encoder, decoder, dataDispatcher)
         {
             Connect(addressWithPort);
         }
@@ -39,6 +39,11 @@ namespace Hive.Framework.Networking.Tcp
         public override bool CanSend => true;
         public override bool CanReceive => true;
         public override bool IsConnected => Socket is { Connected: true };
+
+        protected override void DispatchPacket(object? packet, Type? packetType = null)
+        {
+            DataDispatcher.Dispatch(this, packet, packetType);
+        }
 
         public override async ValueTask DoConnect()
         {

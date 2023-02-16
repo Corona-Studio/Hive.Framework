@@ -3,6 +3,10 @@ using System;
 
 namespace Hive.Framework.Networking.Abstractions
 {
+    /// <summary>
+    /// 表示一个数据分发器
+    /// </summary>
+    /// <typeparam name="TSender">发送者</typeparam>
     public interface IDataDispatcher<TSender>
     {
         Dictionary<Type, CallbackWarp> CallbackDictionary { get; }

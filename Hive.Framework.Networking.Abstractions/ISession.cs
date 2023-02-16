@@ -5,8 +5,9 @@ using System.Threading.Tasks;
 namespace Hive.Framework.Networking.Abstractions
 {
     /// <summary>
-    /// 代表一个连接
+    /// 代表一个连接会话
     /// </summary>
+    /// <typeparam name="TSender">分包发送者，通常为自己</typeparam>
     public interface ISession<TSender> : IDisposable
     {
         IPEndPoint? LocalEndPoint { get; }
