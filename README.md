@@ -12,3 +12,6 @@
 |Hive.Framework.Networking.Abstractions|网络库规范抽象，使用该库开发自定义的网络实现|
 |Hive.Framework.Networking.Shared|网络库共享项目，用于存放网络库的默认抽象和共用方法，使用该库开发自定义的网络实现|
 |Hive.Framework.Networking.Tcp|基于 TCP 的官方网络库实现，提供开箱即用的体验|
+|Hive.Framework.Networking.Udp|基于 UDP 的官方网络库实现，提供开箱即用的体验|
+|Hive.Framework.Networking.Quic|基于 QUIC 的官方网络库实现，提供开箱即用的体验|
+|Hive.Framework.Networking.Kcp|基于 KCP 的官方网络库实现，提供开箱即用的体验|
