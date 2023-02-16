@@ -217,7 +217,7 @@ namespace Hive.Framework.Networking.Shared
 
         public abstract ValueTask SendOnce(ReadOnlyMemory<byte> data);
 
-        public abstract ValueTask<int> ReceiveOnce(Memory<byte> data);
+        public abstract ValueTask<int> ReceiveOnce(Memory<byte> buffer);
 
         public virtual void Dispose()
         {

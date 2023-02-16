@@ -1,17 +1,17 @@
-﻿using System.Net;
-using System.Net.Sockets;
-using System.Threading;
-using System.Threading.Tasks;
-using Hive.Framework.Codec.Abstractions;
+﻿using Hive.Framework.Codec.Abstractions;
 using Hive.Framework.Networking.Abstractions;
 using Hive.Framework.Networking.Shared;
 using Hive.Framework.Networking.Shared.Helpers;
+using System.Net;
+using System.Net.Sockets;
+using System.Threading;
+using System.Threading.Tasks;
 
-namespace Hive.Framework.Networking.Tcp
+namespace Hive.Framework.Networking.Udp
 {
-    public sealed class TcpAcceptor<TId> : AbstractAcceptor<Socket, TcpSession<TId>, TId>
+    public sealed class TcpAcceptor<TId> : AbstractAcceptor<Socket, UdpSession<TId>, TId>
     {
-        public TcpAcceptor(IPEndPoint endPoint, IEncoder<TId> encoder, IDecoder<TId> decoder, IDataDispatcher<TcpSession<TId>> dataDispatcher) : base(endPoint, encoder, decoder, dataDispatcher)
+        public TcpAcceptor(IPEndPoint endPoint, IEncoder<TId> encoder, IDecoder<TId> decoder, IDataDispatcher<UdpSession<TId>> dataDispatcher) : base(endPoint, encoder, decoder, dataDispatcher)
         {
         }
 
@@ -19,7 +19,7 @@ namespace Hive.Framework.Networking.Tcp
 
         private void InitSocket()
         {
-            ServerSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            ServerSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Udp);
         }
 
         public override void Start()
@@ -52,7 +52,7 @@ namespace Hive.Framework.Networking.Tcp
 
         public override ValueTask DoAcceptClient(Socket client, CancellationToken cancellationToken)
         {
-            var clientSession = new TcpSession<TId>(client, Encoder, Decoder, DataDispatcher);
+            var clientSession = new UdpSession<TId>(client, Encoder, Decoder, DataDispatcher);
 
             return default;
         }

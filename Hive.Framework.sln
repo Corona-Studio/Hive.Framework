@@ -15,6 +15,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hive.Framework.Networking.S
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hive.Framework.Networking.Tcp", "Hive.Framework.Networking.Tcp\Hive.Framework.Networking.Tcp.csproj", "{6ADEBC90-7261-4ED8-8637-04F465AAE456}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hive.Framework.Networking.Udp", "Hive.Framework.Networking.Udp\Hive.Framework.Networking.Udp.csproj", "{0F779828-D569-4A91-BC36-027E27B5697A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hive.Framework.Networking.Quic", "Hive.Framework.Networking.Quic\Hive.Framework.Networking.Quic.csproj", "{8BDFBDC2-6A34-4D9B-9CC8-CF982418C82A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -45,6 +49,14 @@ Global
 		{6ADEBC90-7261-4ED8-8637-04F465AAE456}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6ADEBC90-7261-4ED8-8637-04F465AAE456}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6ADEBC90-7261-4ED8-8637-04F465AAE456}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0F779828-D569-4A91-BC36-027E27B5697A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0F779828-D569-4A91-BC36-027E27B5697A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0F779828-D569-4A91-BC36-027E27B5697A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0F779828-D569-4A91-BC36-027E27B5697A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8BDFBDC2-6A34-4D9B-9CC8-CF982418C82A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8BDFBDC2-6A34-4D9B-9CC8-CF982418C82A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8BDFBDC2-6A34-4D9B-9CC8-CF982418C82A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8BDFBDC2-6A34-4D9B-9CC8-CF982418C82A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,19 +1,19 @@
-﻿using System;
-using System.Net;
-using System.Net.Sockets;
-using System.Threading.Tasks;
-using Hive.Framework.Codec.Abstractions;
+﻿using Hive.Framework.Codec.Abstractions;
 using Hive.Framework.Networking.Abstractions;
 using Hive.Framework.Networking.Shared;
+using System.Net.Sockets;
+using System.Net;
+using System.Threading.Tasks;
+using System;
 
-namespace Hive.Framework.Networking.Tcp
+namespace Hive.Framework.Networking.Udp
 {
     /// <summary>
-    /// 基于 Socket 的 TCP 传输层实现
+    /// 基于 Socket 的 UDP 传输层实现
     /// </summary>
-    public sealed class TcpSession<TId> : AbstractSession<TId, TcpSession<TId>>
+    public sealed class UdpSession<TId> : AbstractSession<TId, UdpSession<TId>>
     {
-        public TcpSession(Socket socket, IEncoder<TId> encoder, IDecoder<TId> decoder, IDataDispatcher<TcpSession<TId>> dataDispatcher) : base(encoder, decoder, dataDispatcher)
+        public UdpSession(Socket socket, IEncoder<TId> encoder, IDecoder<TId> decoder, IDataDispatcher<UdpSession<TId>> dataDispatcher) : base(encoder, decoder, dataDispatcher)
         {
             Socket = socket;
             socket.ReceiveBufferSize = 8192 * 4;
@@ -22,12 +22,12 @@ namespace Hive.Framework.Networking.Tcp
             RemoteEndPoint = socket.RemoteEndPoint as IPEndPoint;
         }
 
-        public TcpSession(IPEndPoint endPoint, IEncoder<TId> encoder, IDecoder<TId> decoder, IDataDispatcher<TcpSession<TId>> dataDispatcher) : base(encoder, decoder, dataDispatcher)
+        public UdpSession(IPEndPoint endPoint, IEncoder<TId> encoder, IDecoder<TId> decoder, IDataDispatcher<UdpSession<TId>> dataDispatcher) : base(encoder, decoder, dataDispatcher)
         {
             Connect(endPoint);
         }
 
-        public TcpSession(string addressWithPort, IEncoder<TId> encoder, IDecoder<TId> decoder, IDataDispatcher<TcpSession<TId>> dataDispatcher) : base(encoder, decoder, dataDispatcher)
+        public UdpSession(string addressWithPort, IEncoder<TId> encoder, IDecoder<TId> decoder, IDataDispatcher<UdpSession<TId>> dataDispatcher) : base(encoder, decoder, dataDispatcher)
         {
             Connect(addressWithPort);
         }
@@ -54,7 +54,7 @@ namespace Hive.Framework.Networking.Tcp
 
             // 创建新连接
             _closed = false;
-            Socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            Socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Udp);
             Socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
 
             // 连接到指定地址
