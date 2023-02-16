@@ -8,6 +8,7 @@ namespace Hive.Framework.Codec.Abstractions
     /// <typeparam name="T"></typeparam>
     public interface IPacketIdMapper<T>
     {
+        void Register<TPacket>();
         void Register(Type type);
         void Register(Type type, out T id);
 

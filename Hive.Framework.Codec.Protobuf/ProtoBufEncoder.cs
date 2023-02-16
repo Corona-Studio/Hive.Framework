@@ -23,7 +23,7 @@ public class ProtoBufEncoder : IEncoder<ushort>
 
     public IPacketIdMapper<ushort> PacketIdMapper { get; init; } = null!;
 
-    public ReadOnlySpan<byte> Encode<T>(T obj) where T : unmanaged
+    public ReadOnlyMemory<byte> Encode<T>(T obj)
     {
         var writer = WriterPool.Get();
 
@@ -38,7 +38,7 @@ public class ProtoBufEncoder : IEncoder<ushort>
         Span<byte> typeHeader = stackalloc byte[2];
 
         // Packet Length
-        BitConverter.TryWriteBytes(lengthHeader, (ushort)contentMeasure.Length);
+        BitConverter.TryWriteBytes(lengthHeader, (ushort)contentMeasure.Length + 2);
         writer.Write(lengthHeader);
 
         // Packet Id
@@ -47,7 +47,7 @@ public class ProtoBufEncoder : IEncoder<ushort>
 
         contentMeasure.Serialize(writer);
 
-        var result = writer.WrittenMemory.Span;
+        var result = writer.WrittenMemory;
 
         WriterPool.Return(writer);
 

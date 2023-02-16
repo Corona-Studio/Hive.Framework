@@ -28,6 +28,8 @@ public class ProtoBufPacketIdMapper : IPacketIdMapper<ushort>
         return id;
     }
 
+    public void Register<TPacket>() => Register(typeof(TPacket));
+
     public void Register(Type type) => Register(type, out _);
 
     public void Register(Type type, [UnscopedRef] out ushort id)

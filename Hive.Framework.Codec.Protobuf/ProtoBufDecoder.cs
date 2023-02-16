@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Security.Cryptography;
 using Hive.Framework.Codec.Abstractions;
 using ProtoBuf;
 

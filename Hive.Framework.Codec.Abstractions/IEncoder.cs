@@ -10,6 +10,6 @@ namespace Hive.Framework.Codec.Abstractions
     {
         IPacketIdMapper<TId> PacketIdMapper { get; }
 
-        ReadOnlySpan<byte> Encode<T>(T obj) where T : unmanaged;
+        ReadOnlyMemory<byte> Encode<T>(T obj);
     }
 }

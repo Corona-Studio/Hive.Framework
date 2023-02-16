@@ -9,6 +9,12 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.Framework.Codec.Protob
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.Framework.Shared", "Hive.Framework.Shared\Hive.Framework.Shared.csproj", "{CBB6DEBC-DCCF-4AD7-A6D1-9377BA6D96F0}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hive.Framework.Networking.Abstractions", "Hive.Framework.Networking.Abstractions\Hive.Framework.Networking.Abstractions.csproj", "{E49B46F9-C834-4C33-ADFD-6D4127A1EC9F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hive.Framework.Networking.Shared", "Hive.Framework.Networking.Shared\Hive.Framework.Networking.Shared.csproj", "{CD2BD09A-7232-48F6-BCB9-A47EB1B79E53}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hive.Framework.Networking.Tcp", "Hive.Framework.Networking.Tcp\Hive.Framework.Networking.Tcp.csproj", "{6ADEBC90-7261-4ED8-8637-04F465AAE456}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +33,18 @@ Global
 		{CBB6DEBC-DCCF-4AD7-A6D1-9377BA6D96F0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CBB6DEBC-DCCF-4AD7-A6D1-9377BA6D96F0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CBB6DEBC-DCCF-4AD7-A6D1-9377BA6D96F0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E49B46F9-C834-4C33-ADFD-6D4127A1EC9F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E49B46F9-C834-4C33-ADFD-6D4127A1EC9F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E49B46F9-C834-4C33-ADFD-6D4127A1EC9F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E49B46F9-C834-4C33-ADFD-6D4127A1EC9F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CD2BD09A-7232-48F6-BCB9-A47EB1B79E53}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CD2BD09A-7232-48F6-BCB9-A47EB1B79E53}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CD2BD09A-7232-48F6-BCB9-A47EB1B79E53}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CD2BD09A-7232-48F6-BCB9-A47EB1B79E53}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6ADEBC90-7261-4ED8-8637-04F465AAE456}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6ADEBC90-7261-4ED8-8637-04F465AAE456}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6ADEBC90-7261-4ED8-8637-04F465AAE456}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6ADEBC90-7261-4ED8-8637-04F465AAE456}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
