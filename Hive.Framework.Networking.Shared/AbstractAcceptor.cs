@@ -19,7 +19,7 @@ public abstract class AbstractAcceptor<TClient, TSession, TId> : IAcceptor<TSess
     public IDecoder<TId> Decoder { get; }
     public IDataDispatcher<TSession> DataDispatcher { get; }
 
-    protected readonly CancellationTokenSource CancellationTokenSource = new ();
+    protected readonly CancellationTokenSource _cancellationTokenSource = new ();
 
     public AbstractAcceptor(IPEndPoint endPoint, IEncoder<TId> encoder, IDecoder<TId> decoder, IDataDispatcher<TSession> dataDispatcher)
     {
@@ -37,7 +37,7 @@ public abstract class AbstractAcceptor<TClient, TSession, TId> : IAcceptor<TSess
 
     public virtual void Dispose()
     {
-        CancellationTokenSource.Cancel();
-        CancellationTokenSource.Dispose();
+        _cancellationTokenSource.Cancel();
+        _cancellationTokenSource.Dispose();
     }
 }
