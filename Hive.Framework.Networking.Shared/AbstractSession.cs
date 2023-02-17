@@ -27,8 +27,7 @@ namespace Hive.Framework.Networking.Shared
         private bool _receivingLoopRunning;
         private bool _sendingLoopRunning;
 
-        public IEncoder<TId> Encoder { get; }
-        public IDecoder<TId> Decoder { get; }
+        public IPacketCodec<TId> PacketCodec { get; }
         public IDataDispatcher<TSession> DataDispatcher { get; }
         public IPEndPoint? LocalEndPoint { get; protected set; }
         public IPEndPoint? RemoteEndPoint { get; protected set; }
@@ -38,10 +37,9 @@ namespace Hive.Framework.Networking.Shared
         public bool Running => !_cancellationTokenSource.IsCancellationRequested && _sendingLoopRunning && _receivingLoopRunning;
         public abstract bool IsConnected { get; }
 
-        public AbstractSession(IEncoder<TId> encoder, IDecoder<TId> decoder, IDataDispatcher<TSession> dataDispatcher)
+        public AbstractSession(IPacketCodec<TId> packetCodec, IDataDispatcher<TSession> dataDispatcher)
         {
-            Encoder = encoder;
-            Decoder = decoder;
+            PacketCodec = packetCodec;
             DataDispatcher = dataDispatcher;
         }
 
@@ -60,7 +58,7 @@ namespace Hive.Framework.Networking.Shared
         {
             if (obj == null) throw new ArgumentNullException($"The data trying to send [{nameof(obj)}] is null!");
 
-            var encodedBytes = Encoder.Encode(obj);
+            var encodedBytes = PacketCodec.Encode(obj);
             _sendQueue.Enqueue(encodedBytes);
 
             if (_sendEnqueued) return;
@@ -104,7 +102,7 @@ namespace Hive.Framework.Networking.Shared
 
         protected void ProcessPacket(Span<byte> payloadBytes)
         {
-            var packet = Decoder.Decode(payloadBytes);
+            var packet = PacketCodec.Decode(payloadBytes);
             var packetType = packet.GetType();
 
             DispatchPacket(packet, packetType);

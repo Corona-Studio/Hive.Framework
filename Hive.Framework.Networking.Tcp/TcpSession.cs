@@ -13,7 +13,7 @@ namespace Hive.Framework.Networking.Tcp
     /// </summary>
     public sealed class TcpSession<TId> : AbstractSession<TId, TcpSession<TId>>
     {
-        public TcpSession(Socket socket, IEncoder<TId> encoder, IDecoder<TId> decoder, IDataDispatcher<TcpSession<TId>> dataDispatcher) : base(encoder, decoder, dataDispatcher)
+        public TcpSession(Socket socket, IPacketCodec<TId> packetCodec, IDataDispatcher<TcpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
         {
             Socket = socket;
             socket.ReceiveBufferSize = 8192 * 4;
@@ -22,12 +22,12 @@ namespace Hive.Framework.Networking.Tcp
             RemoteEndPoint = socket.RemoteEndPoint as IPEndPoint;
         }
 
-        public TcpSession(IPEndPoint endPoint, IEncoder<TId> encoder, IDecoder<TId> decoder, IDataDispatcher<TcpSession<TId>> dataDispatcher) : base(encoder, decoder, dataDispatcher)
+        public TcpSession(IPEndPoint endPoint, IPacketCodec<TId> packetCodec, IDataDispatcher<TcpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
         {
             Connect(endPoint);
         }
 
-        public TcpSession(string addressWithPort, IEncoder<TId> encoder, IDecoder<TId> decoder, IDataDispatcher<TcpSession<TId>> dataDispatcher) : base(encoder, decoder, dataDispatcher)
+        public TcpSession(string addressWithPort, IPacketCodec<TId> packetCodec, IDataDispatcher<TcpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
         {
             Connect(addressWithPort);
         }

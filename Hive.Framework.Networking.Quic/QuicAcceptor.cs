@@ -11,9 +11,13 @@ namespace Hive.Framework.Networking.Quic;
 #pragma warning disable CA1416 
 
 [RequiresPreviewFeatures]
-public class QuicAcceptor<TId> : AbstractAcceptor<QuicConnection, QuicSession<TId>, TId>
+public class QuicAcceptor<TId, TSessionId> : AbstractAcceptor<QuicConnection, QuicSession<TId>, TId, TSessionId>
 {
-    public QuicAcceptor(IPEndPoint endPoint, IEncoder<TId> encoder, IDecoder<TId> decoder, IDataDispatcher<QuicSession<TId>> dataDispatcher) : base(endPoint, encoder, decoder, dataDispatcher)
+    public QuicAcceptor(
+        IPEndPoint endPoint,
+        IPacketCodec<TId> packetCodec,
+        IDataDispatcher<QuicSession<TId>> dataDispatcher,
+        IClientManager<TSessionId, QuicSession<TId>> clientManager) : base(endPoint, packetCodec, dataDispatcher, clientManager)
     {
         if (!QuicListener.IsSupported)
             throw new NotSupportedException("QUIC is not supported on this platform!");
@@ -71,6 +75,8 @@ public class QuicAcceptor<TId> : AbstractAcceptor<QuicConnection, QuicSession<TI
     public override async ValueTask DoAcceptClient(QuicConnection client, CancellationToken cancellationToken)
     {
         var stream = await client.AcceptInboundStreamAsync(cancellationToken);
-        var clientSession = new QuicSession<TId>(client, stream, Encoder, Decoder, DataDispatcher);
+        var clientSession = new QuicSession<TId>(client, stream, PacketCodec, DataDispatcher);
+
+        ClientManager.AddSession(clientSession);
     }
 }

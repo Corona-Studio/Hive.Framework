@@ -12,7 +12,7 @@ namespace Hive.Framework.Networking.Quic;
 [RequiresPreviewFeatures]
 public class QuicSession<TId> : AbstractSession<TId, QuicSession<TId>>
 {
-    public QuicSession(QuicConnection connection, QuicStream stream, IEncoder<TId> encoder, IDecoder<TId> decoder, IDataDispatcher<QuicSession<TId>> dataDispatcher) : base(encoder, decoder, dataDispatcher)
+    public QuicSession(QuicConnection connection, QuicStream stream, IPacketCodec<TId> packetCodec, IDataDispatcher<QuicSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
     {
         QuicConnection = connection;
         QuicStream = stream;
@@ -21,7 +21,7 @@ public class QuicSession<TId> : AbstractSession<TId, QuicSession<TId>>
         RemoteEndPoint = connection.RemoteEndPoint;
     }
 
-    public QuicSession(IPEndPoint endPoint, IEncoder<TId> encoder, IDecoder<TId> decoder, IDataDispatcher<QuicSession<TId>> dataDispatcher) : base(encoder, decoder, dataDispatcher)
+    public QuicSession(IPEndPoint endPoint, IPacketCodec<TId> packetCodec, IDataDispatcher<QuicSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
     {
         if (!QuicListener.IsSupported)
             throw new NotSupportedException("QUIC is not supported on this platform!");
@@ -29,7 +29,7 @@ public class QuicSession<TId> : AbstractSession<TId, QuicSession<TId>>
         Connect(endPoint);
     }
 
-    public QuicSession(string addressWithPort, IEncoder<TId> encoder, IDecoder<TId> decoder, IDataDispatcher<QuicSession<TId>> dataDispatcher) : base(encoder, decoder, dataDispatcher)
+    public QuicSession(string addressWithPort, IPacketCodec<TId> packetCodec, IDataDispatcher<QuicSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
     {
         if (!QuicListener.IsSupported)
             throw new NotSupportedException("QUIC is not supported on this platform!");

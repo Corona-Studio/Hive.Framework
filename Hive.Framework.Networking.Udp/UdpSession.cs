@@ -13,7 +13,7 @@ namespace Hive.Framework.Networking.Udp
     /// </summary>
     public sealed class UdpSession<TId> : AbstractSession<TId, UdpSession<TId>>
     {
-        public UdpSession(Socket socket, IEncoder<TId> encoder, IDecoder<TId> decoder, IDataDispatcher<UdpSession<TId>> dataDispatcher) : base(encoder, decoder, dataDispatcher)
+        public UdpSession(Socket socket, IPacketCodec<TId> packetCodec, IDataDispatcher<UdpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
         {
             Socket = socket;
             socket.ReceiveBufferSize = 8192 * 4;
@@ -22,12 +22,12 @@ namespace Hive.Framework.Networking.Udp
             RemoteEndPoint = socket.RemoteEndPoint as IPEndPoint;
         }
 
-        public UdpSession(IPEndPoint endPoint, IEncoder<TId> encoder, IDecoder<TId> decoder, IDataDispatcher<UdpSession<TId>> dataDispatcher) : base(encoder, decoder, dataDispatcher)
+        public UdpSession(IPEndPoint endPoint, IPacketCodec<TId> packetCodec, IDataDispatcher<UdpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
         {
             Connect(endPoint);
         }
 
-        public UdpSession(string addressWithPort, IEncoder<TId> encoder, IDecoder<TId> decoder, IDataDispatcher<UdpSession<TId>> dataDispatcher) : base(encoder, decoder, dataDispatcher)
+        public UdpSession(string addressWithPort, IPacketCodec<TId> packetCodec, IDataDispatcher<UdpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
         {
             Connect(addressWithPort);
         }

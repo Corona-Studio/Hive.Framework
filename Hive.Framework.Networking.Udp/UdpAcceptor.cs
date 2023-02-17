@@ -9,9 +9,13 @@ using System.Threading.Tasks;
 
 namespace Hive.Framework.Networking.Udp
 {
-    public sealed class TcpAcceptor<TId> : AbstractAcceptor<Socket, UdpSession<TId>, TId>
+    public sealed class UdpAcceptor<TId, TSessionId> : AbstractAcceptor<Socket, UdpSession<TId>, TId, TSessionId>
     {
-        public TcpAcceptor(IPEndPoint endPoint, IEncoder<TId> encoder, IDecoder<TId> decoder, IDataDispatcher<UdpSession<TId>> dataDispatcher) : base(endPoint, encoder, decoder, dataDispatcher)
+        public UdpAcceptor(
+            IPEndPoint endPoint,
+            IPacketCodec<TId> packetCodec,
+            IDataDispatcher<UdpSession<TId>> dataDispatcher,
+            IClientManager<TSessionId, UdpSession<TId>> clientManager) : base(endPoint, packetCodec, dataDispatcher, clientManager)
         {
         }
 
@@ -52,7 +56,9 @@ namespace Hive.Framework.Networking.Udp
 
         public override ValueTask DoAcceptClient(Socket client, CancellationToken cancellationToken)
         {
-            var clientSession = new UdpSession<TId>(client, Encoder, Decoder, DataDispatcher);
+            var clientSession = new UdpSession<TId>(client, PacketCodec, DataDispatcher);
+
+            ClientManager.AddSession(clientSession);
 
             return default;
         }

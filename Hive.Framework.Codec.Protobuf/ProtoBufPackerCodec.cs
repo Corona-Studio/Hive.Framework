@@ -1,21 +1,21 @@
-﻿using System;
-using System.Buffers;
-using DotNext.Buffers;
+﻿using DotNext.Buffers;
 using Hive.Framework.Codec.Abstractions;
 using Hive.Framework.Shared;
 using ProtoBuf;
+using System;
+using System.Buffers;
 
 namespace Hive.Framework.Codec.Protobuf;
 
-public class ProtoBufEncoder : IEncoder<ushort>
+public class ProtoBufPackerCodec : IPacketCodec<ushort>
 {
     private static readonly ObjectPool<PooledBufferWriter<byte>> WriterPool;
 
-    static ProtoBufEncoder()
+    static ProtoBufPackerCodec()
     {
         WriterPool = new ObjectPool<PooledBufferWriter<byte>>(
-            () => new PooledBufferWriter<byte> 
-            { 
+            () => new PooledBufferWriter<byte>
+            {
                 BufferAllocator = UnmanagedMemoryPool<byte>.Shared.ToAllocator()
             },
             writer => writer.Clear());
@@ -52,5 +52,23 @@ public class ProtoBufEncoder : IEncoder<ushort>
         WriterPool.Return(writer);
 
         return result;
+    }
+
+    public object Decode(ReadOnlySpan<byte> data)
+    {
+        // 负载长度
+        // var packetLengthSpan = data[..2];
+
+        // 封包类型
+        var packetIdSpan = data.Slice(2, 2);
+        var packetId = BitConverter.ToUInt16(packetIdSpan);
+
+        // 封包数据段
+        var packetData = data[2..];
+
+        // var packetLength = BitConverter.ToUInt16(packetLengthSpan);
+        var packetType = PacketIdMapper.GetPacketType(packetId);
+
+        return Serializer.Deserialize(packetData, packetType);
     }
 }

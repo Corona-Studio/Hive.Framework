@@ -9,9 +9,13 @@ using Hive.Framework.Networking.Shared.Helpers;
 
 namespace Hive.Framework.Networking.Tcp
 {
-    public sealed class TcpAcceptor<TId> : AbstractAcceptor<Socket, TcpSession<TId>, TId>
+    public sealed class TcpAcceptor<TId, TSessionId> : AbstractAcceptor<Socket, TcpSession<TId>, TId, TSessionId>
     {
-        public TcpAcceptor(IPEndPoint endPoint, IEncoder<TId> encoder, IDecoder<TId> decoder, IDataDispatcher<TcpSession<TId>> dataDispatcher) : base(endPoint, encoder, decoder, dataDispatcher)
+        public TcpAcceptor(
+            IPEndPoint endPoint,
+            IPacketCodec<TId> packetCodec,
+            IDataDispatcher<TcpSession<TId>> dataDispatcher,
+            IClientManager<TSessionId, TcpSession<TId>> clientManager) : base(endPoint, packetCodec, dataDispatcher, clientManager)
         {
         }
 
@@ -52,7 +56,9 @@ namespace Hive.Framework.Networking.Tcp
 
         public override ValueTask DoAcceptClient(Socket client, CancellationToken cancellationToken)
         {
-            var clientSession = new TcpSession<TId>(client, Encoder, Decoder, DataDispatcher);
+            var clientSession = new TcpSession<TId>(client, PacketCodec, DataDispatcher);
+
+            ClientManager.AddSession(clientSession);
 
             return default;
         }
