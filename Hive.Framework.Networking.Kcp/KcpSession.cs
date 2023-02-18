@@ -18,6 +18,8 @@ namespace Hive.Framework.Networking.Kcp
             Socket = socket;
             socket.ReceiveBufferSize = 8192 * 4;
 
+            _kcp = new PoolSegManager.Kcp(2001, this);
+
             LocalEndPoint = socket.LocalEndPoint as IPEndPoint;
             RemoteEndPoint = socket.RemoteEndPoint as IPEndPoint;
         }
@@ -25,11 +27,15 @@ namespace Hive.Framework.Networking.Kcp
         public KcpSession(IPEndPoint endPoint, IPacketCodec<TId> packetCodec, IDataDispatcher<KcpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
         {
             Connect(endPoint);
+
+            _kcp = new PoolSegManager.Kcp(2001, this);
         }
 
         public KcpSession(string addressWithPort, IPacketCodec<TId> packetCodec, IDataDispatcher<KcpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
         {
             Connect(addressWithPort);
+
+            _kcp = new PoolSegManager.Kcp(2001, this);
         }
 
         private bool _closed;
@@ -74,6 +80,13 @@ namespace Hive.Framework.Networking.Kcp
             return default;
         }
 
+        /// <summary>
+        /// KCP 发送方法，
+        /// 将数据发送至 KCP 库加以处理并排序
+        /// </summary>
+        /// <param name="data"></param>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException"></exception>
         public override async ValueTask SendOnce(ReadOnlyMemory<byte> data)
         {
             if (Socket == null)
@@ -97,6 +110,11 @@ namespace Hive.Framework.Networking.Kcp
             return length;
         }
 
+        /// <summary>
+        /// 重写后的接收方法，
+        /// 通过持续调用 KCP 库的接收方法来尝试接收数据
+        /// </summary>
+        /// <returns></returns>
         protected override async Task ReceiveLoop()
         {
             using var bufferOwner = MemoryPool<byte>.Shared.Rent(DefaultBufferSize);
@@ -144,6 +162,13 @@ namespace Hive.Framework.Networking.Kcp
             }
         }
 
+        /// <summary>
+        /// KCP 库发送实现，
+        /// 在 KCP 完成封包处理后，通过该方法发送
+        /// </summary>
+        /// <param name="buffer">处理后的数据</param>
+        /// <param name="avalidLength">有效长度</param>
+        /// <exception cref="InvalidOperationException">Socket 初始化失败时抛出</exception>
         public void Output(IMemoryOwner<byte> buffer, int avalidLength)
         {
             if (Socket == null)
@@ -169,6 +194,7 @@ namespace Hive.Framework.Networking.Kcp
         {
             base.Dispose();
             DoDisconnect();
+            _kcp.Dispose();
         }
     }
 }
