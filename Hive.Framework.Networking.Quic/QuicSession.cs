@@ -10,7 +10,7 @@ namespace Hive.Framework.Networking.Quic;
 #pragma warning disable CA1416 
 
 [RequiresPreviewFeatures]
-public class QuicSession<TId> : AbstractSession<TId, QuicSession<TId>>
+public sealed class QuicSession<TId> : AbstractSession<TId, QuicSession<TId>>
 {
     public QuicSession(QuicConnection connection, QuicStream stream, IPacketCodec<TId> packetCodec, IDataDispatcher<QuicSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
     {
