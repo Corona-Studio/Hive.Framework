@@ -159,7 +159,7 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
     /// <para>您应该在 <see cref="RegisterSigninMessage"/> 的事件处理程序中调用该方法</para>
     /// </summary>
     /// <param name="session">客户端会话</param>
-    public virtual void OnClientConnected(TSession session)
+    protected virtual void OnClientConnected(TSession session)
     {
         var newId = CreateNewSessionId();
 
@@ -175,7 +175,7 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
     /// <param name="sessionId">会话 ID</param>
     /// <param name="session">客户端会话</param>
     /// <param name="isClientRequest">是否是客户端主动发起的断开连接</param>
-    public virtual void OnClientDisconnected(TSessionId sessionId, TSession session, bool isClientRequest)
+    protected virtual void OnClientDisconnected(TSessionId sessionId, TSession session, bool isClientRequest)
     {
         _idSessionMapper.TryRemove(sessionId, out _);
         _sessionIdMapper.TryRemove(session, out _);
