@@ -10,7 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Implementation\" />
+    <ProjectReference Include="..\Hive.Framework.Networking.Shared\Hive.Framework.Networking.Shared.csproj" />
   </ItemGroup>
 
 </Project>

@@ -17,15 +17,15 @@ namespace Hive.Framework.Networking.Shared
     /// <typeparam name="TSession">连接会话类型 例如在 TCP 实现下，其类型为 TcpSession{TId}</typeparam>
     public abstract class AbstractSession<TId, TSession> : ISession<TSession>, ISender<TId>, IHasCodec<TId>
     {
-        private const int DefaultBufferSize = 40960;
+        protected const int DefaultBufferSize = 40960;
         private const int PacketHeaderLength = sizeof(ushort); // 包头长度4Byte
 
         private readonly ConcurrentQueue<ReadOnlyMemory<byte>> _sendQueue = new ();
-        private readonly CancellationTokenSource _cancellationTokenSource = new ();
+        protected readonly CancellationTokenSource CancellationTokenSource = new ();
         private bool _receiveRegistered;
         private bool _sendEnqueued;
-        private bool _receivingLoopRunning;
-        private bool _sendingLoopRunning;
+        protected bool ReceivingLoopRunning;
+        protected bool SendingLoopRunning;
 
         public IPacketCodec<TId> PacketCodec { get; }
         public IDataDispatcher<TSession> DataDispatcher { get; }
@@ -34,7 +34,7 @@ namespace Hive.Framework.Networking.Shared
 
         public abstract bool CanSend { get; }
         public abstract bool CanReceive { get; }
-        public bool Running => !_cancellationTokenSource.IsCancellationRequested && _sendingLoopRunning && _receivingLoopRunning;
+        public bool Running => !CancellationTokenSource.IsCancellationRequested && SendingLoopRunning && ReceivingLoopRunning;
         public abstract bool IsConnected { get; }
 
         public AbstractSession(IPacketCodec<TId> packetCodec, IDataDispatcher<TSession> dataDispatcher)
@@ -86,16 +86,16 @@ namespace Hive.Framework.Networking.Shared
 
         public void BeginSend()
         {
-            if (_sendingLoopRunning) return;
-            _sendingLoopRunning = true;
-            TaskHelper.ManagedRun(SendLoop, _cancellationTokenSource.Token);
+            if (SendingLoopRunning) return;
+            SendingLoopRunning = true;
+            TaskHelper.ManagedRun(SendLoop, CancellationTokenSource.Token);
         }
         
         public void BeginReceive()
         {
-            if (_receivingLoopRunning) return;
-            _receivingLoopRunning = true;
-            TaskHelper.ManagedRun(ReceiveLoop, _cancellationTokenSource.Token);
+            if (ReceivingLoopRunning) return;
+            ReceivingLoopRunning = true;
+            TaskHelper.ManagedRun(ReceiveLoop, CancellationTokenSource.Token);
         }
 
         protected abstract void DispatchPacket(object? packet, Type? packetType = null);
@@ -118,11 +118,11 @@ namespace Hive.Framework.Networking.Shared
 
         protected virtual async Task SendLoop()
         {
-            while (!_cancellationTokenSource.IsCancellationRequested)
+            while (!CancellationTokenSource.IsCancellationRequested)
             {
                 if (!IsConnected || !CanSend || !_sendQueue.TryDequeue(out var slice))
                 {
-                    await Task.Delay(1, _cancellationTokenSource.Token);
+                    await Task.Delay(1, CancellationTokenSource.Token);
                     continue;
                 }
 
@@ -143,7 +143,7 @@ namespace Hive.Framework.Networking.Shared
 
             try
             {
-                while (!_cancellationTokenSource.IsCancellationRequested)
+                while (!CancellationTokenSource.IsCancellationRequested)
                 {
                     if (!IsConnected || !CanReceive) SpinWait.SpinUntil(() => IsConnected && CanReceive);
 
@@ -204,7 +204,7 @@ namespace Hive.Framework.Networking.Shared
             }
             finally
             {
-                _receivingLoopRunning = false;
+                ReceivingLoopRunning = false;
                 // Logger.LogInformation("Link receive loop stopped");
             }
         }
@@ -219,8 +219,8 @@ namespace Hive.Framework.Networking.Shared
 
         public virtual void Dispose()
         {
-            _cancellationTokenSource.Cancel();
-            _cancellationTokenSource.Dispose();
+            CancellationTokenSource.Cancel();
+            CancellationTokenSource.Dispose();
         }
     }
 }
