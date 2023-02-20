@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Net;
 using Hive.Framework.Networking.Shared;
+using Hive.Framework.Networking.Tcp;
 using Hive.Framework.Networking.Tests.Messages;
 using Hive.Framework.Networking.Udp;
 
@@ -40,6 +41,16 @@ public class FakeUdpClientManager : AbstractClientManager<Guid, UdpSession<ushor
     public int ConnectedClient { get; private set; }
     public int SigninMessageVal { get; private set; }
     public int SignOutMessageVal { get; private set; }
+    public int ReconnectedClient { get; private set; }
+    public int DisconnectedClient { get; private set; }
+
+    protected override void OnClientDisconnected(Guid sessionId, UdpSession<ushort> session, bool isClientRequest)
+    {
+        base.OnClientDisconnected(sessionId, session, isClientRequest);
+
+        if (!isClientRequest)
+            DisconnectedClient++;
+    }
 
     protected override void RegisterSigninMessage(UdpSession<ushort> session)
     {
@@ -66,7 +77,14 @@ public class FakeUdpClientManager : AbstractClientManager<Guid, UdpSession<ushor
 
     protected override void RegisterReconnectMessage(UdpSession<ushort> session)
     {
+        session.OnReceive<ReconnectMessage>((_, tcpSession) =>
+        {
+            ReconnectedClient++;
 
+            var sessionId = GetSessionId(tcpSession);
+
+            OnClientReconnected(tcpSession, sessionId, true);
+        });
     }
 
     protected override void SendHeartBeat(UdpSession<ushort> session)

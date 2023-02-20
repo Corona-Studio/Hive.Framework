@@ -19,6 +19,16 @@ public class FakeTcpClientManager : AbstractClientManager<Guid, TcpSession<ushor
     public int ConnectedClient { get; private set; }
     public int SigninMessageVal { get; private set; }
     public int SignOutMessageVal { get; private set; }
+    public int ReconnectedClient { get; private set; }
+    public int DisconnectedClient { get; private set; }
+
+    protected override void OnClientDisconnected(Guid sessionId, TcpSession<ushort> session, bool isClientRequest)
+    {
+        base.OnClientDisconnected(sessionId, session, isClientRequest);
+
+        if (!isClientRequest)
+            DisconnectedClient++;
+    }
 
     protected override void RegisterSigninMessage(TcpSession<ushort> session)
     {
@@ -45,7 +55,14 @@ public class FakeTcpClientManager : AbstractClientManager<Guid, TcpSession<ushor
 
     protected override void RegisterReconnectMessage(TcpSession<ushort> session)
     {
+        session.OnReceive<ReconnectMessage>((_, tcpSession) =>
+        {
+            ReconnectedClient++;
 
+            var sessionId = GetSessionId(tcpSession);
+
+            OnClientReconnected(tcpSession, sessionId, true);
+        });
     }
 
     protected override void SendHeartBeat(TcpSession<ushort> session)

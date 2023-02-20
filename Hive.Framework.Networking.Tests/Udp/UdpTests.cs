@@ -26,6 +26,7 @@ public class UdpTests
         _packetIdMapper.Register<HeartBeatMessage>();
         _packetIdMapper.Register<SigninMessage>();
         _packetIdMapper.Register<SignOutMessage>();
+        _packetIdMapper.Register<ReconnectMessage>();
 
         _codec = new ProtoBufPackerCodec(_packetIdMapper);
         _clientManager = new FakeUdpClientManager();
@@ -60,6 +61,21 @@ public class UdpTests
 
     [Test]
     [Order(2)]
+    public async Task ReconnectTest()
+    {
+        await Task.Delay(TimeSpan.FromSeconds(10));
+
+        Assert.That(_clientManager.DisconnectedClient, Is.EqualTo(1));
+
+        _client.Send(new ReconnectMessage());
+
+        await Task.Delay(100);
+
+        Assert.That(_clientManager.ReconnectedClient, Is.EqualTo(1));
+    }
+
+    [Test]
+    [Order(3)]
     public async Task SignOutTest()
     {
         Assert.That(_clientManager.ConnectedClient, Is.EqualTo(1));

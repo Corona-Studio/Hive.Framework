@@ -16,6 +16,8 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
     private readonly ConcurrentDictionary<TSessionId, DateTime> _lastHeartBeatReceiveTimeDic = new();
     private readonly ConcurrentBag<TSession> _disconnectedSessions = new ();
 
+    private bool _isClientLinkHolderRunning;
+
     public TSessionId? GetSessionId(TSession session)
     {
         return _sessionIdMapper.TryGetValue(session, out var id) ? id : default;
@@ -36,6 +38,12 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
         RegisterSigninMessage(session);
         RegisterClientSignOutMessage(session);
         RegisterReconnectMessage(session);
+
+        if (_isClientLinkHolderRunning) return;
+
+        StartClientConnectionHolder();
+
+        _isClientLinkHolderRunning = true;
     }
 
     public void UpdateSession(TSessionId sessionId, TSession session)
@@ -142,7 +150,7 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
                 SendHeartBeat(session);
             }
 
-            await Task.Delay(10000, cancellationToken);
+            await Task.Delay(5000, cancellationToken);
         }
     }
 
