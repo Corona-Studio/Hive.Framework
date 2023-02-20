@@ -4,7 +4,9 @@ using Hive.Framework.Networking.Shared;
 using Hive.Framework.Networking.Shared.Helpers;
 using System.Net;
 using System.Net.Quic;
+using System.Net.Security;
 using System.Runtime.Versioning;
+using System.Security.Cryptography.X509Certificates;
 
 namespace Hive.Framework.Networking.Quic;
 
@@ -15,19 +17,24 @@ public sealed class QuicAcceptor<TId, TSessionId> : AbstractAcceptor<QuicConnect
 {
     public QuicAcceptor(
         IPEndPoint endPoint,
+        X509Certificate2 serverCertificate,
         IPacketCodec<TId> packetCodec,
         IDataDispatcher<QuicSession<TId>> dataDispatcher,
         IClientManager<TSessionId, QuicSession<TId>> clientManager) : base(endPoint, packetCodec, dataDispatcher, clientManager)
     {
         if (!QuicListener.IsSupported)
             throw new NotSupportedException("QUIC is not supported on this platform!");
+
+        ServerCertificate = serverCertificate;
     }
 
     public QuicListener? QuicListener { get; private set; }
-    
+    public X509Certificate2 ServerCertificate { get; }
+
+
     public override void Start()
     {
-        TaskHelper.ManagedRun(StartAcceptClient, _cancellationTokenSource.Token);
+        TaskHelper.ManagedRun(StartAcceptClient, CancellationTokenSource.Token);
     }
 
     public override void Stop()
@@ -42,17 +49,23 @@ public sealed class QuicAcceptor<TId, TSessionId> : AbstractAcceptor<QuicConnect
 
     private async ValueTask InitListener()
     {
-        var serverConnectionOptions = new QuicServerConnectionOptions
+        var listenerOptions = new QuicListenerOptions
         {
-            DefaultStreamErrorCode = 0x0A,
-            DefaultCloseErrorCode = 0x0B
+            ApplicationProtocols = new List<SslApplicationProtocol> { SslApplicationProtocol.Http3 },
+            ListenEndPoint = EndPoint,
+            ConnectionOptionsCallback = (_, _, _) => ValueTask.FromResult(new QuicServerConnectionOptions
+            {
+                DefaultStreamErrorCode = 0,
+                DefaultCloseErrorCode = 0,
+                ServerAuthenticationOptions = new SslServerAuthenticationOptions
+                {
+                    ApplicationProtocols = new List<SslApplicationProtocol> { SslApplicationProtocol.Http3 },
+                    ServerCertificate = ServerCertificate
+                }
+            })
         };
 
-        var listener = await QuicListener.ListenAsync(new QuicListenerOptions
-        {
-            ListenEndPoint = new IPEndPoint(IPAddress.Loopback, 0),
-            ConnectionOptionsCallback = (_, _, _) => ValueTask.FromResult(serverConnectionOptions)
-        });
+        var listener = await QuicListener.ListenAsync(listenerOptions);
 
         QuicListener = listener;
     }
@@ -64,11 +77,11 @@ public sealed class QuicAcceptor<TId, TSessionId> : AbstractAcceptor<QuicConnect
         if(QuicListener == null)
             throw new InvalidOperationException("QuicListener Init failed!");
 
-        while (!_cancellationTokenSource.IsCancellationRequested)
+        while (!CancellationTokenSource.IsCancellationRequested)
         {
             var connection = await QuicListener.AcceptConnectionAsync();
 
-            await DoAcceptClient(connection, _cancellationTokenSource.Token);
+            await DoAcceptClient(connection, CancellationTokenSource.Token);
         }
     }
 

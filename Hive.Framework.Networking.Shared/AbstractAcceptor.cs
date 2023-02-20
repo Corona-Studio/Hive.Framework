@@ -20,7 +20,7 @@ public abstract class AbstractAcceptor<TClient, TSession, TId, TSessionId> : IAc
     public IDataDispatcher<TSession> DataDispatcher { get; }
     public IClientManager<TSessionId, TSession> ClientManager { get; }
 
-    protected readonly CancellationTokenSource _cancellationTokenSource = new ();
+    protected readonly CancellationTokenSource CancellationTokenSource = new ();
 
     public AbstractAcceptor(
         IPEndPoint endPoint,
@@ -42,7 +42,7 @@ public abstract class AbstractAcceptor<TClient, TSession, TId, TSessionId> : IAc
 
     public virtual void Dispose()
     {
-        _cancellationTokenSource.Cancel();
-        _cancellationTokenSource.Dispose();
+        CancellationTokenSource.Cancel();
+        CancellationTokenSource.Dispose();
     }
 }

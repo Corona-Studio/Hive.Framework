@@ -31,4 +31,8 @@
     <ProjectReference Include="..\Hive.Framework.Networking.Udp\Hive.Framework.Networking.Udp.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Quic\" />
+  </ItemGroup>
+
 </Project>

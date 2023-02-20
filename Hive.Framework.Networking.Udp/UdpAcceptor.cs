@@ -26,7 +26,7 @@ namespace Hive.Framework.Networking.Udp
         {
             UdpServer = new UdpClient(EndPoint.Port);
 
-            TaskHelper.ManagedRun(StartAcceptClient, _cancellationTokenSource.Token);
+            TaskHelper.ManagedRun(StartAcceptClient, CancellationTokenSource.Token);
         }
 
         public override void Stop()
@@ -36,9 +36,9 @@ namespace Hive.Framework.Networking.Udp
 
         private async Task StartAcceptClient()
         {
-            while (!_cancellationTokenSource.IsCancellationRequested)
+            while (!CancellationTokenSource.IsCancellationRequested)
             {
-                await DoAcceptClient(UdpServer!, _cancellationTokenSource.Token);
+                await DoAcceptClient(UdpServer!, CancellationTokenSource.Token);
             }
         }
 

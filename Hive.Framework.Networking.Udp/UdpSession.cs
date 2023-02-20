@@ -14,7 +14,7 @@ namespace Hive.Framework.Networking.Udp
     /// <summary>
     /// 基于 Socket 的 UDP 传输层实现
     /// </summary>
-    public sealed class UdpSession<TId> : AbstractSession<TId, UdpSession<TId>>
+    public sealed class UdpSession<TId> : AbstractSession<TId, UdpSession<TId>>, IHasCustomDataWriter
     {
         public UdpSession(
             UdpClient socket,
@@ -25,8 +25,8 @@ namespace Hive.Framework.Networking.Udp
             UdpConnection = socket;
 
             RemoteEndPoint = endPoint;
-            
-            DataWriter = new ArrayBufferWriter<byte>();
+
+            DataWriter = new ArrayBufferWriter<byte>(100);
         }
 
         public UdpSession(IPEndPoint endPoint, IPacketCodec<TId> packetCodec, IDataDispatcher<UdpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
@@ -42,7 +42,7 @@ namespace Hive.Framework.Networking.Udp
         private bool _closed;
 
         public UdpClient? UdpConnection { get; private set; }
-        public ArrayBufferWriter<byte> DataWriter { get; }
+        public IBufferWriter<byte> DataWriter { get; }
 
         public override bool CanSend => true;
         public override bool CanReceive => true;
@@ -102,14 +102,16 @@ namespace Hive.Framework.Networking.Udp
             await SpinWaitAsync.SpinUntil(() => Interlocked.Read(ref _lengthCanRead) != 0);
 
             var readLength = buffer.Length > _lengthCanRead ? (int)_lengthCanRead : buffer.Length;
-            DataWriter.WrittenSpan.Slice(_currentPosition, readLength).CopyTo(buffer.Span);
+            var dataWriter = (ArrayBufferWriter<byte>)DataWriter;
+
+            dataWriter.WrittenSpan.Slice(_currentPosition, readLength).CopyTo(buffer.Span);
 
             _currentPosition += readLength;
             _lengthCanRead -= readLength;
 
-            if (readLength == _lengthCanRead && DataWriter.WrittenCount > 10000)
+            if (readLength == _lengthCanRead && dataWriter.WrittenCount > 10000)
             {
-                DataWriter.Clear();
+                dataWriter.Clear();
                 _currentPosition = 0;
                 _lengthCanRead = 0;
             }

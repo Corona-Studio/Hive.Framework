@@ -1,35 +1,14 @@
-﻿using System.Buffers;
-using System.Collections.Concurrent;
-using System.Net;
+﻿using System.Runtime.Versioning;
+using Hive.Framework.Networking.Quic;
 using Hive.Framework.Networking.Shared;
 using Hive.Framework.Networking.Tests.Messages;
-using Hive.Framework.Networking.Udp;
 
-namespace Hive.Framework.Networking.Tests.Udp;
+namespace Hive.Framework.Networking.Tests.Quic;
 
-public class FakeUdpClientManager : AbstractClientManager<Guid, UdpSession<ushort>>
+[RequiresPreviewFeatures]
+public class FakeQuicClientManager : AbstractClientManager<Guid, QuicSession<ushort>>
 {
-    private readonly ConcurrentDictionary<IPEndPoint, UdpSession<ushort>> _endPointSessionMapper = new ();
-
-    public override void AddSession(UdpSession<ushort> session)
-    {
-        if (session.RemoteEndPoint == null) return;
-        if (!_endPointSessionMapper.TryGetValue(session.RemoteEndPoint, out var existSession))
-        {
-            _endPointSessionMapper.AddOrUpdate(session.RemoteEndPoint, session, (_, _) => session);
-            base.AddSession(session);
-            return;
-        }
-
-        {
-            var writtenSpan = ((ArrayBufferWriter<byte>)session.DataWriter).WrittenSpan;
-
-            existSession.DataWriter.Write(writtenSpan);
-            existSession.AdvanceLengthCanRead(writtenSpan.Length);
-        }
-    }
-
-    protected override void RegisterHeartBeatMessage(UdpSession<ushort> session)
+    protected override void RegisterHeartBeatMessage(QuicSession<ushort> session)
     {
         session.OnReceive<HeartBeatMessage>((_, tcpSession) =>
         {
@@ -45,7 +24,7 @@ public class FakeUdpClientManager : AbstractClientManager<Guid, UdpSession<ushor
     public int ReconnectedClient { get; private set; }
     public int DisconnectedClient { get; private set; }
 
-    protected override void OnClientDisconnected(Guid sessionId, UdpSession<ushort> session, bool isClientRequest)
+    protected override void OnClientDisconnected(Guid sessionId, QuicSession<ushort> session, bool isClientRequest)
     {
         base.OnClientDisconnected(sessionId, session, isClientRequest);
 
@@ -53,7 +32,7 @@ public class FakeUdpClientManager : AbstractClientManager<Guid, UdpSession<ushor
             DisconnectedClient++;
     }
 
-    protected override void RegisterSigninMessage(UdpSession<ushort> session)
+    protected override void RegisterSigninMessage(QuicSession<ushort> session)
     {
         session.OnReceive<SigninMessage>((message, tcpSession) =>
         {
@@ -63,7 +42,7 @@ public class FakeUdpClientManager : AbstractClientManager<Guid, UdpSession<ushor
         });
     }
 
-    protected override void RegisterClientSignOutMessage(UdpSession<ushort> session)
+    protected override void RegisterClientSignOutMessage(QuicSession<ushort> session)
     {
         session.OnReceive<SignOutMessage>((message, tcpSession) =>
         {
@@ -76,7 +55,7 @@ public class FakeUdpClientManager : AbstractClientManager<Guid, UdpSession<ushor
         });
     }
 
-    protected override void RegisterReconnectMessage(UdpSession<ushort> session)
+    protected override void RegisterReconnectMessage(QuicSession<ushort> session)
     {
         session.OnReceive<ReconnectMessage>((_, tcpSession) =>
         {
@@ -88,7 +67,7 @@ public class FakeUdpClientManager : AbstractClientManager<Guid, UdpSession<ushor
         });
     }
 
-    protected override void SendHeartBeat(UdpSession<ushort> session)
+    protected override void SendHeartBeat(QuicSession<ushort> session)
     {
         session.Send(new HeartBeatMessage());
     }

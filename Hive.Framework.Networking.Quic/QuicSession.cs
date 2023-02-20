@@ -3,6 +3,7 @@ using Hive.Framework.Networking.Abstractions;
 using Hive.Framework.Networking.Shared;
 using System.Net;
 using System.Net.Quic;
+using System.Net.Security;
 using System.Runtime.Versioning;
 
 namespace Hive.Framework.Networking.Quic;
@@ -42,7 +43,7 @@ public sealed class QuicSession<TId> : AbstractSession<TId, QuicSession<TId>>
 
     public override bool CanSend => true;
     public override bool CanReceive => true;
-    public override bool IsConnected { get; }
+    public override bool IsConnected => true;
 
     protected override void DispatchPacket(object? packet, Type? packetType = null)
     {
@@ -56,10 +57,13 @@ public sealed class QuicSession<TId> : AbstractSession<TId, QuicSession<TId>>
         var clientConnectionOptions = new QuicClientConnectionOptions
         {
             RemoteEndPoint = RemoteEndPoint!,
-            DefaultStreamErrorCode = 0x0A,
-            DefaultCloseErrorCode = 0x0B,
-            MaxInboundUnidirectionalStreams = 10,
-            MaxInboundBidirectionalStreams = 100
+            DefaultStreamErrorCode = 0,
+            DefaultCloseErrorCode = 0,
+            ClientAuthenticationOptions = new SslClientAuthenticationOptions
+            {
+                ApplicationProtocols = new List<SslApplicationProtocol> { SslApplicationProtocol.Http3 },
+                RemoteCertificateValidationCallback = (_, _, _, _) => true
+            }
         };
 
         QuicConnection = await QuicConnection.ConnectAsync(clientConnectionOptions);

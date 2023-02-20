@@ -34,7 +34,7 @@ namespace Hive.Framework.Networking.Tcp
             ServerSocket!.Bind(EndPoint);
             ServerSocket.Listen(EndPoint.Port);
 
-            TaskHelper.ManagedRun(StartAcceptClient, _cancellationTokenSource.Token);
+            TaskHelper.ManagedRun(StartAcceptClient, CancellationTokenSource.Token);
         }
 
         public override void Stop()
@@ -47,10 +47,10 @@ namespace Hive.Framework.Networking.Tcp
 
         private async Task StartAcceptClient()
         {
-            while (!_cancellationTokenSource.IsCancellationRequested)
+            while (!CancellationTokenSource.IsCancellationRequested)
             {
                 var clientSocket = await ServerSocket.AcceptAsync();
-                await DoAcceptClient(clientSocket, _cancellationTokenSource.Token);
+                await DoAcceptClient(clientSocket, CancellationTokenSource.Token);
             }
         }
 
