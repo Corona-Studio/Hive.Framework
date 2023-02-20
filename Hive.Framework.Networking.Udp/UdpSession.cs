@@ -111,6 +111,7 @@ namespace Hive.Framework.Networking.Udp
             ReaderWriterLock.ExitReadLock();
 
             _currentPosition += readLength;
+            _lengthCanRead -= readLength;
 
             if (readLength == _lengthCanRead && DataWriter.WrittenCount > 10000)
             {
