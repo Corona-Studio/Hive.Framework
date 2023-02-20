@@ -26,7 +26,6 @@ namespace Hive.Framework.Networking.Udp
 
             RemoteEndPoint = endPoint;
             
-            ReaderWriterLock = new ReaderWriterLockSlim();
             DataWriter = new ArrayBufferWriter<byte>();
         }
 
@@ -44,7 +43,6 @@ namespace Hive.Framework.Networking.Udp
 
         public UdpClient? UdpConnection { get; private set; }
         public ArrayBufferWriter<byte> DataWriter { get; }
-        public ReaderWriterLockSlim ReaderWriterLock { get; }
 
         public override bool CanSend => true;
         public override bool CanReceive => true;
@@ -101,27 +99,19 @@ namespace Hive.Framework.Networking.Udp
             if (UdpConnection == null)
                 throw new InvalidOperationException("Socket Init failed!");
 
-            ReaderWriterLock.EnterReadLock();
-
             await SpinWaitAsync.SpinUntil(() => Interlocked.Read(ref _lengthCanRead) != 0);
 
             var readLength = buffer.Length > _lengthCanRead ? (int)_lengthCanRead : buffer.Length;
             DataWriter.WrittenSpan.Slice(_currentPosition, readLength).CopyTo(buffer.Span);
-
-            ReaderWriterLock.ExitReadLock();
 
             _currentPosition += readLength;
             _lengthCanRead -= readLength;
 
             if (readLength == _lengthCanRead && DataWriter.WrittenCount > 10000)
             {
-                ReaderWriterLock.EnterWriteLock();
-
                 DataWriter.Clear();
                 _currentPosition = 0;
                 _lengthCanRead = 0;
-
-                ReaderWriterLock.ExitWriteLock();
             }
 
             return readLength;

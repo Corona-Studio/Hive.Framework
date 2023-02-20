@@ -20,13 +20,11 @@ public class FakeUdpClientManager : AbstractClientManager<Guid, UdpSession<ushor
             base.AddSession(session);
             return;
         }
-
-        //existSession.ReaderWriterLock.EnterWriteLock();
+        
         {
             existSession.DataWriter.Write(session.DataWriter.WrittenSpan);
             existSession.AdvanceLengthCanRead(session.DataWriter.WrittenSpan.Length);
         }
-        //existSession.ReaderWriterLock.ExitWriteLock();
     }
 
     protected override void RegisterHeartBeatMessage(UdpSession<ushort> session)
