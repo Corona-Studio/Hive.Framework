@@ -1,4 +1,4 @@
-# Hive.Framework
+# Hive.Framework [![.NET](https://github.com/Corona-Studio/Hive.Framework/actions/workflows/dotnet.yml/badge.svg)](https://github.com/Corona-Studio/Hive.Framework/actions/workflows/dotnet.yml)
 
 蜂巢，一个开源的游戏服务器框架，旨在提供高性能、高扩展性、高度自由的游戏后端服务器的开发流程。（包括一个官方示例实现）
 
