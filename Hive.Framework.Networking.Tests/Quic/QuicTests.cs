@@ -19,7 +19,7 @@ public class QuicTests
     private FakeQuicClientManager _clientManager;
     private IDataDispatcher<QuicSession<ushort>> _dataDispatcher;
 
-    private readonly IPEndPoint _endPoint = IPEndPoint.Parse("127.0.0.1:1234");
+    private readonly IPEndPoint _endPoint = IPEndPoint.Parse("127.0.0.1:1237");
 
     [OneTimeSetUp]
     public void Setup()
