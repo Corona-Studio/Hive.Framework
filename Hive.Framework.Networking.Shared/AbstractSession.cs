@@ -18,7 +18,7 @@ namespace Hive.Framework.Networking.Shared
     public abstract class AbstractSession<TId, TSession> : ISession<TSession>, ISender<TId>, IHasCodec<TId>
     {
         protected const int DefaultBufferSize = 40960;
-        private const int PacketHeaderLength = sizeof(ushort); // 包头长度4Byte
+        private const int PacketHeaderLength = sizeof(ushort); // 包头长度2Byte
 
         private readonly ConcurrentQueue<ReadOnlyMemory<byte>> _sendQueue = new ();
         protected readonly CancellationTokenSource CancellationTokenSource = new ();
@@ -158,7 +158,7 @@ namespace Hive.Framework.Networking.Shared
                     receivedLen += lenThisTime;
                     if (isNewPacket && receivedLen >= PacketHeaderLength)
                     {
-                        var payloadLen = BitConverter.ToInt32(buffer.Span.Slice(offset, PacketHeaderLength)); // 获取实际长度(负载长度)
+                        var payloadLen = BitConverter.ToUInt16(buffer.Span.Slice(offset, PacketHeaderLength)); // 获取实际长度(负载长度)
                         actualLen = GetTotalLength(payloadLen);
                         isNewPacket = false;
                     }
@@ -185,7 +185,7 @@ namespace Hive.Framework.Networking.Shared
                         receivedLen -= actualLen;
                         if (receivedLen >= PacketHeaderLength) //还有超过4字节的数据
                         {
-                            actualLen = GetTotalLength(BitConverter.ToInt32(buffer.Span.Slice(offset, PacketHeaderLength)));
+                            actualLen = GetTotalLength(BitConverter.ToUInt16(buffer.Span.Slice(offset, PacketHeaderLength)));
                             // 如果receivedLen>=actualLen,那么下一次循环会把这个包处理掉
                             // 如果receivedLen<actualLen,等下一次大循环接收到足够的数据，再处理
                         }

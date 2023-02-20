@@ -5,6 +5,9 @@ using System.Net.Sockets;
 using System.Net;
 using System.Threading.Tasks;
 using System;
+using System.Buffers;
+using System.Threading;
+using Hive.Framework.Networking.Shared.Helpers;
 
 namespace Hive.Framework.Networking.Udp
 {
@@ -13,13 +16,18 @@ namespace Hive.Framework.Networking.Udp
     /// </summary>
     public sealed class UdpSession<TId> : AbstractSession<TId, UdpSession<TId>>
     {
-        public UdpSession(Socket socket, IPacketCodec<TId> packetCodec, IDataDispatcher<UdpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
+        public UdpSession(
+            UdpClient socket,
+            IPEndPoint endPoint,
+            IPacketCodec<TId> packetCodec,
+            IDataDispatcher<UdpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
         {
-            Socket = socket;
-            socket.ReceiveBufferSize = 8192 * 4;
+            UdpConnection = socket;
 
-            LocalEndPoint = socket.LocalEndPoint as IPEndPoint;
-            RemoteEndPoint = socket.RemoteEndPoint as IPEndPoint;
+            RemoteEndPoint = endPoint;
+            
+            ReaderWriterLock = new ReaderWriterLockSlim();
+            DataWriter = new ArrayBufferWriter<byte>();
         }
 
         public UdpSession(IPEndPoint endPoint, IPacketCodec<TId> packetCodec, IDataDispatcher<UdpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
@@ -34,11 +42,13 @@ namespace Hive.Framework.Networking.Udp
 
         private bool _closed;
 
-        public Socket? Socket { get; private set; }
+        public UdpClient? UdpConnection { get; private set; }
+        public ArrayBufferWriter<byte> DataWriter { get; }
+        public ReaderWriterLockSlim ReaderWriterLock { get; }
 
         public override bool CanSend => true;
         public override bool CanReceive => true;
-        public override bool IsConnected => Socket is { Connected: true };
+        public override bool IsConnected => true;
 
         protected override void DispatchPacket(object? packet, Type? packetType = null)
         {
@@ -54,20 +64,14 @@ namespace Hive.Framework.Networking.Udp
 
             // 创建新连接
             _closed = false;
-            Socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Udp);
-            Socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-
-            // 连接到指定地址
-            await Socket.ConnectAsync(RemoteEndPoint);
+            UdpConnection = new UdpClient();
         }
 
         public override ValueTask DoDisconnect()
         {
-            if (_closed || Socket == null) return default;
+            if (_closed || UdpConnection == null) return default;
 
-            Socket?.Shutdown(SocketShutdown.Both);
-            Socket?.Close();
-            Socket = null;
+            UdpConnection.Dispose();
             _closed = true;
 
             return default;
@@ -75,7 +79,7 @@ namespace Hive.Framework.Networking.Udp
 
         public override async ValueTask SendOnce(ReadOnlyMemory<byte> data)
         {
-            if (Socket == null)
+            if (UdpConnection == null)
                 throw new InvalidOperationException("Socket Init failed!");
 
             var totalLen = data.Length;
@@ -83,21 +87,43 @@ namespace Hive.Framework.Networking.Udp
 
             while (sentLen < totalLen)
             {
-                Socket.Blocking = true;
-                var sendThisTime = await Socket.SendAsync(data[sentLen..], SocketFlags.None);
-
+                var sendThisTime = await UdpConnection.SendAsync(data.ToArray(), data.Length, RemoteEndPoint);
                 sentLen += sendThisTime;
             }
         }
 
+        public void AdvanceLengthCanRead(int by) => _lengthCanRead += by;
+
+        private int _currentPosition;
+        private long _lengthCanRead;
         public override async ValueTask<int> ReceiveOnce(Memory<byte> buffer)
         {
-            if (Socket == null)
+            if (UdpConnection == null)
                 throw new InvalidOperationException("Socket Init failed!");
 
-            Socket.Blocking = true;
+            ReaderWriterLock.EnterReadLock();
 
-            return await Socket.ReceiveAsync(buffer, SocketFlags.None);
+            await SpinWaitAsync.SpinUntil(() => Interlocked.Read(ref _lengthCanRead) != 0);
+
+            var readLength = buffer.Length > _lengthCanRead ? (int)_lengthCanRead : buffer.Length;
+            DataWriter.WrittenSpan.Slice(_currentPosition, readLength).CopyTo(buffer.Span);
+
+            ReaderWriterLock.ExitReadLock();
+
+            _currentPosition += readLength;
+
+            if (readLength == _lengthCanRead && DataWriter.WrittenCount > 10000)
+            {
+                ReaderWriterLock.EnterWriteLock();
+
+                DataWriter.Clear();
+                _currentPosition = 0;
+                _lengthCanRead = 0;
+
+                ReaderWriterLock.ExitWriteLock();
+            }
+
+            return readLength;
         }
 
         public override void Dispose()

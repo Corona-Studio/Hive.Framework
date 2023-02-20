@@ -9,17 +9,19 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.Framework.Codec.Protob
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.Framework.Shared", "Hive.Framework.Shared\Hive.Framework.Shared.csproj", "{CBB6DEBC-DCCF-4AD7-A6D1-9377BA6D96F0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hive.Framework.Networking.Abstractions", "Hive.Framework.Networking.Abstractions\Hive.Framework.Networking.Abstractions.csproj", "{E49B46F9-C834-4C33-ADFD-6D4127A1EC9F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.Framework.Networking.Abstractions", "Hive.Framework.Networking.Abstractions\Hive.Framework.Networking.Abstractions.csproj", "{E49B46F9-C834-4C33-ADFD-6D4127A1EC9F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hive.Framework.Networking.Shared", "Hive.Framework.Networking.Shared\Hive.Framework.Networking.Shared.csproj", "{CD2BD09A-7232-48F6-BCB9-A47EB1B79E53}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.Framework.Networking.Shared", "Hive.Framework.Networking.Shared\Hive.Framework.Networking.Shared.csproj", "{CD2BD09A-7232-48F6-BCB9-A47EB1B79E53}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hive.Framework.Networking.Tcp", "Hive.Framework.Networking.Tcp\Hive.Framework.Networking.Tcp.csproj", "{6ADEBC90-7261-4ED8-8637-04F465AAE456}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.Framework.Networking.Tcp", "Hive.Framework.Networking.Tcp\Hive.Framework.Networking.Tcp.csproj", "{6ADEBC90-7261-4ED8-8637-04F465AAE456}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hive.Framework.Networking.Udp", "Hive.Framework.Networking.Udp\Hive.Framework.Networking.Udp.csproj", "{0F779828-D569-4A91-BC36-027E27B5697A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.Framework.Networking.Udp", "Hive.Framework.Networking.Udp\Hive.Framework.Networking.Udp.csproj", "{0F779828-D569-4A91-BC36-027E27B5697A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hive.Framework.Networking.Quic", "Hive.Framework.Networking.Quic\Hive.Framework.Networking.Quic.csproj", "{8BDFBDC2-6A34-4D9B-9CC8-CF982418C82A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.Framework.Networking.Quic", "Hive.Framework.Networking.Quic\Hive.Framework.Networking.Quic.csproj", "{8BDFBDC2-6A34-4D9B-9CC8-CF982418C82A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hive.Framework.Networking.Kcp", "Hive.Framework.Networking.Kcp\Hive.Framework.Networking.Kcp.csproj", "{D37963AE-DF99-4708-A112-1C09031EF301}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.Framework.Networking.Kcp", "Hive.Framework.Networking.Kcp\Hive.Framework.Networking.Kcp.csproj", "{D37963AE-DF99-4708-A112-1C09031EF301}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hive.Framework.Networking.Tests", "Hive.Framework.Networking.Tests\Hive.Framework.Networking.Tests.csproj", "{A8F7A182-6039-4F44-A05B-D39D5B69AACD}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -63,6 +65,10 @@ Global
 		{D37963AE-DF99-4708-A112-1C09031EF301}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D37963AE-DF99-4708-A112-1C09031EF301}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D37963AE-DF99-4708-A112-1C09031EF301}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A8F7A182-6039-4F44-A05B-D39D5B69AACD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A8F7A182-6039-4F44-A05B-D39D5B69AACD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A8F7A182-6039-4F44-A05B-D39D5B69AACD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A8F7A182-6039-4F44-A05B-D39D5B69AACD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

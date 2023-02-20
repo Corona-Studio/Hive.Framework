@@ -4,6 +4,7 @@ using Hive.Framework.Shared;
 using ProtoBuf;
 using System;
 using System.Buffers;
+using ProtoBuf.Meta;
 
 namespace Hive.Framework.Codec.Protobuf;
 
@@ -21,7 +22,12 @@ public class ProtoBufPackerCodec : IPacketCodec<ushort>
             writer => writer.Clear());
     }
 
-    public IPacketIdMapper<ushort> PacketIdMapper { get; init; } = null!;
+    public ProtoBufPackerCodec(IPacketIdMapper<ushort> packetIdMapper)
+    {
+        PacketIdMapper = packetIdMapper;
+    }
+
+    public IPacketIdMapper<ushort> PacketIdMapper { get; }
 
     public ReadOnlyMemory<byte> Encode<T>(T obj)
     {
@@ -29,7 +35,7 @@ public class ProtoBufPackerCodec : IPacketCodec<ushort>
 
         using var contentMeasure = Serializer.Measure(obj);
 
-        if (contentMeasure.Length > ushort.MaxValue)
+        if (contentMeasure.Length + 4 > ushort.MaxValue)
             throw new InvalidOperationException($"Message to large [Length - {contentMeasure.Length}]");
 
         var packetId = PacketIdMapper.GetPacketId(typeof(T));
@@ -37,8 +43,8 @@ public class ProtoBufPackerCodec : IPacketCodec<ushort>
         Span<byte> lengthHeader = stackalloc byte[2];
         Span<byte> typeHeader = stackalloc byte[2];
 
-        // Packet Length
-        BitConverter.TryWriteBytes(lengthHeader, (ushort)contentMeasure.Length + 2);
+        // Packet Length [LENGTH (2) | TYPE (2) | CONTENT]
+        BitConverter.TryWriteBytes(lengthHeader, (ushort)(contentMeasure.Length + 2));
         writer.Write(lengthHeader);
 
         // Packet Id
@@ -64,11 +70,11 @@ public class ProtoBufPackerCodec : IPacketCodec<ushort>
         var packetId = BitConverter.ToUInt16(packetIdSpan);
 
         // 封包数据段
-        var packetData = data[2..];
+        var packetData = data[4..];
 
         // var packetLength = BitConverter.ToUInt16(packetLengthSpan);
         var packetType = PacketIdMapper.GetPacketType(packetId);
 
-        return Serializer.Deserialize(packetData, packetType);
+        return RuntimeTypeModel.Default.Deserialize(packetType, packetData);
     }
 }
