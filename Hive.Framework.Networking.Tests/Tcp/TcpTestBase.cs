@@ -1,42 +1,18 @@
 ﻿using Hive.Framework.Codec.Abstractions;
-using Hive.Framework.Codec.Protobuf;
 using Hive.Framework.Networking.Abstractions;
-using Hive.Framework.Networking.Shared;
+using Hive.Framework.Networking.Tcp;
 using Hive.Framework.Networking.Tests.Messages;
-using Hive.Framework.Networking.Udp;
-using System.Net;
 
-namespace Hive.Framework.Networking.Tests.Udp;
+namespace Hive.Framework.Networking.Tests.Tcp;
 
-public class UdpTests
+public abstract class TcpTestBase
 {
-    private IPacketIdMapper<ushort> _packetIdMapper;
-    private UdpSession<ushort> _client;
-    private UdpAcceptor<ushort, Guid> _server;
-    private IPacketCodec<ushort> _codec;
-    private FakeUdpClientManager _clientManager;
-    private IDataDispatcher<UdpSession<ushort>> _dataDispatcher;
-
-    private readonly IPEndPoint _endPoint = IPEndPoint.Parse("127.0.0.1:1235");
-
-    [OneTimeSetUp]
-    public void Setup()
-    {
-        _packetIdMapper = new ProtoBufPacketIdMapper();
-        _packetIdMapper.Register<HeartBeatMessage>();
-        _packetIdMapper.Register<SigninMessage>();
-        _packetIdMapper.Register<SignOutMessage>();
-        _packetIdMapper.Register<ReconnectMessage>();
-
-        _codec = new ProtoBufPackerCodec(_packetIdMapper);
-        _clientManager = new FakeUdpClientManager();
-        _dataDispatcher = new DefaultDataDispatcher<UdpSession<ushort>>();
-
-        _server = new UdpAcceptor<ushort, Guid>(_endPoint, _codec, _dataDispatcher, _clientManager);
-        _server.Start();
-
-        _client = new UdpSession<ushort>(_endPoint, _codec, _dataDispatcher);
-    }
+    protected IPacketIdMapper<ushort> _packetIdMapper;
+    protected TcpSession<ushort> _client;
+    protected TcpAcceptor<ushort, Guid> _server;
+    protected IPacketCodec<ushort> _codec;
+    protected FakeTcpClientManager _clientManager;
+    protected IDataDispatcher<TcpSession<ushort>> _dataDispatcher;
 
     [OneTimeTearDown]
     public void TearDown()

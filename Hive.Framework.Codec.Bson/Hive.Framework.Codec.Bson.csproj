@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net7.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DotNext" Version="4.10.0" />
+    <PackageReference Include="DotNext.Unsafe" Version="4.10.0" />
+    <PackageReference Include="MongoDB.Bson" Version="2.19.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Hive.Framework.Codec.Abstractions\Hive.Framework.Codec.Abstractions.csproj" />
+    <ProjectReference Include="..\Hive.Framework.Shared\Hive.Framework.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

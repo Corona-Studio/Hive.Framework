@@ -1,18 +1,19 @@
-﻿using DotNext.Buffers;
-using Hive.Framework.Codec.Abstractions;
+﻿using Hive.Framework.Codec.Abstractions;
 using Hive.Framework.Shared;
-using ProtoBuf;
 using System;
 using System.Buffers;
-using ProtoBuf.Meta;
+using System.IO;
+using DotNext.Buffers;
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization;
 
-namespace Hive.Framework.Codec.Protobuf;
+namespace Hive.Framework.Codec.Bson;
 
-public class ProtoBufPackerCodec : IPacketCodec<ushort>
+public class BsonPacketCodec : IPacketCodec<ushort>
 {
     private static readonly ObjectPool<PooledBufferWriter<byte>> WriterPool;
 
-    static ProtoBufPackerCodec()
+    static BsonPacketCodec()
     {
         WriterPool = new ObjectPool<PooledBufferWriter<byte>>(
             () => new PooledBufferWriter<byte>
@@ -22,7 +23,7 @@ public class ProtoBufPackerCodec : IPacketCodec<ushort>
             writer => writer.Clear());
     }
 
-    public ProtoBufPackerCodec(IPacketIdMapper<ushort> packetIdMapper)
+    public BsonPacketCodec(IPacketIdMapper<ushort> packetIdMapper)
     {
         PacketIdMapper = packetIdMapper;
     }
@@ -32,11 +33,10 @@ public class ProtoBufPackerCodec : IPacketCodec<ushort>
     public ReadOnlyMemory<byte> Encode<T>(T obj)
     {
         var writer = WriterPool.Get();
+        var dataSpan = obj.ToBson().AsSpan();
 
-        using var contentMeasure = Serializer.Measure(obj);
-
-        if (contentMeasure.Length + 4 > ushort.MaxValue)
-            throw new InvalidOperationException($"Message to large [Length - {contentMeasure.Length}]");
+        if (dataSpan.Length + 4 > ushort.MaxValue)
+            throw new InvalidOperationException($"Message to large [Length - {dataSpan.Length}]");
 
         var packetId = PacketIdMapper.GetPacketId(typeof(T));
 
@@ -44,14 +44,14 @@ public class ProtoBufPackerCodec : IPacketCodec<ushort>
         Span<byte> typeHeader = stackalloc byte[2];
 
         // Packet Length [LENGTH (2) | TYPE (2) | CONTENT]
-        BitConverter.TryWriteBytes(lengthHeader, (ushort)(contentMeasure.Length + 2));
+        BitConverter.TryWriteBytes(lengthHeader, (ushort)(dataSpan.Length + 2));
         writer.Write(lengthHeader);
 
         // Packet Id
         BitConverter.TryWriteBytes(typeHeader, packetId);
         writer.Write(typeHeader);
 
-        contentMeasure.Serialize(writer);
+        writer.Write(dataSpan);
 
         var result = writer.WrittenMemory;
 
@@ -60,7 +60,7 @@ public class ProtoBufPackerCodec : IPacketCodec<ushort>
         return result;
     }
 
-    public object Decode(ReadOnlySpan<byte> data)
+    public unsafe object Decode(ReadOnlySpan<byte> data)
     {
         // 负载长度
         // var packetLengthSpan = data[..2];
@@ -72,9 +72,15 @@ public class ProtoBufPackerCodec : IPacketCodec<ushort>
         // 封包数据段
         var packetData = data[4..];
 
-        // var packetLength = BitConverter.ToUInt16(packetLengthSpan);
-        var packetType = PacketIdMapper.GetPacketType(packetId);
+        fixed (byte* bp = &packetData.GetPinnableReference())
+        {
+            using var dataMs = new UnmanagedMemoryStream(bp, data.Length);
 
-        return RuntimeTypeModel.Default.Deserialize(packetType, packetData);
+            // var packetLength = BitConverter.ToUInt16(packetLengthSpan);
+            var packetType = PacketIdMapper.GetPacketType(packetId);
+
+
+            return BsonSerializer.Deserialize(dataMs, packetType);
+        }
     }
 }

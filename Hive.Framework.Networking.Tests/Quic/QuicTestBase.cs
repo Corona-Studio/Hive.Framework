@@ -1,44 +1,21 @@
 ﻿using Hive.Framework.Codec.Abstractions;
-using Hive.Framework.Codec.Protobuf;
 using Hive.Framework.Networking.Abstractions;
-using Hive.Framework.Networking.Shared;
 using Hive.Framework.Networking.Tests.Messages;
-using System.Net;
 using System.Runtime.Versioning;
 using Hive.Framework.Networking.Quic;
+using Hive.Framework.Codec.Protobuf;
 
 namespace Hive.Framework.Networking.Tests.Quic;
 
 [RequiresPreviewFeatures]
-public class QuicTests
+public abstract class QuicTestBase
 {
-    private IPacketIdMapper<ushort> _packetIdMapper;
-    private QuicSession<ushort> _client;
-    private QuicAcceptor<ushort, Guid> _server;
-    private IPacketCodec<ushort> _codec;
-    private FakeQuicClientManager _clientManager;
-    private IDataDispatcher<QuicSession<ushort>> _dataDispatcher;
-
-    private readonly IPEndPoint _endPoint = IPEndPoint.Parse("127.0.0.1:1237");
-
-    [OneTimeSetUp]
-    public void Setup()
-    {
-        _packetIdMapper = new ProtoBufPacketIdMapper();
-        _packetIdMapper.Register<HeartBeatMessage>();
-        _packetIdMapper.Register<SigninMessage>();
-        _packetIdMapper.Register<SignOutMessage>();
-        _packetIdMapper.Register<ReconnectMessage>();
-
-        _codec = new ProtoBufPackerCodec(_packetIdMapper);
-        _clientManager = new FakeQuicClientManager();
-        _dataDispatcher = new DefaultDataDispatcher<QuicSession<ushort>>();
-
-        _server = new QuicAcceptor<ushort, Guid>(_endPoint, QuicCertHelper.GenerateTestCertificate(), _codec, _dataDispatcher, _clientManager);
-        _server.Start();
-
-        _client = new QuicSession<ushort>(_endPoint, _codec, _dataDispatcher);
-    }
+    protected IPacketIdMapper<ushort> _packetIdMapper;
+    protected QuicSession<ushort> _client;
+    protected QuicAcceptor<ushort, Guid> _server;
+    protected IPacketCodec<ushort> _codec;
+    protected FakeQuicClientManager _clientManager;
+    protected IDataDispatcher<QuicSession<ushort>> _dataDispatcher;
 
     [OneTimeTearDown]
     public void TearDown()
