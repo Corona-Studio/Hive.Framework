@@ -2,6 +2,7 @@
 using Hive.Framework.Networking.Quic;
 using Hive.Framework.Networking.Shared;
 using Hive.Framework.Networking.Tests.Messages;
+using Hive.Framework.Shared;
 using System.Net;
 using System.Runtime.Versioning;
 
@@ -11,7 +12,7 @@ namespace Hive.Framework.Networking.Tests.Quic;
 [RequiresPreviewFeatures]
 public class QuicProtobufTests : QuicTestBase
 {
-    private readonly IPEndPoint _endPoint = IPEndPoint.Parse("127.0.0.1:1001");
+    private readonly IPEndPoint _endPoint = IPEndPoint.Parse($"127.0.0.1:{NetworkHelper.GetRandomPort()}");
 
     [OneTimeSetUp]
     public void Setup()

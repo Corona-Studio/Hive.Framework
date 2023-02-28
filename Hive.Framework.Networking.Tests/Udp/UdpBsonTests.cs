@@ -4,13 +4,14 @@ using Hive.Framework.Networking.Tests.Messages;
 using Hive.Framework.Networking.Udp;
 using System.Net;
 using Hive.Framework.Codec.Bson;
+using Hive.Framework.Shared;
 
 namespace Hive.Framework.Networking.Tests.Udp;
 
 [TestFixture]
 public class UdpBsonTests : UdpTestBase
 {
-    private readonly IPEndPoint _endPoint = IPEndPoint.Parse("127.0.0.1:1201");
+    private readonly IPEndPoint _endPoint = IPEndPoint.Parse($"127.0.0.1:{NetworkHelper.GetRandomPort()}");
 
     [OneTimeSetUp]
     public void Setup()
