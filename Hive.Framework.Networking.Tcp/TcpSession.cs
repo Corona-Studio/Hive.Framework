@@ -11,7 +11,7 @@ namespace Hive.Framework.Networking.Tcp
     /// <summary>
     /// 基于 Socket 的 TCP 传输层实现
     /// </summary>
-    public sealed class TcpSession<TId> : AbstractSession<TId, TcpSession<TId>>
+    public sealed class TcpSession<TId> : AbstractSession<TId, TcpSession<TId>> where TId : unmanaged
     {
         public TcpSession(Socket socket, IPacketCodec<TId> packetCodec, IDataDispatcher<TcpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
         {

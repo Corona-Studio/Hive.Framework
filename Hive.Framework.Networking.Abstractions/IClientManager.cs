@@ -1,6 +1,6 @@
 ﻿namespace Hive.Framework.Networking.Abstractions;
 
-public interface IClientManager<TSessionId, in TSession>
+public interface IClientManager<TSessionId, in TSession> where TSession : ISession<TSession>
 {
     TSessionId? GetSessionId(TSession session);
 

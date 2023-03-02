@@ -8,12 +8,12 @@ namespace Hive.Framework.Networking.Abstractions
     /// 代表一个连接会话
     /// </summary>
     /// <typeparam name="TSender">分包发送者，通常为自己</typeparam>
-    public interface ISession<TSender> : IDisposable
+    public interface ISession<TSender> : IDisposable where TSender : ISession<TSender>
     {
         IPEndPoint? LocalEndPoint { get; }
         IPEndPoint? RemoteEndPoint { get; }
         IDataDispatcher<TSender> DataDispatcher { get; }
-
+        
         ValueTask DoConnect();
         ValueTask DoDisconnect();
         ValueTask SendOnce(ReadOnlyMemory<byte> data);

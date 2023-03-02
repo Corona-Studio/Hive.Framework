@@ -9,7 +9,7 @@ using Hive.Framework.Networking.Shared.Helpers;
 
 namespace Hive.Framework.Networking.Kcp
 {
-    public sealed class KcpAcceptor<TId, TSessionId> : AbstractAcceptor<Socket, KcpSession<TId>, TId, TSessionId>
+    public sealed class KcpAcceptor<TId, TSessionId> : AbstractAcceptor<Socket, KcpSession<TId>, TId, TSessionId> where TId : unmanaged
     {
         public KcpAcceptor(
             IPEndPoint endPoint,

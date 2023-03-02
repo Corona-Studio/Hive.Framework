@@ -13,7 +13,7 @@ namespace Hive.Framework.Networking.Quic;
 #pragma warning disable CA1416 
 
 [RequiresPreviewFeatures]
-public sealed class QuicAcceptor<TId, TSessionId> : AbstractAcceptor<QuicConnection, QuicSession<TId>, TId, TSessionId>
+public sealed class QuicAcceptor<TId, TSessionId> : AbstractAcceptor<QuicConnection, QuicSession<TId>, TId, TSessionId> where TId : unmanaged
 {
     public QuicAcceptor(
         IPEndPoint endPoint,

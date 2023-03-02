@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Hive.Framework.Networking.Udp
 {
-    public sealed class UdpAcceptor<TId, TSessionId> : AbstractAcceptor<UdpClient, UdpSession<TId>, TId, TSessionId>
+    public sealed class UdpAcceptor<TId, TSessionId> : AbstractAcceptor<UdpClient, UdpSession<TId>, TId, TSessionId> where TId : unmanaged
     {
         public UdpAcceptor(
             IPEndPoint endPoint,

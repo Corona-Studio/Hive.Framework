@@ -11,7 +11,7 @@ using System.Threading;
 
 namespace Hive.Framework.Networking.Kcp
 {
-    public sealed class KcpSession<TId> : AbstractSession<TId, KcpSession<TId>>, IKcpCallback
+    public sealed class KcpSession<TId> : AbstractSession<TId, KcpSession<TId>>, IKcpCallback where TId : unmanaged
     {
         public KcpSession(Socket socket, IPacketCodec<TId> packetCodec, IDataDispatcher<KcpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
         {

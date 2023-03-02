@@ -14,7 +14,7 @@ namespace Hive.Framework.Networking.Udp
     /// <summary>
     /// 基于 Socket 的 UDP 传输层实现
     /// </summary>
-    public sealed class UdpSession<TId> : AbstractSession<TId, UdpSession<TId>>, IHasCustomDataWriter
+    public sealed class UdpSession<TId> : AbstractSession<TId, UdpSession<TId>>, IHasCustomDataWriter where TId : unmanaged
     {
         public UdpSession(
             UdpClient socket,

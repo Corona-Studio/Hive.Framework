@@ -15,7 +15,7 @@ namespace Hive.Framework.Networking.Shared
     /// </summary>
     /// <typeparam name="TId">封包 ID 类型（通常为 ushort）</typeparam>
     /// <typeparam name="TSession">连接会话类型 例如在 TCP 实现下，其类型为 TcpSession{TId}</typeparam>
-    public abstract class AbstractSession<TId, TSession> : ISession<TSession>, ISender<TId>, IHasCodec<TId>
+    public abstract class AbstractSession<TId, TSession> : ISession<TSession>, ISender<TId>, IHasCodec<TId> where TSession : ISession<TSession> where TId : unmanaged
     {
         protected const int DefaultBufferSize = 40960;
         private const int PacketHeaderLength = sizeof(ushort); // 包头长度2Byte

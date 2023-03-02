@@ -7,7 +7,7 @@ namespace Hive.Framework.Networking.Abstractions
     /// 表示一个数据分发器
     /// </summary>
     /// <typeparam name="TSender">发送者</typeparam>
-    public interface IDataDispatcher<TSender>
+    public interface IDataDispatcher<TSender> where TSender : ISession<TSender>
     {
         Dictionary<Type, CallbackWarp> CallbackDictionary { get; }
 
