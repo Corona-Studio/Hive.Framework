@@ -4,10 +4,16 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Hive.Framework.Networking.Abstractions;
+using Hive.Framework.Networking.Abstractions.EventArgs;
 using Hive.Framework.Networking.Shared.Helpers;
 
 namespace Hive.Framework.Networking.Shared;
 
+/// <summary>
+/// 客户端管理器抽象
+/// </summary>
+/// <typeparam name="TSessionId">会话 ID 类型</typeparam>
+/// <typeparam name="TSession">会话类型，通常为具体的协议实现</typeparam>
 public abstract class AbstractClientManager<TSessionId, TSession> : IClientManager<TSessionId, TSession> where TSession : ISession<TSession>
 {
     private readonly CancellationTokenSource _clientConnectionHolderCancellationTokenSource = new();
@@ -17,6 +23,11 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
     private readonly ConcurrentBag<TSession> _disconnectedSessions = new ();
 
     private bool _isClientLinkHolderRunning;
+
+    public event EventHandler<ClientConnectionChangedEventArgs<TSession>>? OnClientConnected;
+    public event EventHandler<ClientConnectionChangedEventArgs<TSession>>? OnClientDisconnected;
+
+    public abstract ReadOnlyMemory<byte> GetEncodedSessionId(TSession session);
 
     public TSessionId? GetSessionId(TSession session)
     {
@@ -130,7 +141,7 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
                         _lastHeartBeatReceiveTimeDic.TryRemove(id, out _);
                         receiveTimeNotFoundCounter.Remove(id);
 
-                        OnClientDisconnected(id, session, false);
+                        InvokeOnClientDisconnected(id, session, false);
                         continue;
                     }
                 }
@@ -142,7 +153,7 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
                     _lastHeartBeatReceiveTimeDic.TryRemove(id, out _);
                     receiveTimeNotFoundCounter.Remove(id);
 
-                    OnClientDisconnected(id, session, false);
+                    InvokeOnClientDisconnected(id, session, false);
                     continue;
                 }
 
@@ -167,12 +178,14 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
     /// <para>您应该在 <see cref="RegisterSigninMessage"/> 的事件处理程序中调用该方法</para>
     /// </summary>
     /// <param name="session">客户端会话</param>
-    protected virtual void OnClientConnected(TSession session)
+    protected virtual void InvokeOnClientConnected(TSession session)
     {
         var newId = CreateNewSessionId();
 
         _idSessionMapper.TryAdd(newId, session);
         _sessionIdMapper.TryAdd(session, newId);
+
+        OnClientConnected?.Invoke(this, new ClientConnectionChangedEventArgs<TSession>(session, ClientConnectionStatus.Connected));
     }
 
     /// <summary>
@@ -183,11 +196,13 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
     /// <param name="sessionId">会话 ID</param>
     /// <param name="session">客户端会话</param>
     /// <param name="isClientRequest">是否是客户端主动发起的断开连接</param>
-    protected virtual void OnClientDisconnected(TSessionId sessionId, TSession session, bool isClientRequest)
+    protected virtual void InvokeOnClientDisconnected(TSessionId sessionId, TSession session, bool isClientRequest)
     {
         _idSessionMapper.TryRemove(sessionId, out _);
         _sessionIdMapper.TryRemove(session, out _);
         _disconnectedSessions.Add(session);
+
+        OnClientDisconnected?.Invoke(this, new ClientConnectionChangedEventArgs<TSession>(session, ClientConnectionStatus.Disconnected));
     }
 
     /// <summary>
@@ -199,11 +214,11 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
     /// <param name="session">客户端会话</param>
     /// <param name="sessionId">客户端 ID，在 <paramref name="treatAsNewClient"/> 为 <value>true</value> 时该字段不为空</param>
     /// <param name="treatAsNewClient">是否将该会话当做新客户端处理</param>
-    public virtual void OnClientReconnected(TSession session, TSessionId? sessionId, bool treatAsNewClient)
+    public virtual void InvokeOnClientReconnected(TSession session, TSessionId? sessionId, bool treatAsNewClient)
     {
         if (treatAsNewClient || sessionId == null)
         {
-            OnClientConnected(session);
+            InvokeOnClientConnected(session);
             return;
         }
 

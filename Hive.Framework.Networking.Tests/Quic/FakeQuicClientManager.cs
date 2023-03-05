@@ -1,4 +1,6 @@
 ﻿using System.Runtime.Versioning;
+using System.Text;
+using DotNext.Text;
 using Hive.Framework.Networking.Quic;
 using Hive.Framework.Networking.Shared;
 using Hive.Framework.Networking.Tests.Messages;
@@ -24,9 +26,14 @@ public class FakeQuicClientManager : AbstractClientManager<Guid, QuicSession<ush
     public int ReconnectedClient { get; private set; }
     public int DisconnectedClient { get; private set; }
 
-    protected override void OnClientDisconnected(Guid sessionId, QuicSession<ushort> session, bool isClientRequest)
+    public override ReadOnlyMemory<byte> GetEncodedSessionId(QuicSession<ushort> session)
     {
-        base.OnClientDisconnected(sessionId, session, isClientRequest);
+        return Encoding.ASCII.GetBytes(GetSessionId(session).ToString("N"));
+    }
+
+    protected override void InvokeOnClientDisconnected(Guid sessionId, QuicSession<ushort> session, bool isClientRequest)
+    {
+        base.InvokeOnClientDisconnected(sessionId, session, isClientRequest);
 
         if (!isClientRequest)
             DisconnectedClient++;
@@ -38,7 +45,7 @@ public class FakeQuicClientManager : AbstractClientManager<Guid, QuicSession<ush
         {
             SigninMessageVal = message.Id;
             ConnectedClient++;
-            OnClientConnected(tcpSession);
+            InvokeOnClientConnected(tcpSession);
         });
     }
 
@@ -51,7 +58,7 @@ public class FakeQuicClientManager : AbstractClientManager<Guid, QuicSession<ush
 
             var sessionId = GetSessionId(tcpSession);
 
-            OnClientDisconnected(sessionId, session, true);
+            InvokeOnClientDisconnected(sessionId, session, true);
         });
     }
 
@@ -63,7 +70,7 @@ public class FakeQuicClientManager : AbstractClientManager<Guid, QuicSession<ush
 
             var sessionId = GetSessionId(tcpSession);
 
-            OnClientReconnected(tcpSession, sessionId, true);
+            InvokeOnClientReconnected(tcpSession, sessionId, true);
         });
     }
 

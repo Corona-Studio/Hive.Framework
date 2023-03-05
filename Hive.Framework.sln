@@ -23,7 +23,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.Framework.Networking.K
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.Framework.Networking.Tests", "Hive.Framework.Networking.Tests\Hive.Framework.Networking.Tests.csproj", "{A8F7A182-6039-4F44-A05B-D39D5B69AACD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hive.Framework.Codec.Bson", "Hive.Framework.Codec.Bson\Hive.Framework.Codec.Bson.csproj", "{9CC078D2-8056-4A7E-8F13-6A6F6DB0B023}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.Framework.Codec.Bson", "Hive.Framework.Codec.Bson\Hive.Framework.Codec.Bson.csproj", "{9CC078D2-8056-4A7E-8F13-6A6F6DB0B023}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

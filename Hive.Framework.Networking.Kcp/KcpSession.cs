@@ -150,7 +150,7 @@ namespace Hive.Framework.Networking.Kcp
 
                     if (isInnerReceivedFailed) break;
 
-                    ProcessPacket(buffer.Span[..avalidLength]);
+                    ProcessPacket(buffer[..avalidLength]);
 
                     offset = 0;
                     receivedLen = 0;

@@ -6,8 +6,8 @@ namespace Hive.Framework.Networking.Abstractions
     /// <summary>
     /// 表示一个数据分发器
     /// </summary>
-    /// <typeparam name="TSender">发送者</typeparam>
-    public interface IDataDispatcher<TSender> where TSender : ISession<TSender>
+    /// <typeparam name="TSession">发送者，通常为对应协议的 Session</typeparam>
+    public interface IDataDispatcher<TSession> where TSession : ISession<TSession>
     {
         Dictionary<Type, CallbackWarp> CallbackDictionary { get; }
 
@@ -16,21 +16,21 @@ namespace Hive.Framework.Networking.Abstractions
             if (!CallbackDictionary.ContainsKey(type)) CallbackDictionary.Add(type, new CallbackWarp());
         }
 
-        public void Register<T>(Action<T, TSender> callback)
+        public void Register<T>(Action<T, TSession> callback)
         {
             CheckCallbackDictionary(typeof(T));
             CallbackDictionary[typeof(T)].AddCallback(callback);
         }
 
 
-        public void Unregister<T>(Action<T, TSender> callback)
+        public void Unregister<T>(Action<T, TSession> callback)
         {
             CheckCallbackDictionary(typeof(T));
             CallbackDictionary[typeof(T)].RemoveCallback(callback);
         }
 
 
-        public bool Dispatch(TSender sender, object data, Type? dataType = null)
+        public bool Dispatch(TSession sender, object data, Type? dataType = null)
         {
             var type = dataType ?? data.GetType();
 
@@ -43,29 +43,29 @@ namespace Hive.Framework.Networking.Abstractions
 
         public readonly struct CallbackWarp
         {
-            private readonly List<(object, Action<object, TSender>)> _uniformCallback;
+            private readonly List<(object, Action<object, TSession>)> _uniformCallback;
             //private readonly List<DynamicCallback<TSender>> UniformCallback;
 
             public CallbackWarp()
             {
                 //UniformCallback = new List<DynamicCallback<TSender>>();
-                _uniformCallback = new List<(object, Action<object, TSender>)>();
+                _uniformCallback = new List<(object, Action<object, TSession>)>();
             }
 
-            public void AddCallback<T>(Action<T, TSender> callback)
+            public void AddCallback<T>(Action<T, TSession> callback)
             {
                 //var caller = DynamicCallback<TSender>.GetCaller(callback);
                 //UniformCallback.Add(caller);
                 _uniformCallback.Add((callback, (obj, sender) => callback((T)obj, sender)));
             }
 
-            public void RemoveCallback<T>(Action<T, TSender> callback)
+            public void RemoveCallback<T>(Action<T, TSession> callback)
             {
                 _uniformCallback.RemoveAll(t
                     => callback.Equals(t.Item1));
             }
 
-            public bool InvokeAll(object msg, TSender sender)
+            public bool InvokeAll(object msg, TSession sender)
             {
                 var hasReceived = false;
                 for (var i = 0; i < _uniformCallback.Count; i++)

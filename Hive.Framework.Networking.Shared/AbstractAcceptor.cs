@@ -22,7 +22,7 @@ public abstract class AbstractAcceptor<TClient, TSession, TId, TSessionId> : IAc
 
     protected readonly CancellationTokenSource CancellationTokenSource = new ();
 
-    public AbstractAcceptor(
+    protected AbstractAcceptor(
         IPEndPoint endPoint,
         IPacketCodec<TId> packetCodec,
         IDataDispatcher<TSession> dataDispatcher,

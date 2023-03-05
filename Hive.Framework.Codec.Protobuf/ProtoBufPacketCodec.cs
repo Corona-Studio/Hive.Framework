@@ -5,6 +5,7 @@ using ProtoBuf;
 using System;
 using System.Buffers;
 using ProtoBuf.Meta;
+using System.Linq;
 
 namespace Hive.Framework.Codec.Protobuf;
 
@@ -21,13 +22,28 @@ public class ProtoBufPacketCodec : IPacketCodec<ushort>
             },
             writer => writer.Clear());
     }
-
-    public ProtoBufPacketCodec(IPacketIdMapper<ushort> packetIdMapper)
+    
+    public ProtoBufPacketCodec(IPacketIdMapper<ushort> packetIdMapper, IPacketPrefixResolver[]? prefixResolvers = null)
     {
         PacketIdMapper = packetIdMapper;
+        PrefixResolvers = prefixResolvers;
     }
 
     public IPacketIdMapper<ushort> PacketIdMapper { get; }
+    public IPacketPrefixResolver[]? PrefixResolvers { get; }
+
+    public ReadOnlyMemory<byte> GetPacketIdMemory(ReadOnlyMemory<byte> payload)
+    {
+        if (payload.IsEmpty)
+            throw new InvalidOperationException($"{nameof(payload)} has length of 0!");
+
+        return payload.Slice(2, 2);
+    }
+
+    public ushort GetPacketId(ReadOnlyMemory<byte> idMemory)
+    {
+        return BitConverter.ToUInt16(idMemory.Span);
+    }
 
     public ReadOnlyMemory<byte> Encode<T>(T obj)
     {
@@ -60,7 +76,7 @@ public class ProtoBufPacketCodec : IPacketCodec<ushort>
         return result;
     }
 
-    public object Decode(ReadOnlySpan<byte> data)
+    public PacketDecodeResult<ushort> Decode(ReadOnlySpan<byte> data)
     {
         // 负载长度
         // var packetLengthSpan = data[..2];
@@ -69,12 +85,25 @@ public class ProtoBufPacketCodec : IPacketCodec<ushort>
         var packetIdSpan = data.Slice(2, 2);
         var packetId = BitConverter.ToUInt16(packetIdSpan);
 
+        // 封包前缀
+        var payloadStartIndex = 4;
+        var packetPrefixes = Array.Empty<object?>();
+        if (PrefixResolvers?.Any() ?? false)
+        {
+            packetPrefixes = new object[PrefixResolvers.Length];
+            for (var i = 0; i < PrefixResolvers.Length; i++)
+            {
+                packetPrefixes[i] = PrefixResolvers[i].Resolve(data, ref payloadStartIndex);
+            }
+        }
+
         // 封包数据段
-        var packetData = data[4..];
+        var packetData = data[payloadStartIndex..];
 
         // var packetLength = BitConverter.ToUInt16(packetLengthSpan);
         var packetType = PacketIdMapper.GetPacketType(packetId);
+        var payload = RuntimeTypeModel.Default.Deserialize(packetType, packetData);
 
-        return RuntimeTypeModel.Default.Deserialize(packetType, packetData);
+        return new PacketDecodeResult<ushort>(packetPrefixes, packetId, payload);
     }
 }

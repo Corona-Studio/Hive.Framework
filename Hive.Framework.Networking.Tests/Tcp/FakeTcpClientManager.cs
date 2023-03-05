@@ -1,6 +1,8 @@
-﻿using Hive.Framework.Networking.Shared;
+﻿using Hive.Framework.Networking.Quic;
+using Hive.Framework.Networking.Shared;
 using Hive.Framework.Networking.Tcp;
 using Hive.Framework.Networking.Tests.Messages;
+using System.Text;
 
 namespace Hive.Framework.Networking.Tests.Tcp;
 
@@ -22,9 +24,14 @@ public class FakeTcpClientManager : AbstractClientManager<Guid, TcpSession<ushor
     public int ReconnectedClient { get; private set; }
     public int DisconnectedClient { get; private set; }
 
-    protected override void OnClientDisconnected(Guid sessionId, TcpSession<ushort> session, bool isClientRequest)
+    public override ReadOnlyMemory<byte> GetEncodedSessionId(TcpSession<ushort> session)
     {
-        base.OnClientDisconnected(sessionId, session, isClientRequest);
+        return Encoding.ASCII.GetBytes(GetSessionId(session).ToString("N"));
+    }
+
+    protected override void InvokeOnClientDisconnected(Guid sessionId, TcpSession<ushort> session, bool isClientRequest)
+    {
+        base.InvokeOnClientDisconnected(sessionId, session, isClientRequest);
 
         if (!isClientRequest)
             DisconnectedClient++;
@@ -36,7 +43,7 @@ public class FakeTcpClientManager : AbstractClientManager<Guid, TcpSession<ushor
         {
             SigninMessageVal = message.Id;
             ConnectedClient++;
-            OnClientConnected(tcpSession);
+            InvokeOnClientConnected(tcpSession);
         });
     }
 
@@ -49,7 +56,7 @@ public class FakeTcpClientManager : AbstractClientManager<Guid, TcpSession<ushor
 
             var sessionId = GetSessionId(tcpSession);
 
-            OnClientDisconnected(sessionId, session, true);
+            InvokeOnClientDisconnected(sessionId, session, true);
         });
     }
 
@@ -61,7 +68,7 @@ public class FakeTcpClientManager : AbstractClientManager<Guid, TcpSession<ushor
 
             var sessionId = GetSessionId(tcpSession);
 
-            OnClientReconnected(tcpSession, sessionId, true);
+            InvokeOnClientReconnected(tcpSession, sessionId, true);
         });
     }
 

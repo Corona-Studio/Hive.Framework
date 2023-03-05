@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Net;
 using System.Threading.Tasks;
+using Hive.Framework.Networking.Abstractions.EventArgs;
 
 namespace Hive.Framework.Networking.Abstractions
 {
@@ -18,5 +20,7 @@ namespace Hive.Framework.Networking.Abstractions
         ValueTask DoDisconnect();
         ValueTask SendOnce(ReadOnlyMemory<byte> data);
         ValueTask<int> ReceiveOnce(Memory<byte> buffer);
+
+        event EventHandler<ReceivedDataEventArgs>? OnDataReceived;
     }
 }

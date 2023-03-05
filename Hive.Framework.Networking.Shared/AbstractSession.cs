@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Buffers;
 using System.Collections.Concurrent;
+using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Hive.Framework.Codec.Abstractions;
 using Hive.Framework.Networking.Abstractions;
+using Hive.Framework.Networking.Abstractions.EventArgs;
 using Hive.Framework.Networking.Shared.Helpers;
 
 namespace Hive.Framework.Networking.Shared
@@ -15,7 +17,7 @@ namespace Hive.Framework.Networking.Shared
     /// </summary>
     /// <typeparam name="TId">封包 ID 类型（通常为 ushort）</typeparam>
     /// <typeparam name="TSession">连接会话类型 例如在 TCP 实现下，其类型为 TcpSession{TId}</typeparam>
-    public abstract class AbstractSession<TId, TSession> : ISession<TSession>, ISender<TId>, IHasCodec<TId> where TSession : ISession<TSession> where TId : unmanaged
+    public abstract class AbstractSession<TId, TSession> : ISession<TSession>, ISender<TId>, ICanRedirectPacket<TId>, IHasCodec<TId> where TSession : ISession<TSession> where TId : unmanaged
     {
         protected const int DefaultBufferSize = 40960;
         private const int PacketHeaderLength = sizeof(ushort); // 包头长度2Byte
@@ -31,13 +33,17 @@ namespace Hive.Framework.Networking.Shared
         public IDataDispatcher<TSession> DataDispatcher { get; }
         public IPEndPoint? LocalEndPoint { get; protected set; }
         public IPEndPoint? RemoteEndPoint { get; protected set; }
+        public TId[]? ExcludeRedirectPacketIds { get; set; }
+        public bool RedirectReceivedData { get; set; }
 
         public abstract bool CanSend { get; }
         public abstract bool CanReceive { get; }
         public bool Running => !CancellationTokenSource.IsCancellationRequested && SendingLoopRunning && ReceivingLoopRunning;
         public abstract bool IsConnected { get; }
 
-        public AbstractSession(IPacketCodec<TId> packetCodec, IDataDispatcher<TSession> dataDispatcher)
+        public event EventHandler<ReceivedDataEventArgs>? OnDataReceived;
+
+        protected AbstractSession(IPacketCodec<TId> packetCodec, IDataDispatcher<TSession> dataDispatcher)
         {
             PacketCodec = packetCodec;
             DataDispatcher = dataDispatcher;
@@ -100,12 +106,27 @@ namespace Hive.Framework.Networking.Shared
 
         protected abstract void DispatchPacket(object? packet, Type? packetType = null);
 
-        protected void ProcessPacket(Span<byte> payloadBytes)
+        protected void ProcessPacket(ReadOnlyMemory<byte> payloadBytes)
         {
-            var packet = PacketCodec.Decode(payloadBytes);
-            var packetType = packet.GetType();
+            var idMemory = PacketCodec.GetPacketIdMemory(payloadBytes);
+            var id = PacketCodec.GetPacketId(idMemory);
 
-            DispatchPacket(packet, packetType);
+            if (RedirectReceivedData && !(ExcludeRedirectPacketIds?.Contains(id) ?? false))
+            {
+                InvokeDataReceivedEvent(idMemory, payloadBytes);
+
+                return;
+            }
+
+            var packet = PacketCodec.Decode(payloadBytes.Span);
+            var packetType = PacketCodec.PacketIdMapper.GetPacketType(id);
+
+            DispatchPacket(packet.Payload, packetType);
+        }
+
+        protected void InvokeDataReceivedEvent(ReadOnlyMemory<byte> id, ReadOnlyMemory<byte> data)
+        {
+            OnDataReceived?.Invoke(this, new ReceivedDataEventArgs(id, data));
         }
 
         /// <summary>
@@ -179,7 +200,7 @@ namespace Hive.Framework.Networking.Shared
 #endif
                         */
 
-                        ProcessPacket(buffer.Span.Slice(offset, actualLen));
+                        ProcessPacket(buffer.Slice(offset, actualLen));
 
                         offset += actualLen;
                         receivedLen -= actualLen;
