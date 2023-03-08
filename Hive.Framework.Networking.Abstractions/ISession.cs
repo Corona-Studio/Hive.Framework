@@ -18,6 +18,7 @@ namespace Hive.Framework.Networking.Abstractions
         
         ValueTask DoConnect();
         ValueTask DoDisconnect();
+        void Send(ReadOnlyMemory<byte> data);
         ValueTask SendOnce(ReadOnlyMemory<byte> data);
         ValueTask<int> ReceiveOnce(Memory<byte> buffer);
 

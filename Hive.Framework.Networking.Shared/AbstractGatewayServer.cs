@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Hive.Framework.Codec.Abstractions;
 using Hive.Framework.Networking.Abstractions;
 using Hive.Framework.Networking.Abstractions.EventArgs;
+using Hive.Framework.Shared;
 
 namespace Hive.Framework.Networking.Shared;
 
@@ -78,7 +79,7 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
     /// <param name="session"></param>
     /// <param name="data"></param>
     /// <returns></returns>
-    public virtual async ValueTask DoForwardDataToServer(TSession session, ReadOnlyMemory<byte> data)
+    public virtual ValueTask DoForwardDataToServer(TSession session, ReadOnlyMemory<byte> data)
     {
         var packetIdMemory = PacketCodec.GetPacketIdMemory(data);
         var packetId = PacketCodec.GetPacketId(packetIdMemory);
@@ -89,12 +90,13 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
             var clientSessionIdMemory = Acceptor.ClientManager.GetEncodedSessionId(session);
             var payload = data[2..];
             var length = BitConverter.GetBytes((ushort)(clientSessionIdMemory.Length + payload.Length + 2)).AsMemory();
+            var totalLength = length.Length + clientSessionIdMemory.Length + payload.Length;
 
             // 按照顺序发送数据
-            await serverSession.SendOnce(length);
-            await serverSession.SendOnce(clientSessionIdMemory);
-            await serverSession.SendOnce(payload);
+            serverSession.Send(MemoryHelper.CombineMemory(totalLength, length, clientSessionIdMemory, payload));
         }
+
+        return default;
     }
 
     public bool ServerInitialized => !PacketRouteTable.IsEmpty;

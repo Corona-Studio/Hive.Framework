@@ -60,18 +60,23 @@ namespace Hive.Framework.Networking.Shared
             DoConnect();
         }
 
-        public void Send<T>(T obj)
+        public virtual void Send(ReadOnlyMemory<byte> data)
         {
-            if (obj == null) throw new ArgumentNullException($"The data trying to send [{nameof(obj)}] is null!");
-
-            var encodedBytes = PacketCodec.Encode(obj);
-            _sendQueue.Enqueue(encodedBytes);
+            _sendQueue.Enqueue(data);
 
             if (_sendEnqueued) return;
 
             BeginSend();
 
             _sendEnqueued = true;
+        }
+
+        public void Send<T>(T obj)
+        {
+            if (obj == null) throw new ArgumentNullException($"The data trying to send [{nameof(obj)}] is null!");
+
+            var encodedBytes = PacketCodec.Encode(obj);
+            Send(encodedBytes);
         }
 
         public void OnReceive<T>(Action<T, TSession> callback) // 用于兼容旧的基于Action的回调
