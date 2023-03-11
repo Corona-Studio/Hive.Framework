@@ -3,7 +3,6 @@ using Hive.Framework.Networking.Abstractions;
 using Hive.Framework.Networking.Tests.Messages;
 using System.Runtime.Versioning;
 using Hive.Framework.Networking.Quic;
-using Hive.Framework.Codec.Protobuf;
 
 namespace Hive.Framework.Networking.Tests.Quic;
 

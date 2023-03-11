@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <Folder Include="Helpers\" />
+    <Folder Include="LoadBalancers\" />
   </ItemGroup>
 
 </Project>

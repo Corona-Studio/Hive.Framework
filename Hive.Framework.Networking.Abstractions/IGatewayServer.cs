@@ -1,4 +1,6 @@
-﻿using Hive.Framework.Codec.Abstractions;
+﻿using System;
+using Hive.Framework.Codec.Abstractions;
+using Hive.Framework.Networking.Abstractions.EventArgs;
 
 namespace Hive.Framework.Networking.Abstractions;
 
@@ -13,6 +15,9 @@ public interface IGatewayServer<TSession, TSessionId, TId> where TSession : ISes
     IPacketCodec<TId> PacketCodec { get; }
     IAcceptorImpl<TSession, TSessionId> Acceptor { get; }
     TId[]? ExcludeRedirectPacketIds { get; }
+
+    Func<TSession, ILoadBalancer<TSession>> LoadBalancerGetter { get; }
+    event EventHandler<LoadBalancerInitializedEventArgs<TSession>> OnLoadBalancerInitialized;
 
     void StartServer();
     void StopServer();

@@ -7,8 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="DotNext" Version="4.10.0" />
-    <PackageReference Include="DotNext.Unsafe" Version="4.10.0" />
+    <PackageReference Include="DotNext" Version="4.11.0" />
+    <PackageReference Include="DotNext.Unsafe" Version="4.11.0" />
     <PackageReference Include="MongoDB.Bson" Version="2.19.0" />
   </ItemGroup>
 
