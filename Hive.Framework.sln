@@ -25,6 +25,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.Framework.Networking.T
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.Framework.Codec.Bson", "Hive.Framework.Codec.Bson\Hive.Framework.Codec.Bson.csproj", "{9CC078D2-8056-4A7E-8F13-6A6F6DB0B023}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hive.Framework.ECS", "Hive.Framework.ECS\Hive.Framework.ECS.csproj", "{EA4009E3-0588-447D-A786-68FEDDDECA39}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -75,6 +77,10 @@ Global
 		{9CC078D2-8056-4A7E-8F13-6A6F6DB0B023}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9CC078D2-8056-4A7E-8F13-6A6F6DB0B023}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9CC078D2-8056-4A7E-8F13-6A6F6DB0B023}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EA4009E3-0588-447D-A786-68FEDDDECA39}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EA4009E3-0588-447D-A786-68FEDDDECA39}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EA4009E3-0588-447D-A786-68FEDDDECA39}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EA4009E3-0588-447D-A786-68FEDDDECA39}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

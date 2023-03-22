@@ -25,11 +25,16 @@
   <ItemGroup>
     <ProjectReference Include="..\Hive.Framework.Codec.Bson\Hive.Framework.Codec.Bson.csproj" />
     <ProjectReference Include="..\Hive.Framework.Codec.Protobuf\Hive.Framework.Codec.Protobuf.csproj" />
+    <ProjectReference Include="..\Hive.Framework.ECS\Hive.Framework.ECS.csproj" />
     <ProjectReference Include="..\Hive.Framework.Networking.Abstractions\Hive.Framework.Networking.Abstractions.csproj" />
     <ProjectReference Include="..\Hive.Framework.Networking.Kcp\Hive.Framework.Networking.Kcp.csproj" />
     <ProjectReference Include="..\Hive.Framework.Networking.Quic\Hive.Framework.Networking.Quic.csproj" />
     <ProjectReference Include="..\Hive.Framework.Networking.Tcp\Hive.Framework.Networking.Tcp.csproj" />
     <ProjectReference Include="..\Hive.Framework.Networking.Udp\Hive.Framework.Networking.Udp.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="ECS" />
   </ItemGroup>
 
 </Project>
