@@ -1,8 +1,6 @@
-﻿using Hive.Framework.Networking.Quic;
-using Hive.Framework.Networking.Shared;
+﻿using Hive.Framework.Networking.Shared;
 using Hive.Framework.Networking.Tcp;
 using Hive.Framework.Networking.Tests.Messages;
-using System.Text;
 
 namespace Hive.Framework.Networking.Tests.Tcp;
 
@@ -26,7 +24,7 @@ public class FakeTcpClientManager : AbstractClientManager<Guid, TcpSession<ushor
 
     public override ReadOnlyMemory<byte> GetEncodedSessionId(TcpSession<ushort> session)
     {
-        return Encoding.ASCII.GetBytes(GetSessionId(session).ToString("N"));
+        return GetSessionId(session).ToByteArray();
     }
 
     protected override void InvokeOnClientDisconnected(Guid sessionId, TcpSession<ushort> session, bool isClientRequest)

@@ -5,17 +5,18 @@ using Hive.Framework.Networking.Shared;
 using Hive.Framework.Networking.Tcp;
 using Hive.Framework.Networking.Tests.Messages;
 
-namespace Hive.Framework.Networking.Tests.Tcp;
+namespace Hive.Framework.Networking.Tests.GatewayServer.Tcp;
 
 public class FakeTcpGatewayServer : AbstractGatewayServer<TcpSession<ushort>, Guid, ushort>
 {
     public FakeTcpGatewayServer(
         IPacketCodec<ushort> packetCodec,
         IAcceptorImpl<TcpSession<ushort>, Guid> acceptor,
-        ushort[]? excludeRedirectPacketIds,
-        Func<TcpSession<ushort>, ILoadBalancer<TcpSession<ushort>>> loadBalancerGetter) : base(packetCodec, acceptor, excludeRedirectPacketIds, loadBalancerGetter)
+        Func<TcpSession<ushort>, ILoadBalancer<TcpSession<ushort>>> loadBalancerGetter) : base(packetCodec, acceptor, loadBalancerGetter)
     {
     }
+
+    public int RegisteredForwardPacketCount { get; private set; }
 
     protected override void RegisterServerRegistrationMessage(TcpSession<ushort> session)
     {
@@ -24,16 +25,25 @@ public class FakeTcpGatewayServer : AbstractGatewayServer<TcpSession<ushort>, Gu
             foreach (var packetId in message.PackagesToReceive)
             {
                 AddPacketRoute(packetId, tcpSession);
+                RegisteredForwardPacketCount++;
             }
         });
     }
 
+    protected override void NotifyClientCanStartTransmitMessage(TcpSession<ushort> session)
+    {
+        session.Send(new ClientCanTransmitMessage());
+    }
+
     protected override void RegisterClientStartTransmitMessage(TcpSession<ushort> session)
     {
-        session.OnReceive<ClientStartTransmitMessage>((_, tcpSession) =>
+        session.OnReceive<ClientStartTransmitMessage>((message, tcpSession) =>
         {
+            tcpSession.ExcludeRedirectPacketIds = message.ExcludeRedirectPacketIds;
             tcpSession.OnDataReceived += TcpSessionOnOnDataReceived;
             tcpSession.RedirectReceivedData = true;
+
+            NotifyClientCanStartTransmitMessage(session);
         });
     }
 
