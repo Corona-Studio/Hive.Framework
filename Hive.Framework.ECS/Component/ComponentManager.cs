@@ -2,70 +2,59 @@
 {
     public class ComponentManager : IBelongToECSArch
     {
-        private readonly Dictionary<Type, object> typeToComponentListDict = new();
+        private readonly Dictionary<Type, object> _typeToComponentListDict = new();
 
         public ComponentManager(IECSArch arch)
         {
             Arch = arch;
         }
 
-        public void AddComponent<TComponent>(int entityInstanceID) where TComponent : IEntityComponent, new()
+        public void AddComponent<TComp>(int entityId) where TComp : IEntityComponent, new()
         {
-            AddComponent(entityInstanceID, new TComponent());
+            AddComponent(entityId, new TComp());
         }
 
-        public void AddComponent<TComponent>(int entityInstanceID, TComponent component)
-            where TComponent : IEntityComponent
+        public void AddComponent<TComp>(int entityId, TComp component)
+            where TComp : IEntityComponent
         {
-            Dictionary<int, TComponent> entityComponents;
-            if (typeToComponentListDict.TryGetValue(typeof(TComponent), out var list))
+            ComponentList<TComp> componentList;
+            if (_typeToComponentListDict.TryGetValue(typeof(TComp), out var list))
             {
-                entityComponents = list as Dictionary<int, TComponent>;
-            }
-            else
-            {
-                entityComponents = new Dictionary<int, TComponent>();
-                typeToComponentListDict.Add(typeof(TComponent), entityComponents);
+                componentList = (ComponentList<TComp>)list;
+            }else{
+                componentList = new ComponentList<TComp>();
+                _typeToComponentListDict.Add(typeof(TComp), componentList);
             }
 
-
-            if (entityComponents!.ContainsKey(entityInstanceID))
-                return;
-
-            entityComponents.Add(entityInstanceID, component);
+            componentList.AttachToEntity(entityId, component);
         }
 
-        public void RemoveComponent<TComponent>(int entityInstanceID) where TComponent : IEntityComponent
+        public void RemoveComponent<TComp>(int entityId) where TComp : IEntityComponent
         {
-            if (typeToComponentListDict.TryGetValue(typeof(TComponent), out var list))
+            if (_typeToComponentListDict.TryGetValue(typeof(TComp), out var list))
             {
-                var entityComponents = (list as Dictionary<int, TComponent>);
-                entityComponents?.Remove(entityInstanceID);
+                var entityComponents = (ComponentList<TComp>)list;
+                entityComponents.DetachFromEntity(entityId);
             }
         }
 
-        public void ModifyComponent<TComponent>(int entityInstanceID, RefAction<TComponent> supplier)
-            where TComponent : IEntityComponent
+        public void ModifyComponent<TComp>(int entityId, RefAction<TComp> supplier)
+            where TComp : IEntityComponent
         {
-            if (typeToComponentListDict.TryGetValue(typeof(TComponent), out var list))
+            if (_typeToComponentListDict.TryGetValue(typeof(TComp), out var list))
             {
-                if (list is not Dictionary<int, TComponent> entityComponents) return;
-
-                if (entityComponents.TryGetValue(entityInstanceID, out var component))
-                {
-                    supplier(ref component);
-                    entityComponents[entityInstanceID] = component;
-                }
+                var componentList = (ComponentList<TComp>)list;
+                componentList.Modify(entityId,supplier);
             }
         }
 
-        public TComponent GetComponent<TComponent>(int entityInstanceID) where TComponent : IEntityComponent
+        public TComp GetComponent<TComp>(int entityId) where TComp : IEntityComponent
         {
-            if (typeToComponentListDict.TryGetValue(typeof(TComponent), out var list))
+            if (_typeToComponentListDict.TryGetValue(typeof(TComp), out var list))
             {
-                if (list is not Dictionary<int, TComponent> entityComponents) return default;
+                if (list is not Dictionary<int, TComp> comps) return default;
 
-                if (entityComponents.TryGetValue(entityInstanceID, out var component))
+                if (comps.TryGetValue(entityId, out var component))
                 {
                     return component;
                 }
@@ -74,16 +63,16 @@
             return default;
         }
 
-        public void SetComponent<TComponent>(int entityInstanceID, TComponent component)
-            where TComponent : IEntityComponent
+        public void SeTComp<TComp>(int entityId, TComp comp)
+            where TComp : IEntityComponent
         {
-            if (typeToComponentListDict.TryGetValue(typeof(TComponent), out var list))
+            if (_typeToComponentListDict.TryGetValue(typeof(TComp), out var list))
             {
-                if (list is not Dictionary<int, TComponent> entityComponents) return;
+                if (list is not Dictionary<int, TComp> entityComponents) return;
 
-                if (entityComponents.ContainsKey(entityInstanceID))
+                if (entityComponents.ContainsKey(entityId))
                 {
-                    entityComponents[entityInstanceID] = component;
+                    entityComponents[entityId] = comp;
                 }
             }
         }
