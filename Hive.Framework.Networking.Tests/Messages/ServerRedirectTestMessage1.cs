@@ -3,8 +3,8 @@
 namespace Hive.Framework.Networking.Tests.Messages;
 
 [ProtoContract]
-public class ClientStartTransmitMessage
+public class ServerRedirectTestMessage1
 {
     [ProtoMember(1)]
-    public ushort[] ExcludeRedirectPacketIds { get; set; }
+    public string Content { get; set; }
 }

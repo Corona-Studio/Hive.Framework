@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 namespace Hive.Framework.Networking.Abstractions;
 
 
-public interface IAcceptorImpl<TSession, TSessionId> where TSession : ISession<TSession>
+public interface IAcceptorImpl<TSession, TSessionId> : IDisposable where TSession : ISession<TSession>
 {
     IPEndPoint EndPoint { get; }
     IDataDispatcher<TSession> DataDispatcher { get; }

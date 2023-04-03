@@ -6,9 +6,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="DotNext" Version="4.11.0" />
-    <PackageReference Include="DotNext.Unsafe" Version="4.11.0" />
-    <PackageReference Include="protobuf-net" Version="3.2.12" />
+    <PackageReference Include="DotNext" Version="4.12.0" />
+    <PackageReference Include="DotNext.Unsafe" Version="4.12.0" />
+    <PackageReference Include="protobuf-net" Version="3.2.16" />
   </ItemGroup>
 
   <ItemGroup>

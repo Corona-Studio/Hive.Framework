@@ -19,7 +19,6 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
 
     public IPacketCodec<TId> PacketCodec { get; }
     public IAcceptorImpl<TSession, TSessionId> Acceptor { get; }
-    public TId[]? ExcludeRedirectPacketIds { get; }
 
     /// <summary>
     /// 负载均衡器创建方法
@@ -38,13 +37,14 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
     protected AbstractGatewayServer(
         IPacketCodec<TId> packetCodec,
         IAcceptorImpl<TSession, TSessionId> acceptor,
-        TId[]? excludeRedirectPacketIds,
         Func<TSession, ILoadBalancer<TSession>> loadBalancerGetter)
     {
         PacketCodec = packetCodec;
         Acceptor = acceptor;
-        ExcludeRedirectPacketIds = excludeRedirectPacketIds;
         LoadBalancerGetter = loadBalancerGetter;
+
+        acceptor.ClientManager.OnClientConnected += InvokeOnClientConnected;
+        acceptor.ClientManager.OnClientDisconnected += InvokeOnClientDisconnected;
     }
 
     public virtual void StartServer()
@@ -67,6 +67,15 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
 
         OnLoadBalancerInitialized?.Invoke(this, new LoadBalancerInitializedEventArgs<TSession>(PacketRouteTable[packetId], session));
     }
+
+    /// <summary>
+    /// 客户端连接建立提示告知方法
+    /// <para>一般情况下，此方法需要在 <see cref="RegisterClientStartTransmitMessage"/> 的事件处理程序的完成阶段调用</para>
+    /// <para>使用此方法告知客户端可以开始进行正文的传输</para>
+    /// <para>客户端只应该在接受到该方法发送的消息后才开始进行数据传输，否则可能会导致前半部分数据丢失</para>
+    /// </summary>
+    /// <param name="session"></param>
+    protected abstract void NotifyClientCanStartTransmitMessage(TSession session);
 
     /// <summary>
     /// 服务器注册方法
@@ -139,4 +148,9 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
     }
 
     public virtual bool ServerInitialized => !PacketRouteTable.IsEmpty;
+
+    public virtual void Dispose()
+    {
+        Acceptor.Dispose();
+    }
 }
