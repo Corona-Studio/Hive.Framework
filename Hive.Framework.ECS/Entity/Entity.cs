@@ -1,4 +1,6 @@
 ﻿#nullable enable
+using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 
 namespace Hive.Framework.ECS.Entity
@@ -66,6 +68,6 @@ namespace Hive.Framework.ECS.Entity
             }
         }
 
-        public int InstanceID { get; init; }
+        public long InstanceId { get; init; }
     }
 }

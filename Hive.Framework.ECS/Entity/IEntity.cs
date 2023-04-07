@@ -10,7 +10,7 @@ namespace Hive.Framework.ECS.Entity
         ReadOnlyCollection<IEntity> Children { get; }
 
         public IEntity Parent { get; set; }
-        public int InstanceID { get; init; }
+        public long InstanceId { get; init; }
 
         //public TComponent GetComponent<TComponent>() where TComponent : IEntityComponent;
         

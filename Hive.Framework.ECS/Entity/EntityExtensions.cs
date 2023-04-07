@@ -1,5 +1,7 @@
 ﻿#nullable enable
+using System;
 using System.Collections;
+using System.Collections.Generic;
 using Hive.Framework.ECS.Component;
 using Hive.Framework.ECS.Compositor;
 
@@ -12,20 +14,20 @@ namespace Hive.Framework.ECS.Entity
         // ReSharper disable once InconsistentNaming
         public class EntityBFSEnumerable : IEnumerable<IEntity>
         {
-            private readonly IEntity entity;
+            private readonly IEntity? _entity;
 
-            public EntityBFSEnumerable(IEntity entity)
+            public EntityBFSEnumerable(IEntity? entity)
             {
-                this.entity = entity;
+                _entity = entity;
             }
 
             public IEnumerator<IEntity> GetEnumerator()
             {
-                if(entity==null)
+                if (_entity == null)
                     yield break;
-            
+                
                 AuxQueueForBfs.Clear();
-                AuxQueueForBfs.Enqueue(entity);
+                AuxQueueForBfs.Enqueue(_entity);
                 var numInThisLayer = 1;
                 while (AuxQueueForBfs.Count>0)
                 {
@@ -89,29 +91,29 @@ namespace Hive.Framework.ECS.Entity
             entity.ECSArch.EntityManager.Destroy(entity);
         }
         
-        public static void ModifyComponent<TComponent>(this IEntity entity,RefAction<TComponent> supplier) where TComponent : IEntityComponent
+        public static void UpdateComponent<TComponent>(this IEntity entity,RefAction<TComponent> supplier) where TComponent : IEntityComponent
         {
-            entity.ECSArch.ComponentManager.ModifyComponent(entity.InstanceID, supplier);
+            entity.ECSArch.ComponentManager.UpdateComponent(entity.InstanceId, supplier);
         }
         
         public static TComponent? GetComponent<TComponent>(this IEntity entity) where TComponent : IEntityComponent
         {
-            return entity.ECSArch.ComponentManager.GetComponent<TComponent>(entity.InstanceID);
+            return entity.ECSArch.ComponentManager.GetComponent<TComponent>(entity.InstanceId);
         }
         
         public static void AddComponent<TComponent>(this IEntity entity) where TComponent : IEntityComponent,new()
         {
-            entity.ECSArch.ComponentManager.AddComponent<TComponent>(entity.InstanceID);
+            entity.ECSArch.ComponentManager.AddComponent<TComponent>(entity.InstanceId);
         }
         
         public static void AddComponent<TComponent>(this IEntity entity,TComponent component) where TComponent : IEntityComponent
         {
-            entity.ECSArch.ComponentManager.AddComponent<TComponent>(entity.InstanceID,component);
+            entity.ECSArch.ComponentManager.AddComponent<TComponent>(entity.InstanceId,component);
         }
         
         public static void RemoveComponent<TComponent>(this IEntity entity) where TComponent : IEntityComponent
         {
-            entity.ECSArch.ComponentManager.RemoveComponent<TComponent>(entity.InstanceID);
+            entity.ECSArch.ComponentManager.RemoveComponent<TComponent>(entity.InstanceId);
         }
     }
 }

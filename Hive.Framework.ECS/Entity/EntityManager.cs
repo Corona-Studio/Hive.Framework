@@ -1,5 +1,10 @@
 ﻿#nullable enable
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
 using Hive.Framework.ECS.Compositor;
+using Yitter.IdGenerator;
 
 namespace Hive.Framework.ECS.Entity
 {
@@ -15,12 +20,10 @@ namespace Hive.Framework.ECS.Entity
         private readonly SortedSet<IEntity> _entitiesToDestroySet;
 
         private readonly EntityExtensions.EntityBFSEnumerable _bfsEnumerable;
-        private static int _currentUsedID;
 
-        private static int AllocateEntityID()
+        private static long AllocateEntityId()
         {
-            Interlocked.Increment(ref _currentUsedID);
-            return _currentUsedID;
+            return YitIdHelper.NextId();
         }
         
         public EntityManager(IECSArch arch)
@@ -66,7 +69,7 @@ namespace Hive.Framework.ECS.Entity
                 throw new InvalidOperationException(
                     $"Parent Entity are being destroying.");
 
-            var entity = compositor.Composite(AllocateEntityID(), parent);
+            var entity = compositor.Composite(AllocateEntityId(), parent);
             
             _entitiesToAwakeSet.Add(entity);
         }

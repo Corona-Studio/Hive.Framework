@@ -9,7 +9,7 @@ namespace Hive.Framework.Networking.Tests.ECS
 {
     public class SystemTest
     {
-        private class NumberComponent : IEntityComponent
+        private struct NumberComponent : IEntityComponent
         {
             public NumberComponent(int number)
             {
@@ -31,7 +31,7 @@ namespace Hive.Framework.Networking.Tests.ECS
         {
             public void OnLogicUpdate(IEntity entity)
             {
-                entity.ModifyComponent((ref NumberComponent comp) => { comp.Number += 2; });
+                entity.UpdateComponent((ref NumberComponent comp) => { comp.Number += 2; });
             }
         }
 
@@ -40,11 +40,10 @@ namespace Hive.Framework.Networking.Tests.ECS
         {
             public void OnLogicUpdate(IEntity entity)
             {
-                var numberComponent = entity.GetComponent<NumberComponent>();
-                if (numberComponent != null)
+                entity.UpdateComponent((ref NumberComponent component) =>
                 {
-                    numberComponent.Number *= 2;
-                }
+                    component.Number *= 2;
+                });
             }
         }
 
@@ -54,11 +53,10 @@ namespace Hive.Framework.Networking.Tests.ECS
         {
             public void OnLogicUpdate(IEntity entity)
             {
-                var numberComponent = entity.GetComponent<NumberComponent>();
-                if (numberComponent != null)
+                entity.UpdateComponent((ref NumberComponent component) =>
                 {
-                    numberComponent.Number *= 3;
-                }
+                    component.Number *= 3;
+                });
             }
         }
 
@@ -67,11 +65,10 @@ namespace Hive.Framework.Networking.Tests.ECS
         {
             public void OnLogicUpdate(IEntity entity)
             {
-                var numberComponent = entity.GetComponent<NumberComponent>();
-                if (numberComponent != null)
+                entity.UpdateComponent((ref NumberComponent component) =>
                 {
-                    numberComponent.Number -= 2;
-                }
+                    component.Number -= 2;
+                });
             }
         }
 
@@ -90,7 +87,7 @@ namespace Hive.Framework.Networking.Tests.ECS
             core.FixedUpdate();
 
             var entity = core.EntityManager.EntityBfsEnumerateList.First(entity => entity is ObjectEntity);
-            Assert.True(entity.GetComponent<NumberComponent>().Number == 22);
+            Assert.That(entity.GetComponent<NumberComponent>().Number == 22, Is.True);
         }
     }
 }

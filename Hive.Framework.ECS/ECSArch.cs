@@ -1,4 +1,5 @@
 ﻿#nullable enable
+using System.Linq;
 using Hive.Framework.ECS.Component;
 using Hive.Framework.ECS.Compositor;
 using Hive.Framework.ECS.Entity;

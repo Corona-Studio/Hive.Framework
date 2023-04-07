@@ -4,7 +4,7 @@ namespace Hive.Framework.ECS.Compositor
 {
     public abstract class AbstractCompositor<T> : ICompositor where T: ObjectEntity,new()
     {
-        ObjectEntity ICompositor.Composite(int id, IEntity parent)
+        ObjectEntity ICompositor.Composite(long id, IEntity parent)
         {
             var worldEntity = parent switch
             {
@@ -16,7 +16,7 @@ namespace Hive.Framework.ECS.Compositor
 
             var objectEntity = new T
             {
-                InstanceID = id,
+                InstanceId = id,
                 Compositor = this,
                 WorldEntity = worldEntity,
                 Parent = parent,

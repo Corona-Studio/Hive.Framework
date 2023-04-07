@@ -1,58 +1,62 @@
-﻿namespace Hive.Framework.ECS.System
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace Hive.Framework.ECS.System
 {
     public class SystemGraph
     {
         public class SystemNode
         {
-            public readonly HashSet<Type> previous;
-            public readonly SystemWarp systemWarp;
-            public SystemNode(SystemWarp warp)
+            public readonly HashSet<Type> Previous;
+            public readonly SystemInstance SystemInstance;
+            public SystemNode(SystemInstance instance)
             {
-                systemWarp = warp;
-                previous = new HashSet<Type>(warp.executeAfterSystems);
+                SystemInstance = instance;
+                Previous = new HashSet<Type>(instance.ExecuteAfterSystems);
             }
 
             public SystemNode(in SystemNode node)
             {
-                systemWarp = node.systemWarp;
-                previous = new HashSet<Type>(node.previous);
+                SystemInstance = node.SystemInstance;
+                Previous = new HashSet<Type>(node.Previous);
             }
         }
 
-        private readonly Dictionary<Type, SystemNode> typeToNodeDict = new();
+        private readonly Dictionary<Type, SystemNode> _typeToNodeDict = new();
 
-        public void AddSystemWarp(SystemWarp current)
+        public void AddSystemWarp(SystemInstance current)
         {
             var systemNode = new SystemNode(current);
             
-            foreach (var otherNode in typeToNodeDict.Values)
+            foreach (var otherNode in _typeToNodeDict.Values)
             {
-                if (otherNode.systemWarp.executeBeforeSystems.Contains(current.SystemType))
+                if (otherNode.SystemInstance.ExecuteBeforeSystems.Contains(current.SystemType))
                 {
-                    systemNode.previous.Add(otherNode.systemWarp.SystemType);
+                    systemNode.Previous.Add(otherNode.SystemInstance.SystemType);
                 }
 
-                if (current.executeBeforeSystems.Contains(otherNode.systemWarp.SystemType))
+                if (current.ExecuteBeforeSystems.Contains(otherNode.SystemInstance.SystemType))
                 {
-                    otherNode.previous.Add(current.SystemType);
+                    otherNode.Previous.Add(current.SystemType);
                 }
             }
             
-            typeToNodeDict.Add(current.SystemType,systemNode);
+            _typeToNodeDict.Add(current.SystemType,systemNode);
         }
 
-        public IEnumerable<SystemWarp> GetTopologicalSortedSequence()
+        public IEnumerable<SystemInstance> GetTopologicalSortedSequence()
         {
-            var inDegreeDict = new Dictionary<Type, SystemNode>(typeToNodeDict);
-            var newOrderedSystemList = new List<SystemWarp>();
+            var inDegreeDict = new Dictionary<Type, SystemNode>(_typeToNodeDict);
+            var newOrderedSystemList = new List<SystemInstance>();
 
             try
             {
                 while (inDegreeDict.Count > 0)
                 {
-                    var minInDegreePair = inDegreeDict.First(pair => pair.Value.previous.Count == 0);
+                    var minInDegreePair = inDegreeDict.First(pair => pair.Value.Previous.Count == 0);
 
-                    var systemWarp = minInDegreePair.Value.systemWarp;
+                    var systemWarp = minInDegreePair.Value.SystemInstance;
                     newOrderedSystemList.Add(systemWarp);
                     inDegreeDict.Remove(minInDegreePair.Key);
 
@@ -60,7 +64,7 @@
 
                     foreach (var node in inDegreeDict)
                     {
-                        node.Value.previous.Remove(systemWarp.SystemType);
+                        node.Value.Previous.Remove(systemWarp.SystemType);
                     }
                 }
             }catch (InvalidOperationException e)
@@ -73,7 +77,7 @@
 
         public SystemNode GetNodeByType(Type type)
         {
-            return typeToNodeDict[type];
+            return _typeToNodeDict[type];
         }
     }
 }

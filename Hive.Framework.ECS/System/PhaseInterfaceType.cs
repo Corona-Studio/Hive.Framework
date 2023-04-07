@@ -1,4 +1,6 @@
-﻿using Hive.Framework.ECS.System.Phases;
+﻿using System;
+using System.Collections.Generic;
+using Hive.Framework.ECS.System.Phases;
 
 namespace Hive.Framework.ECS.System
 {

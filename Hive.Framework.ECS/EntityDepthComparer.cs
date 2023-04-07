@@ -1,4 +1,5 @@
 ﻿#nullable enable
+using System.Collections.Generic;
 using Hive.Framework.ECS.Entity;
 
 namespace Hive.Framework.ECS
