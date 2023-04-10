@@ -35,6 +35,7 @@
 
   <ItemGroup>
     <Folder Include="ECS" />
+    <Folder Include="Kcp\" />
   </ItemGroup>
 
 </Project>

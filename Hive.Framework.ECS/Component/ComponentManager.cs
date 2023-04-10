@@ -48,7 +48,7 @@
             }
         }
 
-        public TComp GetComponent<TComp>(int entityId) where TComp : IEntityComponent
+        public TComp? GetComponent<TComp>(int entityId) where TComp : IEntityComponent
         {
             if (_typeToComponentListDict.TryGetValue(typeof(TComp), out var list))
             {

@@ -1,18 +1,18 @@
-﻿using System.Buffers;
+﻿using Hive.Framework.Networking.Kcp;
+using Hive.Framework.Networking.Shared;
+using Hive.Framework.Networking.Tests.Messages;
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Text;
-using Hive.Framework.Networking.Shared;
-using Hive.Framework.Networking.Tests.Messages;
-using Hive.Framework.Networking.Udp;
 
-namespace Hive.Framework.Networking.Tests.Udp;
+namespace Hive.Framework.Networking.Tests.Kcp;
 
-public class FakeUdpClientManager : AbstractClientManager<Guid, UdpSession<ushort>>
+public class FakeKcpClientManager : AbstractClientManager<Guid, KcpSession<ushort>>
 {
-    private readonly ConcurrentDictionary<IPEndPoint, UdpSession<ushort>> _endPointSessionMapper = new ();
+    private readonly ConcurrentDictionary<IPEndPoint, KcpSession<ushort>> _endPointSessionMapper = new();
 
-    public override void AddSession(UdpSession<ushort> session)
+    public override void AddSession(KcpSession<ushort> session)
     {
         if (session.RemoteEndPoint == null) return;
         if (!_endPointSessionMapper.TryGetValue(session.RemoteEndPoint, out var existSession))
@@ -30,11 +30,11 @@ public class FakeUdpClientManager : AbstractClientManager<Guid, UdpSession<ushor
         }
     }
 
-    protected override void RegisterHeartBeatMessage(UdpSession<ushort> session)
+    protected override void RegisterHeartBeatMessage(KcpSession<ushort> session)
     {
-        session.OnReceive<HeartBeatMessage>((_, udpSession) =>
+        session.OnReceive<HeartBeatMessage>((_, kcpSession) =>
         {
-            var sessionId = GetSessionId(udpSession);
+            var sessionId = GetSessionId(kcpSession);
 
             UpdateHeartBeatReceiveTime(sessionId);
         });
@@ -46,12 +46,12 @@ public class FakeUdpClientManager : AbstractClientManager<Guid, UdpSession<ushor
     public int ReconnectedClient { get; private set; }
     public int DisconnectedClient { get; private set; }
 
-    public override ReadOnlyMemory<byte> GetEncodedSessionId(UdpSession<ushort> session)
+    public override ReadOnlyMemory<byte> GetEncodedSessionId(KcpSession<ushort> session)
     {
         return Encoding.ASCII.GetBytes(GetSessionId(session).ToString("N"));
     }
 
-    protected override void InvokeOnClientDisconnected(Guid sessionId, UdpSession<ushort> session, bool isClientRequest)
+    protected override void InvokeOnClientDisconnected(Guid sessionId, KcpSession<ushort> session, bool isClientRequest)
     {
         base.InvokeOnClientDisconnected(sessionId, session, isClientRequest);
 
@@ -59,42 +59,42 @@ public class FakeUdpClientManager : AbstractClientManager<Guid, UdpSession<ushor
             DisconnectedClient++;
     }
 
-    protected override void RegisterSigninMessage(UdpSession<ushort> session)
+    protected override void RegisterSigninMessage(KcpSession<ushort> session)
     {
-        session.OnReceive<SigninMessage>((message, udpSession) =>
+        session.OnReceive<SigninMessage>((message, kcpSession) =>
         {
             SigninMessageVal = message.Id;
             ConnectedClient++;
-            InvokeOnClientConnected(udpSession);
+            InvokeOnClientConnected(kcpSession);
         });
     }
 
-    protected override void RegisterClientSignOutMessage(UdpSession<ushort> session)
+    protected override void RegisterClientSignOutMessage(KcpSession<ushort> session)
     {
-        session.OnReceive<SignOutMessage>((message, udpSession) =>
+        session.OnReceive<SignOutMessage>((message, kcpSession) =>
         {
             SignOutMessageVal = message.Id;
             ConnectedClient--;
 
-            var sessionId = GetSessionId(udpSession);
+            var sessionId = GetSessionId(kcpSession);
 
             InvokeOnClientDisconnected(sessionId, session, true);
         });
     }
 
-    protected override void RegisterReconnectMessage(UdpSession<ushort> session)
+    protected override void RegisterReconnectMessage(KcpSession<ushort> session)
     {
-        session.OnReceive<ReconnectMessage>((_, udpSession) =>
+        session.OnReceive<ReconnectMessage>((_, kcpSession) =>
         {
             ReconnectedClient++;
 
-            var sessionId = GetSessionId(udpSession);
+            var sessionId = GetSessionId(kcpSession);
 
-            InvokeOnClientReconnected(udpSession, sessionId, true);
+            InvokeOnClientReconnected(kcpSession, sessionId, true);
         });
     }
 
-    protected override void SendHeartBeat(UdpSession<ushort> session)
+    protected override void SendHeartBeat(KcpSession<ushort> session)
     {
         session.Send(new HeartBeatMessage());
     }

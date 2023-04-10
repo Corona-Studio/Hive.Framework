@@ -22,7 +22,7 @@ namespace Hive.Framework.Networking.Shared
         protected const int DefaultBufferSize = 40960;
         private const int PacketHeaderLength = sizeof(ushort); // 包头长度2Byte
 
-        private readonly ConcurrentQueue<ReadOnlyMemory<byte>> _sendQueue = new ();
+        protected readonly ConcurrentQueue<ReadOnlyMemory<byte>> _sendQueue = new ();
         protected readonly CancellationTokenSource CancellationTokenSource = new ();
         private bool _receiveRegistered;
         private bool _sendEnqueued;

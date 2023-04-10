@@ -41,7 +41,7 @@ namespace Hive.Framework.ECS.System
             return type == other.type;
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             return obj is PhaseInterfaceType other && Equals(other);
         }

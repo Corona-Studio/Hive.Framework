@@ -85,7 +85,7 @@ namespace Hive.Framework.Networking.Udp
 
             while (sentLen < totalLen)
             {
-                var sendThisTime = await UdpConnection.SendAsync(data.ToArray(), data.Length, RemoteEndPoint);
+                var sendThisTime = await UdpConnection.SendAsync(data[sentLen..].ToArray(), data.Length - sentLen, RemoteEndPoint);
                 sentLen += sendThisTime;
             }
         }

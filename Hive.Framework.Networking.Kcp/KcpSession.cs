@@ -8,20 +8,24 @@ using Hive.Framework.Networking.Abstractions;
 using Hive.Framework.Networking.Shared;
 using System.Buffers;
 using System.Threading;
+using Hive.Framework.Networking.Shared.Helpers;
 
 namespace Hive.Framework.Networking.Kcp
 {
     public sealed class KcpSession<TId> : AbstractSession<TId, KcpSession<TId>>, IKcpCallback where TId : unmanaged
     {
-        public KcpSession(Socket socket, IPacketCodec<TId> packetCodec, IDataDispatcher<KcpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
+        public KcpSession(
+            UdpClient socket,
+            IPEndPoint endPoint,
+            IPacketCodec<TId> packetCodec,
+            IDataDispatcher<KcpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
         {
-            Socket = socket;
-            socket.ReceiveBufferSize = 8192 * 4;
+            UdpConnection = socket;
 
             _kcp = new PoolSegManager.Kcp(2001, this);
 
-            LocalEndPoint = socket.LocalEndPoint as IPEndPoint;
-            RemoteEndPoint = socket.RemoteEndPoint as IPEndPoint;
+            RemoteEndPoint = endPoint;
+            DataWriter = new ArrayBufferWriter<byte>(100);
         }
 
         public KcpSession(IPEndPoint endPoint, IPacketCodec<TId> packetCodec, IDataDispatcher<KcpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
@@ -39,13 +43,15 @@ namespace Hive.Framework.Networking.Kcp
         }
 
         private bool _closed;
+        private bool _isUpdateLoopRunning;
         private readonly PoolSegManager.Kcp _kcp;
 
-        public Socket? Socket { get; private set; }
+        public UdpClient? UdpConnection { get; private set; }
+        public IBufferWriter<byte> DataWriter { get; }
 
         public override bool CanSend => true;
         public override bool CanReceive => true;
-        public override bool IsConnected => Socket is { Connected: true };
+        public override bool IsConnected => true;
 
         protected override void DispatchPacket(object? packet, Type? packetType = null)
         {
@@ -61,23 +67,54 @@ namespace Hive.Framework.Networking.Kcp
 
             // 创建新连接
             _closed = false;
-            Socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Udp);
-            Socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-
-            // 连接到指定地址
-            await Socket.ConnectAsync(RemoteEndPoint);
+            UdpConnection = new UdpClient();
         }
 
         public override ValueTask DoDisconnect()
         {
-            if (_closed || Socket == null) return default;
+            if (_closed || UdpConnection == null) return default;
 
-            Socket?.Shutdown(SocketShutdown.Both);
-            Socket?.Close();
-            Socket = null;
+            UdpConnection.Dispose();
             _closed = true;
 
             return default;
+        }
+
+        protected override async Task SendLoop()
+        {
+            if(!_isUpdateLoopRunning)
+                TaskHelper.ManagedRun(UpdateLoop, CancellationTokenSource.Token);
+
+            while (!CancellationTokenSource.IsCancellationRequested)
+            {
+                if (!IsConnected || !CanSend || !_sendQueue.TryDequeue(out var slice))
+                {
+                    await Task.Delay(1, CancellationTokenSource.Token);
+                    continue;
+                }
+
+                await SendOnce(slice);
+            }
+        }
+
+        private async Task UpdateLoop()
+        {
+            _isUpdateLoopRunning = true;
+
+            while (!CancellationTokenSource.IsCancellationRequested)
+            {
+                if (!IsConnected || !CanSend)
+                {
+                    await Task.Delay(1, CancellationTokenSource.Token);
+                    continue;
+                }
+
+                _kcp.Update(DateTimeOffset.UtcNow);
+
+                await Task.Delay(10, CancellationTokenSource.Token);
+            }
+
+            _isUpdateLoopRunning = false;
         }
 
         /// <summary>
@@ -87,27 +124,45 @@ namespace Hive.Framework.Networking.Kcp
         /// <param name="data"></param>
         /// <returns></returns>
         /// <exception cref="InvalidOperationException"></exception>
-        public override async ValueTask SendOnce(ReadOnlyMemory<byte> data)
+        public override ValueTask SendOnce(ReadOnlyMemory<byte> data)
         {
-            if (Socket == null)
+            if (UdpConnection == null)
                 throw new InvalidOperationException("Socket Init failed!");
 
-            _kcp.Send(data.Span);
+            var result = _kcp.Send(data.Span);
+            if(result < 0)
+                throw new InvalidOperationException("KCP Send Failed!");
+
+            return default;
         }
 
+        private int _currentPosition;
+        private long _lengthCanRead;
         public override async ValueTask<int> ReceiveOnce(Memory<byte> buffer)
         {
-            if (Socket == null)
+            if (UdpConnection == null)
                 throw new InvalidOperationException("Socket Init failed!");
 
-            Socket.Blocking = true;
+            await SpinWaitAsync.SpinUntil(() => Interlocked.Read(ref _lengthCanRead) != 0);
 
-            var length = await Socket.ReceiveAsync(buffer, SocketFlags.None);
+            var readLength = buffer.Length > _lengthCanRead ? (int)_lengthCanRead : buffer.Length;
+            var dataWriter = (ArrayBufferWriter<byte>)DataWriter;
 
+            dataWriter.WrittenSpan.Slice(_currentPosition, readLength).CopyTo(buffer.Span);
             // 将读入的数据写入 KCP 分段管理器，来拼凑完整的数据包
-            _kcp.Input(buffer.Span);
+            _kcp.Input(buffer.Span[..readLength]);
 
-            return length;
+            _currentPosition += readLength;
+            _lengthCanRead -= readLength;
+
+            if (readLength == _lengthCanRead && dataWriter.WrittenCount > 10000)
+            {
+                dataWriter.Clear();
+                _currentPosition = 0;
+                _lengthCanRead = 0;
+            }
+
+            return readLength;
         }
 
         /// <summary>
@@ -117,6 +172,9 @@ namespace Hive.Framework.Networking.Kcp
         /// <returns></returns>
         protected override async Task ReceiveLoop()
         {
+            if (!_isUpdateLoopRunning)
+                TaskHelper.ManagedRun(UpdateLoop, CancellationTokenSource.Token);
+
             using var bufferOwner = MemoryPool<byte>.Shared.Rent(DefaultBufferSize);
             var buffer = bufferOwner.Memory;
 
@@ -162,6 +220,8 @@ namespace Hive.Framework.Networking.Kcp
             }
         }
 
+        public void AdvanceLengthCanRead(int by) => _lengthCanRead += by;
+
         /// <summary>
         /// KCP 库发送实现，
         /// 在 KCP 完成封包处理后，通过该方法发送
@@ -171,19 +231,15 @@ namespace Hive.Framework.Networking.Kcp
         /// <exception cref="InvalidOperationException">Socket 初始化失败时抛出</exception>
         public void Output(IMemoryOwner<byte> buffer, int avalidLength)
         {
-            if (Socket == null)
+            if (UdpConnection == null)
                 throw new InvalidOperationException("Socket Init failed!");
 
             var data = buffer.Memory.Span[..avalidLength];
-            var totalLen = data.Length;
             var sentLen = 0;
 
-            Socket.Blocking = true;
-
-            while (sentLen < totalLen)
+            while (sentLen < avalidLength)
             {
-                var sendThisTime = Socket.Send(data[sentLen..], SocketFlags.None);
-
+                var sendThisTime = UdpConnection.Send(data[sentLen..].ToArray(), data.Length - sentLen, RemoteEndPoint);
                 sentLen += sendThisTime;
             }
             

@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using System.Buffers;
+using System.Net;
 using Hive.Framework.Networking.Shared;
 using System.Net.Sockets;
 using System.Threading;
@@ -9,7 +10,7 @@ using Hive.Framework.Networking.Shared.Helpers;
 
 namespace Hive.Framework.Networking.Kcp
 {
-    public sealed class KcpAcceptor<TId, TSessionId> : AbstractAcceptor<Socket, KcpSession<TId>, TId, TSessionId> where TId : unmanaged
+    public sealed class KcpAcceptor<TId, TSessionId> : AbstractAcceptor<UdpClient, KcpSession<TId>, TId, TSessionId> where TId : unmanaged
     {
         public KcpAcceptor(
             IPEndPoint endPoint,
@@ -19,48 +20,37 @@ namespace Hive.Framework.Networking.Kcp
         {
         }
 
-        public Socket? ServerSocket { get; private set; }
-
-        private void InitSocket()
-        {
-            ServerSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Udp);
-        }
+        public UdpClient? UdpServer { get; private set; }
 
         public override void Start()
         {
-            if (ServerSocket == null)
-                InitSocket();
-
-            ServerSocket!.Bind(EndPoint);
-            ServerSocket.Listen(EndPoint.Port);
+            UdpServer = new UdpClient(EndPoint.Port);
 
             TaskHelper.ManagedRun(StartAcceptClient, CancellationTokenSource.Token);
         }
 
         public override void Stop()
         {
-            if (ServerSocket == null) return;
-
-            ServerSocket.Close();
-            ServerSocket.Dispose();
+            UdpServer?.Dispose();
         }
 
         private async Task StartAcceptClient()
         {
             while (!CancellationTokenSource.IsCancellationRequested)
             {
-                var clientSocket = await ServerSocket.AcceptAsync();
-                await DoAcceptClient(clientSocket, CancellationTokenSource.Token);
+                await DoAcceptClient(UdpServer!, CancellationTokenSource.Token);
             }
         }
 
-        public override ValueTask DoAcceptClient(Socket client, CancellationToken cancellationToken)
+        public override async ValueTask DoAcceptClient(UdpClient client, CancellationToken cancellationToken)
         {
-            var clientSession = new KcpSession<TId>(client, PacketCodec, DataDispatcher);
+            var received = await UdpServer!.ReceiveAsync();
+            var clientSession = new KcpSession<TId>(client, received.RemoteEndPoint, PacketCodec, DataDispatcher);
+
+            clientSession.DataWriter.Write(received.Buffer);
+            clientSession.AdvanceLengthCanRead(received.Buffer.Length);
 
             ClientManager.AddSession(clientSession);
-
-            return default;
         }
 
         public override void Dispose()
