@@ -1,4 +1,5 @@
-﻿using Hive.Framework.ECS.Entity;
+﻿using System.Collections.Generic;
+using Hive.Framework.ECS.Entity;
 
 namespace Hive.Framework.ECS.System
 {

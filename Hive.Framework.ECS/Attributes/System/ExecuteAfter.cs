@@ -1,4 +1,6 @@
-﻿namespace Hive.Framework.ECS.Attributes.System
+﻿using System;
+
+namespace Hive.Framework.ECS.Attributes.System
 {
     
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]

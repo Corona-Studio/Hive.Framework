@@ -1,5 +1,8 @@
-﻿using Hive.Framework.ECS.Entity;
+﻿using System;
+using System.Collections.Generic;
+using Hive.Framework.ECS.Entity;
 using Hive.Framework.ECS.System.Phases;
+using Hive.Framework.Shared.Collections;
 
 namespace Hive.Framework.ECS.System
 {
@@ -7,13 +10,13 @@ namespace Hive.Framework.ECS.System
     {
         public IECSArch Arch { get; }
         
-        private readonly Dictionary<Type, SystemWarp> _typeToSystemDict = new();
+        private readonly Dictionary<Type, SystemInstance> _typeToSystemDict = new();
         
-        private readonly Dictionary<PhaseInterfaceType, Dictionary<Type, SystemWarp>> _phaseToSystemWarpDict = new();
+        private readonly Dictionary<PhaseInterfaceType, Dictionary<Type, SystemInstance>> _phaseToSystemInstDict = new();
 
-        private readonly Dictionary<PhaseInterfaceType, List<SystemWarp>> _phaseToOrderedSystemWarpListDict = new();
+        private readonly MultiDictionary<PhaseInterfaceType, SystemInstance> _phaseToSortedSystemInstList = new();
 
-        private readonly Dictionary<PhaseInterfaceType, SystemGraph> _phaseToSystemGraphDict = new();
+        private readonly Dictionary<PhaseInterfaceType, SystemGraph> _phaseToSystemGraph = new();
 
         
 
@@ -22,15 +25,15 @@ namespace Hive.Framework.ECS.System
             Arch = arch;
             foreach (var systemType in PhaseInterfaceType.AllInterfaceTypes)
             {
-                _phaseToSystemWarpDict.Add(systemType, new Dictionary<Type, SystemWarp>());
-                _phaseToOrderedSystemWarpListDict.Add(systemType, new List<SystemWarp>());
-                _phaseToSystemGraphDict.Add(systemType, new SystemGraph());
+                _phaseToSystemInstDict.Add(systemType, new Dictionary<Type, SystemInstance>());
+                _phaseToSortedSystemInstList.Add(systemType, new List<SystemInstance>());
+                _phaseToSystemGraph.Add(systemType, new SystemGraph());
             }
         }
 
         public void RegisterSystem(ISystem system)
         {
-            var systemWarp = new SystemWarp(system);
+            var systemWarp = new SystemInstance(system);
             var type = system.GetType();
 
             if (_typeToSystemDict.ContainsKey(type))
@@ -43,10 +46,10 @@ namespace Hive.Framework.ECS.System
             var interfaceTypes = type.GetInterfaces();
             foreach (var interfaceType in interfaceTypes)
             {
-                if (_phaseToSystemWarpDict.ContainsKey(interfaceType))
+                if (_phaseToSystemInstDict.ContainsKey(interfaceType))
                 {
-                    _phaseToSystemWarpDict[interfaceType].Add(type, systemWarp);
-                    _phaseToSystemGraphDict[interfaceType].AddSystemWarp(systemWarp);
+                    _phaseToSystemInstDict[interfaceType].Add(type, systemWarp);
+                    _phaseToSystemGraph[interfaceType].AddSystemWarp(systemWarp);
                 }
             }
         }
@@ -62,18 +65,30 @@ namespace Hive.Framework.ECS.System
 
         public void RecomputeExecutionOrder(PhaseInterfaceType interfaceType)
         {
-            lock (_phaseToOrderedSystemWarpListDict)
+            lock (_phaseToSortedSystemInstList)
             {
-                var sortedSequence = _phaseToSystemGraphDict[interfaceType].GetTopologicalSortedSequence();
-                var orderedSystemsOfThisSystemType = _phaseToOrderedSystemWarpListDict[interfaceType];
+                var sortedSequence = _phaseToSystemGraph[interfaceType].GetTopologicalSortedSequence();
+                var orderedSystemsOfThisSystemType = _phaseToSortedSystemInstList[interfaceType];
                 orderedSystemsOfThisSystemType.Clear();
                 orderedSystemsOfThisSystemType.AddRange(sortedSequence);
             }
         }
 
-        public IEnumerable<SystemWarp> GetOrderedExecutionSequence(PhaseInterfaceType interfaceType)
+        public IEnumerable<SystemInstance> GetOrderedExecutionSequence(PhaseInterfaceType interfaceType)
         {
-            return _phaseToOrderedSystemWarpListDict[interfaceType];
+            return _phaseToSortedSystemInstList[interfaceType];
+        }
+        
+        public void ExecuteSystems(SystemPhase phase)
+        {
+            var interfaceType = PhaseInterfaceType.GetInterfaceBySystemPhase(phase);
+            if (_phaseToSortedSystemInstList.TryGetValue(interfaceType,out var instances))
+            {
+                foreach (var inst in instances)
+                {
+                    inst.Execute(phase);
+                }
+            }
         }
 
         public void ExecuteSystems(SystemPhase phase,List<IEntity> entities)
@@ -81,9 +96,9 @@ namespace Hive.Framework.ECS.System
             
             var interfaceType = PhaseInterfaceType.GetInterfaceBySystemPhase(phase);
             
-            if (!_phaseToOrderedSystemWarpListDict.ContainsKey(interfaceType)) return;
+            if (!_phaseToSortedSystemInstList.ContainsKey(interfaceType)) return;
             
-            var systemWarps = _phaseToOrderedSystemWarpListDict[interfaceType];
+            var systemWarps = _phaseToSortedSystemInstList[interfaceType];
             
             // ReSharper disable once ForCanBeConvertedToForeach
             for (var i = 0; i < systemWarps.Count; i++)
@@ -117,6 +132,7 @@ namespace Hive.Framework.ECS.System
                 }
                 catch (Exception e)
                 {
+                    Console.WriteLine(e);
                     //todo Debug.LogError(e);
                 }
                 // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator

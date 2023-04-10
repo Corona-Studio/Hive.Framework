@@ -1,4 +1,8 @@
-﻿namespace Hive.Framework.ECS.Component
+﻿using System;
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
+
+namespace Hive.Framework.ECS.Component
 {
     public class ComponentManager : IBelongToECSArch
     {
@@ -9,72 +13,63 @@
             Arch = arch;
         }
 
-        public void AddComponent<TComp>(int entityId) where TComp : IEntityComponent, new()
+        private ComponentList<TComp> GetComponentList<TComp>() where TComp : IEntityComponent
+        {
+            ComponentList<TComp> compList;
+            if (_typeToComponentListDict.TryGetValue(typeof(TComp), out var list))
+            {
+                compList = (ComponentList<TComp>)list;
+            }else{
+                compList = new ComponentList<TComp>();
+                _typeToComponentListDict.Add(typeof(TComp), compList);
+            }
+
+            return compList;
+        }
+
+        public void AddComponent<TComp>(long entityId) where TComp : IEntityComponent, new()
         {
             AddComponent(entityId, new TComp());
         }
 
-        public void AddComponent<TComp>(int entityId, TComp component)
+        public void AddComponent<TComp>(long entityId, TComp component)
             where TComp : IEntityComponent
         {
-            ComponentList<TComp> componentList;
-            if (_typeToComponentListDict.TryGetValue(typeof(TComp), out var list))
-            {
-                componentList = (ComponentList<TComp>)list;
-            }else{
-                componentList = new ComponentList<TComp>();
-                _typeToComponentListDict.Add(typeof(TComp), componentList);
-            }
+            var componentList = GetComponentList<TComp>();
 
             componentList.AttachToEntity(entityId, component);
         }
 
-        public void RemoveComponent<TComp>(int entityId) where TComp : IEntityComponent
+        public void RemoveComponent<TComp>(long entityId) where TComp : IEntityComponent
         {
-            if (_typeToComponentListDict.TryGetValue(typeof(TComp), out var list))
-            {
-                var entityComponents = (ComponentList<TComp>)list;
-                entityComponents.DetachFromEntity(entityId);
-            }
+            var componentList = GetComponentList<TComp>();
+            componentList.DetachFromEntity(entityId);
         }
 
-        public void ModifyComponent<TComp>(int entityId, RefAction<TComp> supplier)
+        public void UpdateComponent<TComp>(long entityId, RefAction<TComp> supplier)
             where TComp : IEntityComponent
         {
-            if (_typeToComponentListDict.TryGetValue(typeof(TComp), out var list))
-            {
-                var componentList = (ComponentList<TComp>)list;
-                componentList.Modify(entityId,supplier);
-            }
+            var componentList = GetComponentList<TComp>();
+            componentList.Update(entityId,supplier);
         }
 
-        public TComp? GetComponent<TComp>(int entityId) where TComp : IEntityComponent
+        public TComp? GetComponent<TComp>(long entityId) where TComp : IEntityComponent
         {
-            if (_typeToComponentListDict.TryGetValue(typeof(TComp), out var list))
-            {
-                if (list is not Dictionary<int, TComp> comps) return default;
-
-                if (comps.TryGetValue(entityId, out var component))
-                {
-                    return component;
-                }
-            }
-
-            return default;
+            var componentList = GetComponentList<TComp>();
+            ref var comp = ref componentList.GetRefByEntityId(entityId);
+            return Unsafe.IsNullRef(ref comp) ? default : comp;
         }
 
-        public void SeTComp<TComp>(int entityId, TComp comp)
+        public void SetComponent<TComp>(long entityId, TComp comp)
             where TComp : IEntityComponent
         {
-            if (_typeToComponentListDict.TryGetValue(typeof(TComp), out var list))
-            {
-                if (list is not Dictionary<int, TComp> entityComponents) return;
-
-                if (entityComponents.ContainsKey(entityId))
-                {
-                    entityComponents[entityId] = comp;
-                }
-            }
+            var componentList = GetComponentList<TComp>();
+            ref var component = ref componentList.GetRefByEntityId(entityId);
+            
+            if (Unsafe.IsNullRef(ref component))
+                return;
+            
+            component = comp;
         }
 
         public IECSArch Arch { get; }

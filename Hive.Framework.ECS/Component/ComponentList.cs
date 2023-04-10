@@ -1,36 +1,30 @@
-﻿using System.Collections;
-using System.Collections.ObjectModel;
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using Hive.Framework.Shared.Collections;
 
 namespace Hive.Framework.ECS.Component
 {
-    public class ComponentList<T> : IEnumerable<T> where T : IEntityComponent
+    public class ComponentList<T> where T : IEntityComponent
     {
-        private readonly BiDictionary<int, int> _entityIdToComponentIndex = new();
-
-        private readonly T _defaultT = default!;
-
+        // NOTICE: 操作_entityIdToComponentIndex和_items，必须调用_rwLock的EnterWriteLock
+        private readonly BiDictionary<long, int> _entityIdToComponentIndex = new();
+        private T[] _items = SEmptyArray;
+        
         private const int DefaultCapacity = 4;
-        private T[] _items;
-        private int _size = 0;
+        private int _size;
 
         private readonly ReaderWriterLockSlim _rwLock = new();
-        
+
 #pragma warning disable CA1825
         // ReSharper disable once UseArrayEmptyMethod
-        private static readonly T[] s_emptyArray = new T[0];
+        private static readonly T[] SEmptyArray = new T[0];
         private int _version = 1;
 #pragma warning restore CA1825
-
-        private readonly List<T> _components = new();
-        private IReadOnlyList<T> Components { get; }
-
-        public ComponentList()
-        {
-            Components = new ReadOnlyCollection<T>(_items);
-        }
+        
 
         #region List Implement
 
@@ -76,8 +70,9 @@ namespace Hive.Framework.ECS.Component
             Capacity = newcapacity;
         }
 
-        public int Capacity
+        private int Capacity
         {
+            // ReSharper disable once UnusedMember.Local
             get => _items.Length;
             set
             {
@@ -100,13 +95,14 @@ namespace Hive.Framework.ECS.Component
                 }
                 else
                 {
-                    _items = s_emptyArray;
+                    _items = SEmptyArray;
                 }
             }
         }
 
-        private void Append(T item)
+        private void AppendUnsafe(T item)
         {
+            _version++;
             T[] array = _items;
             int size = _size;
             if ((uint)size < (uint)array.Length)
@@ -150,9 +146,11 @@ namespace Hive.Framework.ECS.Component
             {
                 _items[_size] = default!;
             }
+            
+            _version++;
         }
 
-        public void AttachToEntity(int entityId, T component)
+        public void AttachToEntity(long entityId, T component)
         {
             _rwLock.EnterWriteLock();
 
@@ -163,9 +161,9 @@ namespace Hive.Framework.ECS.Component
                     // todo log
                     return;
                 }
-            
+
                 var idx = _size;
-                Append(component);
+                AppendUnsafe(component);
                 _entityIdToComponentIndex.Add(entityId, idx);
             }
             finally
@@ -174,30 +172,37 @@ namespace Hive.Framework.ECS.Component
             }
         }
 
-        public void DetachFromEntity(int entity)
+        public void DetachFromEntity(long entity)
         {
-            lock (_entityIdToComponentIndex)
+            _rwLock.EnterWriteLock();
+            if (!_entityIdToComponentIndex.TryGetValueByKey(entity, out var idx)) return;
+
+            try
             {
-                if (!_entityIdToComponentIndex.TryGetValueByKey(entity, out var idx)) return;
-
-                lock (_items)
+                var lastIdx = _size - 1;
+                _entityIdToComponentIndex.RemoveByKey(entity);
+                if (idx != lastIdx)
                 {
-                    var lastIdx = _size - 1;
-                    _entityIdToComponentIndex.RemoveByKey(entity);
-                    if (idx != lastIdx)
+                    _items[idx] = _items[lastIdx];
+                    if (_entityIdToComponentIndex.TryGetKeyByValue(lastIdx, out var lastEntityId))
                     {
-                        _items[idx] = _items[lastIdx];
-                        if (_entityIdToComponentIndex.TryGetKeyByValue(lastIdx, out var lastEntityId))
-                        {
-                            _entityIdToComponentIndex.TrySetValue(lastEntityId, idx);
-                        }
+                        _entityIdToComponentIndex.TrySetValue(lastEntityId, idx);
                     }
-
-                    RemoveAt(lastIdx);
                 }
+
+                RemoveAt(lastIdx);
+            }
+            finally
+            {
+                _rwLock.ExitWriteLock();
             }
         }
-
+        
+        /// <summary>
+        /// Get the reference of a component in this list.
+        /// </summary>
+        /// <param name="idx"></param>
+        /// <exception cref="IndexOutOfRangeException"></exception>
         public ref readonly T this[int idx]
         {
             get
@@ -210,24 +215,19 @@ namespace Hive.Framework.ECS.Component
                 return ref _items[idx];
             }
         }
-
-        public ref T GetRefByEntityId(int entityId)
+        
+        /// <summary>
+        /// Get the reference of a component by belonged entity id.
+        /// </summary>
+        /// <param name="entityId"></param>
+        /// <returns>A reference to the component</returns>
+        public ref T GetRefByEntityId(long entityId)
         {
             _rwLock.EnterReadLock();
 
             try
             {
-                if (_entityIdToComponentIndex.TryGetValueByKey(entityId, out var idx))
-                {
-                    // Extracting 'throw' statement into a different
-                    // method helps the jitter to inline a property access.
-                    if ((uint)idx >= (uint)_items.Length)
-                        throw new IndexOutOfRangeException(nameof(idx));
-
-                    return ref _items[idx];
-                }
-
-                throw new ArgumentOutOfRangeException(nameof(entityId));
+                return ref GetRefByEntityIdUnsafe(entityId);
             }
             finally
             {
@@ -235,25 +235,120 @@ namespace Hive.Framework.ECS.Component
             }
         }
 
-        public void Modify(int entityId, RefAction<T> modifier)
+        private ref T GetRefByEntityIdUnsafe(long entityId)
         {
-            ref var item = ref GetRefByEntityId(entityId);
-            lock (item)
+            if (_entityIdToComponentIndex.TryGetValueByKey(entityId, out var idx))
             {
-                // todo _entityIdToComponentIndex and _items can not be written in this scope.
-                modifier(ref item);
+                // Extracting 'throw' statement into a different
+                // method helps the jitter to inline a property access.
+                if ((uint)idx >= (uint)_items.Length)
+                    throw new IndexOutOfRangeException(nameof(idx));
+
+                {
+                    return ref _items[idx];
+                }
+            }
+
+            return ref Unsafe.NullRef<T>();
+        }
+
+        public void Update(long entityId, RefAction<T> modifier)
+        {
+            _rwLock.EnterReadLock();
+            ref var component = ref Unsafe.NullRef<T>();
+            try
+            {
+                component = ref GetRefByEntityIdUnsafe(entityId);
+            }
+            finally
+            {
+                _rwLock.ExitReadLock();
+            }
+            
+            if (Unsafe.IsNullRef(ref component))
+                return;
+            
+            // todo 也许有更好的方法
+            lock (this)
+            {
+                modifier(ref component);
             }
         }
 
-
-        public IEnumerator<T> GetEnumerator()
+        public Enumerator GetEnumerator()
         {
-            return Components.GetEnumerator();
+            return new Enumerator(this);
         }
 
-        IEnumerator IEnumerable.GetEnumerator()
+        // ReSharper disable once RedundantExtendsListEntry
+        public struct Enumerator : IEnumerator<T>, IEnumerator
         {
-            return Components.GetEnumerator();
+            private readonly ComponentList<T> _list;
+            private int _index;
+            private readonly int _version;
+            private T? _current;
+
+            internal Enumerator(ComponentList<T> list)
+            {
+                _list = list;
+                _index = 0;
+                _version = list._version;
+                _current = default;
+            }
+
+            public void Dispose()
+            {
+            }
+
+            public bool MoveNext()
+            {
+                var localList = _list;
+
+                if (_version == localList._version && ((uint)_index < (uint)localList._size))
+                {
+                    _current = localList._items[_index];
+                    _index++;
+                    return true;
+                }
+                return MoveNextRare();
+            }
+
+            private bool MoveNextRare()
+            {
+                if (_version != _list._version)
+                {
+                    throw new InvalidOperationException("The list's version has changed.");
+                }
+
+                _index = _list._size + 1;
+                _current = default;
+                return false;
+            }
+
+            public T Current => _current!;
+
+            object? IEnumerator.Current
+            {
+                get
+                {
+                    if (_index == 0 || _index == _list._size + 1)
+                    {
+                        throw new InvalidOperationException("There is no more element.");
+                    }
+                    return Current;
+                }
+            }
+
+            void IEnumerator.Reset()
+            {
+                if (_version != _list._version)
+                {
+                    throw new InvalidOperationException("");
+                }
+
+                _index = 0;
+                _current = default;
+            }
         }
     }
 }
