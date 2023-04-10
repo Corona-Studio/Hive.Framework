@@ -1,12 +1,11 @@
-﻿using System.Buffers;
-using System.Net;
+﻿using Hive.Framework.Codec.Abstractions;
+using Hive.Framework.Networking.Abstractions;
 using Hive.Framework.Networking.Shared;
+using Hive.Framework.Networking.Shared.Helpers;
+using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
-using Hive.Framework.Codec.Abstractions;
-using Hive.Framework.Networking.Abstractions;
-using Hive.Framework.Networking.Shared.Helpers;
 
 namespace Hive.Framework.Networking.Kcp
 {
@@ -47,8 +46,7 @@ namespace Hive.Framework.Networking.Kcp
             var received = await UdpServer!.ReceiveAsync();
             var clientSession = new KcpSession<TId>(client, received.RemoteEndPoint, PacketCodec, DataDispatcher);
 
-            clientSession.DataWriter.Write(received.Buffer);
-            clientSession.AdvanceLengthCanRead(received.Buffer.Length);
+            clientSession.DataQueue.Enqueue(received.Buffer);
 
             ClientManager.AddSession(clientSession);
         }

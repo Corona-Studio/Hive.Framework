@@ -7,6 +7,7 @@ using Hive.Framework.Codec.Abstractions;
 using Hive.Framework.Networking.Abstractions;
 using Hive.Framework.Networking.Shared;
 using System.Buffers;
+using System.Collections.Concurrent;
 using System.Threading;
 using Hive.Framework.Networking.Shared.Helpers;
 
@@ -25,7 +26,6 @@ namespace Hive.Framework.Networking.Kcp
             _kcp = new PoolSegManager.Kcp(2001, this);
 
             RemoteEndPoint = endPoint;
-            DataWriter = new ArrayBufferWriter<byte>(100);
         }
 
         public KcpSession(IPEndPoint endPoint, IPacketCodec<TId> packetCodec, IDataDispatcher<KcpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
@@ -46,8 +46,8 @@ namespace Hive.Framework.Networking.Kcp
         private bool _isUpdateLoopRunning;
         private readonly PoolSegManager.Kcp _kcp;
 
+        public ConcurrentQueue<byte[]> DataQueue { get; } = new ConcurrentQueue<byte[]>();
         public UdpClient? UdpConnection { get; private set; }
-        public IBufferWriter<byte> DataWriter { get; }
 
         public override bool CanSend => true;
         public override bool CanReceive => true;
@@ -135,34 +135,25 @@ namespace Hive.Framework.Networking.Kcp
 
             return default;
         }
-
-        private int _currentPosition;
-        private long _lengthCanRead;
+        
         public override async ValueTask<int> ReceiveOnce(Memory<byte> buffer)
         {
             if (UdpConnection == null)
                 throw new InvalidOperationException("Socket Init failed!");
 
-            await SpinWaitAsync.SpinUntil(() => Interlocked.Read(ref _lengthCanRead) != 0);
+            byte[]? data;
 
-            var readLength = buffer.Length > _lengthCanRead ? (int)_lengthCanRead : buffer.Length;
-            var dataWriter = (ArrayBufferWriter<byte>)DataWriter;
-
-            dataWriter.WrittenSpan.Slice(_currentPosition, readLength).CopyTo(buffer.Span);
-            // 将读入的数据写入 KCP 分段管理器，来拼凑完整的数据包
-            _kcp.Input(buffer.Span[..readLength]);
-
-            _currentPosition += readLength;
-            _lengthCanRead -= readLength;
-
-            if (readLength == _lengthCanRead && dataWriter.WrittenCount > 10000)
+            while (!DataQueue.TryDequeue(out data))
             {
-                dataWriter.Clear();
-                _currentPosition = 0;
-                _lengthCanRead = 0;
+                await Task.Delay(10);
             }
 
-            return readLength;
+            if (data == null || data.Length == 0)
+                return 0;
+
+            _kcp.Input(data);
+
+            return data.Length;
         }
 
         /// <summary>
@@ -174,13 +165,7 @@ namespace Hive.Framework.Networking.Kcp
         {
             if (!_isUpdateLoopRunning)
                 TaskHelper.ManagedRun(UpdateLoop, CancellationTokenSource.Token);
-
-            using var bufferOwner = MemoryPool<byte>.Shared.Rent(DefaultBufferSize);
-            var buffer = bufferOwner.Memory;
-
-            var receivedLen = 0; //当前共接受了多少数据
-            var offset = 0; //当前接受到的数据在buffer中的偏移量，buffer中的有效数据：buffer[offset..offset+receivedLen]
-
+            
             try
             {
                 while (!CancellationTokenSource.IsCancellationRequested)
@@ -188,30 +173,27 @@ namespace Hive.Framework.Networking.Kcp
                     if (!IsConnected || !CanReceive) SpinWait.SpinUntil(() => IsConnected && CanReceive);
 
                     var isInnerReceivedFailed = false;
-                    var (received, avalidLength) = _kcp.TryRecv();
+                    var (received, _) = _kcp.TryRecv();
 
                     while (received == null)
                     {
-                        var lenThisTime = await ReceiveOnce(buffer[(offset + receivedLen)..]);
+                        var lenThisTime = await ReceiveOnce(Memory<byte>.Empty);
 
                         if (lenThisTime == 0)
                         {
                             isInnerReceivedFailed = true;
                             break;
                         }
-
-                        receivedLen += lenThisTime;
-                        (received, avalidLength) = _kcp.TryRecv();
+                        
+                        (received, _) = _kcp.TryRecv();
 
                         await Task.Delay(10);
                     }
 
                     if (isInnerReceivedFailed) break;
+                    if(received == null) break;
 
-                    ProcessPacket(buffer[..avalidLength]);
-
-                    offset = 0;
-                    receivedLen = 0;
+                    ProcessPacket(received.Memory);
                 }
             }
             finally
@@ -219,8 +201,6 @@ namespace Hive.Framework.Networking.Kcp
                 ReceivingLoopRunning = false;
             }
         }
-
-        public void AdvanceLengthCanRead(int by) => _lengthCanRead += by;
 
         /// <summary>
         /// KCP 库发送实现，

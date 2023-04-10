@@ -1,7 +1,6 @@
 ﻿using Hive.Framework.Networking.Kcp;
 using Hive.Framework.Networking.Shared;
 using Hive.Framework.Networking.Tests.Messages;
-using System.Buffers;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Text;
@@ -23,10 +22,10 @@ public class FakeKcpClientManager : AbstractClientManager<Guid, KcpSession<ushor
         }
 
         {
-            var writtenSpan = ((ArrayBufferWriter<byte>)session.DataWriter).WrittenSpan;
-
-            existSession.DataWriter.Write(writtenSpan);
-            existSession.AdvanceLengthCanRead(writtenSpan.Length);
+            foreach (var data in session.DataQueue)
+            {
+                existSession.DataQueue.Enqueue(data);
+            }
         }
     }
 
