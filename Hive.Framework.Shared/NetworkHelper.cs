@@ -15,7 +15,7 @@ namespace Hive.Framework.Shared
         /// 获取操作系统已用的端口号        
         /// </summary>        
         /// <returns></returns>        
-        public static List<int> PortIsUsed()
+        public static HashSet<int> PortIsUsed()
         {
             //获取本地计算机的网络连接和通信统计数据的信息            
             var ipGlobalProperties = IPGlobalProperties.GetIPGlobalProperties();
@@ -33,7 +33,7 @@ namespace Hive.Framework.Shared
             allPorts.AddRange(ipsUDP.Select(ep => ep.Port));
             allPorts.AddRange(tcpConnInfoArray.Select(conn => conn.LocalEndPoint.Port));
 
-            return allPorts;
+            return allPorts.ToHashSet();
         }
 
         public static int GetRandomPort()

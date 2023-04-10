@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Net;
 using System.Threading.Tasks;
 using Hive.Framework.Networking.Abstractions.EventArgs;
@@ -13,7 +12,7 @@ namespace Hive.Framework.Networking.Abstractions
     public interface ISession<TSender> where TSender : ISession<TSender>
     {
         IPEndPoint? LocalEndPoint { get; }
-        IPEndPoint? RemoteEndPoint { get; }
+        IPEndPoint RemoteEndPoint { get; }
         IDataDispatcher<TSender> DataDispatcher { get; }
         
         ValueTask DoConnect();

@@ -1,7 +1,6 @@
 ﻿using Hive.Framework.Networking.Kcp;
 using Hive.Framework.Networking.Shared;
 using Hive.Framework.Networking.Tests.Messages;
-using System.Collections.Concurrent;
 using System.Net;
 using System.Text;
 
@@ -9,26 +8,6 @@ namespace Hive.Framework.Networking.Tests.Kcp;
 
 public class FakeKcpClientManager : AbstractClientManager<Guid, KcpSession<ushort>>
 {
-    private readonly ConcurrentDictionary<IPEndPoint, KcpSession<ushort>> _endPointSessionMapper = new();
-
-    public override void AddSession(KcpSession<ushort> session)
-    {
-        if (session.RemoteEndPoint == null) return;
-        if (!_endPointSessionMapper.TryGetValue(session.RemoteEndPoint, out var existSession))
-        {
-            _endPointSessionMapper.AddOrUpdate(session.RemoteEndPoint, session, (_, _) => session);
-            base.AddSession(session);
-            return;
-        }
-
-        {
-            foreach (var data in session.DataQueue)
-            {
-                existSession.DataQueue.Enqueue(data);
-            }
-        }
-    }
-
     protected override void RegisterHeartBeatMessage(KcpSession<ushort> session)
     {
         session.OnReceive<HeartBeatMessage>((_, kcpSession) =>

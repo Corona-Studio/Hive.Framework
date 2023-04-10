@@ -25,8 +25,6 @@ namespace Hive.Framework.Networking.Udp
             UdpConnection = socket;
 
             RemoteEndPoint = endPoint;
-
-            DataWriter = new ArrayBufferWriter<byte>(100);
         }
 
         public UdpSession(IPEndPoint endPoint, IPacketCodec<TId> packetCodec, IDataDispatcher<UdpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
@@ -42,11 +40,11 @@ namespace Hive.Framework.Networking.Udp
         private bool _closed;
 
         public UdpClient? UdpConnection { get; private set; }
-        public IBufferWriter<byte> DataWriter { get; }
+        public IBufferWriter<byte> DataWriter { get; } = new ArrayBufferWriter<byte>(100);
 
         public override bool CanSend => true;
         public override bool CanReceive => true;
-        public override bool IsConnected => true;
+        public override bool IsConnected => UdpConnection?.Client != null;
 
         protected override void DispatchPacket(object? packet, Type? packetType = null)
         {
@@ -90,7 +88,7 @@ namespace Hive.Framework.Networking.Udp
             }
         }
 
-        public void AdvanceLengthCanRead(int by) => _lengthCanRead += by;
+        public void AdvanceLengthCanRead(int by) => Interlocked.Add(ref _lengthCanRead, by);
 
         private int _currentPosition;
         private long _lengthCanRead;
@@ -101,19 +99,20 @@ namespace Hive.Framework.Networking.Udp
 
             await SpinWaitAsync.SpinUntil(() => Interlocked.Read(ref _lengthCanRead) != 0);
 
-            var readLength = buffer.Length > _lengthCanRead ? (int)_lengthCanRead : buffer.Length;
+            var lengthCanRead = Interlocked.Read(ref _lengthCanRead);
+            var readLength = buffer.Length > lengthCanRead ? (int)lengthCanRead : buffer.Length;
             var dataWriter = (ArrayBufferWriter<byte>)DataWriter;
 
             dataWriter.WrittenSpan.Slice(_currentPosition, readLength).CopyTo(buffer.Span);
 
             _currentPosition += readLength;
-            _lengthCanRead -= readLength;
+            Interlocked.Add(ref _lengthCanRead, -readLength);
 
-            if (readLength == _lengthCanRead && dataWriter.WrittenCount > 10000)
+            if (readLength == Interlocked.Read(ref _lengthCanRead) && dataWriter.WrittenCount > 10000)
             {
                 dataWriter.Clear();
                 _currentPosition = 0;
-                _lengthCanRead = 0;
+                Interlocked.Exchange(ref _lengthCanRead, 0);
             }
 
             return readLength;

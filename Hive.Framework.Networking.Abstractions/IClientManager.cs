@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net;
 using Hive.Framework.Networking.Abstractions.EventArgs;
 
 namespace Hive.Framework.Networking.Abstractions;
@@ -42,6 +43,14 @@ public interface IClientManager<TSessionId, TSession> where TSession : ISession<
     /// 停止客户端连接检查器
     /// </summary>
     void StopClientConnectionHolder();
+
+    /// <summary>
+    /// 使用远程终结点获取会话
+    /// </summary>
+    /// <param name="remoteEndPoint"></param>
+    /// <param name="session"></param>
+    /// <returns></returns>
+    bool TryGetSession(IPEndPoint remoteEndPoint, out TSession? session);
 
     event EventHandler<ClientConnectionChangedEventArgs<TSession>>? OnClientConnected;
     event EventHandler<ClientConnectionChangedEventArgs<TSession>>? OnClientDisconnected;

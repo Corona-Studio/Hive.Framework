@@ -44,6 +44,14 @@ namespace Hive.Framework.Networking.Kcp
         public override async ValueTask DoAcceptClient(UdpClient client, CancellationToken cancellationToken)
         {
             var received = await UdpServer!.ReceiveAsync();
+
+            if (ClientManager.TryGetSession(received.RemoteEndPoint, out var session))
+            {
+                session!.DataQueue.Enqueue(received.Buffer);
+
+                return;
+            }
+
             var clientSession = new KcpSession<TId>(client, received.RemoteEndPoint, PacketCodec, DataDispatcher);
 
             clientSession.DataQueue.Enqueue(received.Buffer);

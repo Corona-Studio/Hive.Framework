@@ -45,6 +45,15 @@ namespace Hive.Framework.Networking.Udp
         public override async ValueTask DoAcceptClient(UdpClient client, CancellationToken cancellationToken)
         {
             var received = await UdpServer!.ReceiveAsync();
+            
+            if (ClientManager.TryGetSession(received.RemoteEndPoint, out var session))
+            {
+                session!.DataWriter.Write(received.Buffer);
+                session.AdvanceLengthCanRead(received.Buffer.Length);
+
+                return;
+            }
+
             var clientSession = new UdpSession<TId>(client, received.RemoteEndPoint, PacketCodec, DataDispatcher);
 
             clientSession.DataWriter.Write(received.Buffer);

@@ -51,7 +51,7 @@ namespace Hive.Framework.Networking.Kcp
 
         public override bool CanSend => true;
         public override bool CanReceive => true;
-        public override bool IsConnected => true;
+        public override bool IsConnected => UdpConnection?.Client != null;
 
         protected override void DispatchPacket(object? packet, Type? packetType = null)
         {

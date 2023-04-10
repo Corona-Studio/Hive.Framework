@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Hive.Framework.Networking.Abstractions;
@@ -19,6 +20,7 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
     private readonly CancellationTokenSource _clientConnectionHolderCancellationTokenSource = new();
     private readonly ConcurrentDictionary<TSessionId, TSession> _idSessionMapper = new ();
     private readonly ConcurrentDictionary<TSession, TSessionId> _sessionIdMapper = new ();
+    private readonly ConcurrentDictionary<IPEndPoint, TSession> _endPointSessionMapper = new ();
     private readonly ConcurrentDictionary<TSessionId, DateTime> _lastHeartBeatReceiveTimeDic = new();
     private readonly ConcurrentBag<TSession> _disconnectedSessions = new ();
 
@@ -65,7 +67,10 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
         _idSessionMapper.TryUpdate(sessionId, session, oldSession);
 
         _sessionIdMapper.TryRemove(oldSession, out _);
-        _sessionIdMapper.AddOrUpdate(session, sessionId, (_, id) => id);
+        _sessionIdMapper.AddOrUpdate(session, sessionId, (_, _) => sessionId);
+        
+        _endPointSessionMapper.TryRemove(oldSession.RemoteEndPoint, out _);
+        _endPointSessionMapper.AddOrUpdate(session.RemoteEndPoint, session, (_, _) => session);
     }
 
     /// <summary>
@@ -172,6 +177,17 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
     protected abstract void SendHeartBeat(TSession session);
 
     /// <summary>
+    /// 使用远程终结点获取会话
+    /// </summary>
+    /// <param name="remoteEndPoint"></param>
+    /// <param name="session"></param>
+    /// <returns></returns>
+    public virtual bool TryGetSession(IPEndPoint remoteEndPoint, out TSession? session)
+    {
+        return _endPointSessionMapper.TryGetValue(remoteEndPoint, out session);
+    }
+
+    /// <summary>
     /// 当客户端成功连接时调用，
     /// 默认的实现会将会话加入在线列表并开始轮询在线状态
     /// <para>如果客户端断开了连接，则调用 <see cref="OnClientDisconnected"/> 方法</para>
@@ -184,6 +200,7 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
 
         _idSessionMapper.TryAdd(newId, session);
         _sessionIdMapper.TryAdd(session, newId);
+        _endPointSessionMapper.TryAdd(session.RemoteEndPoint, session);
 
         OnClientConnected?.Invoke(this, new ClientConnectionChangedEventArgs<TSession>(session, ClientConnectionStatus.Connected));
     }
@@ -200,6 +217,7 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
     {
         _idSessionMapper.TryRemove(sessionId, out _);
         _sessionIdMapper.TryRemove(session, out _);
+        _endPointSessionMapper.TryRemove(session.RemoteEndPoint, out _);
         _disconnectedSessions.Add(session);
 
         OnClientDisconnected?.Invoke(this, new ClientConnectionChangedEventArgs<TSession>(session, ClientConnectionStatus.Disconnected));

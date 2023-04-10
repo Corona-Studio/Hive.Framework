@@ -1,35 +1,12 @@
-﻿using System.Buffers;
-using System.Collections.Concurrent;
-using System.Net;
-using System.Text;
-using Hive.Framework.Networking.Shared;
+﻿using Hive.Framework.Networking.Shared;
 using Hive.Framework.Networking.Tests.Messages;
 using Hive.Framework.Networking.Udp;
+using System.Text;
 
 namespace Hive.Framework.Networking.Tests.Udp;
 
 public class FakeUdpClientManager : AbstractClientManager<Guid, UdpSession<ushort>>
 {
-    private readonly ConcurrentDictionary<IPEndPoint, UdpSession<ushort>> _endPointSessionMapper = new ();
-
-    public override void AddSession(UdpSession<ushort> session)
-    {
-        if (session.RemoteEndPoint == null) return;
-        if (!_endPointSessionMapper.TryGetValue(session.RemoteEndPoint, out var existSession))
-        {
-            _endPointSessionMapper.AddOrUpdate(session.RemoteEndPoint, session, (_, _) => session);
-            base.AddSession(session);
-            return;
-        }
-
-        {
-            var writtenSpan = ((ArrayBufferWriter<byte>)session.DataWriter).WrittenSpan;
-
-            existSession.DataWriter.Write(writtenSpan);
-            existSession.AdvanceLengthCanRead(writtenSpan.Length);
-        }
-    }
-
     protected override void RegisterHeartBeatMessage(UdpSession<ushort> session)
     {
         session.OnReceive<HeartBeatMessage>((_, udpSession) =>
