@@ -3,6 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net7.0</TargetFramework>
     <Nullable>enable</Nullable>
+    <RootNamespace>Hive.Framework.Codec.Protobuf</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
@@ -12,8 +13,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Hive.Framework.Codec.Abstractions\Hive.Framework.Codec.Abstractions.csproj" />
-    <ProjectReference Include="..\Hive.Framework.Shared\Hive.Framework.Shared.csproj" />
+    <ProjectReference Include="..\Hive.Common.Codec.Abstractions\Hive.Common.Codec.Abstractions.csproj" />
+    <ProjectReference Include="..\Hive.Common.Shared\Hive.Common.Shared.csproj" />
   </ItemGroup>
 
 </Project>

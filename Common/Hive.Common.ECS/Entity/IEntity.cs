@@ -12,9 +12,5 @@ namespace Hive.Framework.ECS.Entity
         public IEntity Parent { get; set; }
         public long InstanceId { get; init; }
 
-        //public TComponent GetComponent<TComponent>() where TComponent : IEntityComponent;
-        
-        //public void AddComponent<TComponent>(TComponent component) where TComponent : IEntityComponent;
-
     }
 }

@@ -12,8 +12,7 @@ namespace Hive.Framework.ECS.System
         public ISystem System { get; }
         public readonly HashSet<Type> ExecuteBeforeSystems = EmptyTypeSet;
         public readonly HashSet<Type> ExecuteAfterSystems = EmptyTypeSet;
-        public readonly HashSet<Type> RelatedComponents;
-        public readonly List<IEntity> RelatedEntities = new();
+        public readonly List<IEntity> ConcernedEntityList = new();
 
         public Type SystemType { get; }
         public SystemInstance(ISystem system)
@@ -40,8 +39,6 @@ namespace Hive.Framework.ECS.System
                     ExecuteAfterSystems.Add(executeBefore.SystemType);
                 }
             }
-
-            RelatedComponents = type.IsGenericType ? new HashSet<Type>(type.GetGenericArguments()) : new HashSet<Type>();
         }
 
         public void UpdateEntityQueue(IList<IEntity> allEntities)
@@ -56,13 +53,13 @@ namespace Hive.Framework.ECS.System
             }
         }
         
-        private void AddEntity(IEntity entity) => RelatedEntities.Add(entity);
+        private void AddEntity(IEntity entity) => ConcernedEntityList.Add(entity);
 
-        private void ClearEntities() => RelatedEntities.Clear();
+        private void ClearEntities() => ConcernedEntityList.Clear();
 
         public void Execute(SystemPhase phase)
         {
-            foreach (var entity in RelatedEntities)
+            foreach (var entity in ConcernedEntityList)
             {
                 switch (phase)
                 {

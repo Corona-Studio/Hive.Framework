@@ -4,16 +4,17 @@
         <TargetFramework>net7.0</TargetFramework>
         <Nullable>enable</Nullable>
         <LangVersion>latest</LangVersion>
+        <RootNamespace>Hive.Framework.ECS</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>
       <Reference Include="Unity.Mathematics">
-        <HintPath>..\Hive.Framework.Shared\Unity.Mathematics.dll</HintPath>
+        <HintPath>..\Hive.Common.Shared\Unity.Mathematics.dll</HintPath>
       </Reference>
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Hive.Framework.Shared\Hive.Framework.Shared.csproj" />
+      <ProjectReference Include="..\Hive.Common.Shared\Hive.Common.Shared.csproj" />
     </ItemGroup>
 
     <ItemGroup>

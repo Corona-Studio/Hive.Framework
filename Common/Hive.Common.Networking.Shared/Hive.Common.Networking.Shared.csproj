@@ -4,11 +4,12 @@
     <LangVersion>latest</LangVersion>
     <TargetFramework>netstandard2.1</TargetFramework>
     <Nullable>enable</Nullable>
+    <RootNamespace>Hive.Framework.Networking.Shared</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Hive.Framework.Networking.Abstractions\Hive.Framework.Networking.Abstractions.csproj" />
-    <ProjectReference Include="..\Hive.Framework.Shared\Hive.Framework.Shared.csproj" />
+    <ProjectReference Include="..\Hive.Common.Networking.Abstractions\Hive.Common.Networking.Abstractions.csproj" />
+    <ProjectReference Include="..\Hive.Common.Shared\Hive.Common.Shared.csproj" />
   </ItemGroup>
 
   <ItemGroup>

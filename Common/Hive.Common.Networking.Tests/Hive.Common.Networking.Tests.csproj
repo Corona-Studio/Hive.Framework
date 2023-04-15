@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
 
     <IsPackable>false</IsPackable>
+
+    <RootNamespace>Hive.Framework.Networking.Tests</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
@@ -23,14 +25,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Hive.Framework.Codec.Bson\Hive.Framework.Codec.Bson.csproj" />
-    <ProjectReference Include="..\Hive.Framework.Codec.Protobuf\Hive.Framework.Codec.Protobuf.csproj" />
-    <ProjectReference Include="..\Hive.Framework.ECS\Hive.Framework.ECS.csproj" />
-    <ProjectReference Include="..\Hive.Framework.Networking.Abstractions\Hive.Framework.Networking.Abstractions.csproj" />
-    <ProjectReference Include="..\Hive.Framework.Networking.Kcp\Hive.Framework.Networking.Kcp.csproj" />
-    <ProjectReference Include="..\Hive.Framework.Networking.Quic\Hive.Framework.Networking.Quic.csproj" />
-    <ProjectReference Include="..\Hive.Framework.Networking.Tcp\Hive.Framework.Networking.Tcp.csproj" />
-    <ProjectReference Include="..\Hive.Framework.Networking.Udp\Hive.Framework.Networking.Udp.csproj" />
+    <ProjectReference Include="..\Hive.Common.Codec.Bson\Hive.Common.Codec.Bson.csproj" />
+    <ProjectReference Include="..\Hive.Common.Codec.Protobuf\Hive.Common.Codec.Protobuf.csproj" />
+    <ProjectReference Include="..\Hive.Common.ECS\Hive.Common.ECS.csproj" />
+    <ProjectReference Include="..\Hive.Common.Networking.Abstractions\Hive.Common.Networking.Abstractions.csproj" />
+    <ProjectReference Include="..\Hive.Common.Networking.Kcp\Hive.Common.Networking.Kcp.csproj" />
+    <ProjectReference Include="..\Hive.Common.Networking.Quic\Hive.Common.Networking.Quic.csproj" />
+    <ProjectReference Include="..\Hive.Common.Networking.Tcp\Hive.Common.Networking.Tcp.csproj" />
+    <ProjectReference Include="..\Hive.Common.Networking.Udp\Hive.Common.Networking.Udp.csproj" />
   </ItemGroup>
 
   <ItemGroup>
