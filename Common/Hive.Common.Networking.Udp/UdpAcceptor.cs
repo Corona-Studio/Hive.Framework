@@ -1,5 +1,4 @@
-﻿using System.Buffers;
-using Hive.Framework.Codec.Abstractions;
+﻿using Hive.Framework.Codec.Abstractions;
 using Hive.Framework.Networking.Abstractions;
 using Hive.Framework.Networking.Shared;
 using Hive.Framework.Networking.Shared.Helpers;
@@ -48,16 +47,14 @@ namespace Hive.Framework.Networking.Udp
             
             if (ClientManager.TryGetSession(received.RemoteEndPoint, out var session))
             {
-                session!.DataWriter.Write(received.Buffer);
-                session.AdvanceLengthCanRead(received.Buffer.Length);
+                session!.DataQueue.Enqueue(received.Buffer);
 
                 return;
             }
 
             var clientSession = new UdpSession<TId>(client, received.RemoteEndPoint, PacketCodec, DataDispatcher);
 
-            clientSession.DataWriter.Write(received.Buffer);
-            clientSession.AdvanceLengthCanRead(received.Buffer.Length);
+            clientSession.DataQueue.Enqueue(received.Buffer);
 
             ClientManager.AddSession(clientSession);
         }
