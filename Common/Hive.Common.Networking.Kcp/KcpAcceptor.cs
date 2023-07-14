@@ -2,6 +2,7 @@
 using Hive.Framework.Networking.Abstractions;
 using Hive.Framework.Networking.Shared;
 using Hive.Framework.Networking.Shared.Helpers;
+using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -9,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Hive.Framework.Networking.Kcp
 {
-    public sealed class KcpAcceptor<TId, TSessionId> : AbstractAcceptor<UdpClient, KcpSession<TId>, TId, TSessionId> where TId : unmanaged
+    public sealed class KcpAcceptor<TId, TSessionId> : AbstractAcceptor<Socket, KcpSession<TId>, TId, TSessionId> where TId : unmanaged
     {
         public KcpAcceptor(
             IPEndPoint endPoint,
@@ -19,42 +20,47 @@ namespace Hive.Framework.Networking.Kcp
         {
         }
 
-        public UdpClient? UdpServer { get; private set; }
+        public Socket? Socket { get; private set; }
 
         public override void Start()
         {
-            UdpServer = new UdpClient(EndPoint.Port);
+            Socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            Socket.Bind(EndPoint);
 
             TaskHelper.ManagedRun(StartAcceptClient, CancellationTokenSource.Token);
         }
 
         public override void Stop()
         {
-            UdpServer?.Dispose();
+            Socket?.Dispose();
         }
 
         private async Task StartAcceptClient()
         {
             while (!CancellationTokenSource.IsCancellationRequested)
             {
-                await DoAcceptClient(UdpServer!, CancellationTokenSource.Token);
+                await DoAcceptClient(Socket!, CancellationTokenSource.Token);
             }
         }
 
-        public override async ValueTask DoAcceptClient(UdpClient client, CancellationToken cancellationToken)
+        public override async ValueTask DoAcceptClient(Socket client, CancellationToken cancellationToken)
         {
-            var received = await UdpServer!.ReceiveAsync();
+            var buffer = new byte[1024];
+            EndPoint? endPoint = new IPEndPoint(IPAddress.Any, 0);
+            var received = client.ReceiveFrom(buffer, ref endPoint);
 
-            if (ClientManager.TryGetSession(received.RemoteEndPoint, out var session))
+            if (received == 0) return;
+
+            if (ClientManager.TryGetSession((IPEndPoint)endPoint, out var session))
             {
-                session!.DataQueue.Enqueue(received.Buffer);
+                await session!.DataChannel.Writer.WriteAsync(buffer.AsMemory()[..received], cancellationToken);
 
                 return;
             }
 
-            var clientSession = new KcpSession<TId>(client, received.RemoteEndPoint, PacketCodec, DataDispatcher);
+            var clientSession = new KcpSession<TId>(client, (IPEndPoint)endPoint, PacketCodec, DataDispatcher);
 
-            clientSession.DataQueue.Enqueue(received.Buffer);
+            await clientSession.DataChannel.Writer.WriteAsync(buffer.AsMemory()[..received], cancellationToken);
 
             ClientManager.AddSession(clientSession);
         }

@@ -1,7 +1,6 @@
 ﻿using Hive.Framework.Networking.Kcp;
 using Hive.Framework.Networking.Shared;
 using Hive.Framework.Networking.Tests.Messages;
-using System.Net;
 using System.Text;
 
 namespace Hive.Framework.Networking.Tests.Kcp;
@@ -35,6 +34,8 @@ public class FakeKcpClientManager : AbstractClientManager<Guid, KcpSession<ushor
 
         if (!isClientRequest)
             DisconnectedClient++;
+
+        session.DataDispatcher.CallbackDictionary.Clear();
     }
 
     protected override void RegisterSigninMessage(KcpSession<ushort> session)

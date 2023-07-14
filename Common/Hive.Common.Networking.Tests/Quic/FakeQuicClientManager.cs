@@ -38,6 +38,8 @@ public class FakeQuicClientManager : AbstractClientManager<Guid, QuicSession<ush
 
         if (!isClientRequest)
             DisconnectedClient++;
+
+        session.DataDispatcher.CallbackDictionary.Clear();
     }
 
     protected override void RegisterSigninMessage(QuicSession<ushort> session)

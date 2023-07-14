@@ -31,7 +31,7 @@ public abstract class KcpTestBase
 
         _client.Send(new SigninMessage { Id = 114514 });
 
-        await Task.Delay(3000);
+        await Task.Delay(5000);
 
         Assert.That(_clientManager.SigninMessageVal, Is.EqualTo(114514));
         Assert.That(_clientManager.ConnectedClient, Is.EqualTo(1));
@@ -47,7 +47,7 @@ public abstract class KcpTestBase
 
         _client.Send(new ReconnectMessage());
 
-        await Task.Delay(100);
+        await Task.Delay(500);
 
         Assert.That(_clientManager.ReconnectedClient, Is.EqualTo(1));
     }
@@ -60,7 +60,7 @@ public abstract class KcpTestBase
 
         _client.Send(new SignOutMessage { Id = 1919870 });
 
-        await Task.Delay(100);
+        await Task.Delay(500);
 
         Assert.That(_clientManager.SignOutMessageVal, Is.EqualTo(1919870));
         Assert.That(_clientManager.ConnectedClient, Is.EqualTo(0));

@@ -33,6 +33,8 @@ public class FakeTcpClientManager : AbstractClientManager<Guid, TcpSession<ushor
 
         if (!isClientRequest)
             DisconnectedClient++;
+
+        session.DataDispatcher.CallbackDictionary.Clear();
     }
 
     protected override void RegisterSigninMessage(TcpSession<ushort> session)

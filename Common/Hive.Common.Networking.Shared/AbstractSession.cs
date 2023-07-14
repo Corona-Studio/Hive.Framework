@@ -20,7 +20,7 @@ namespace Hive.Framework.Networking.Shared
     public abstract class AbstractSession<TId, TSession> : ISession<TSession>, ISender<TId>, ICanRedirectPacket<TId>, IHasCodec<TId> where TSession : ISession<TSession> where TId : unmanaged
     {
         protected const int DefaultBufferSize = 40960;
-        private const int PacketHeaderLength = sizeof(ushort); // 包头长度2Byte
+        protected const int PacketHeaderLength = sizeof(ushort); // 包头长度2Byte
 
         protected readonly ConcurrentQueue<ReadOnlyMemory<byte>> _sendQueue = new ();
         protected readonly CancellationTokenSource CancellationTokenSource = new ();
@@ -137,7 +137,7 @@ namespace Hive.Framework.Networking.Shared
         /// <summary>
         ///     根据负载长度获取包的总长度，即包体长度+包头长度
         /// </summary>
-        private static int GetTotalLength(int payloadLength)
+        protected static int GetTotalLength(int payloadLength)
         {
             return payloadLength + PacketHeaderLength;
         }
@@ -223,7 +223,7 @@ namespace Hive.Framework.Networking.Shared
                     }
 
                     if (receivedLen > 0) //没有超过4字节的数据,offset不变，等到下一次Receive的时候继续接收
-                        buffer.Span.Slice(offset, receivedLen).CopyTo(buffer.Span);
+                        buffer.Slice(offset, receivedLen).CopyTo(buffer);
 
                     offset = 0;
                 }
