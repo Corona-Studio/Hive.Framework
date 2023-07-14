@@ -5,7 +5,7 @@ using System.Net.Sockets;
 using System.Net;
 using System.Threading.Tasks;
 using System;
-using System.Collections.Concurrent;
+using System.Threading.Channels;
 
 namespace Hive.Framework.Networking.Udp
 {
@@ -15,13 +15,15 @@ namespace Hive.Framework.Networking.Udp
     public sealed class UdpSession<TId> : AbstractSession<TId, UdpSession<TId>> where TId : unmanaged
     {
         public UdpSession(
-            UdpClient socket,
+            Socket socket,
             IPEndPoint endPoint,
             IPacketCodec<TId> packetCodec,
             IDataDispatcher<UdpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
         {
-            UdpConnection = socket;
+            Socket = socket;
+            socket.ReceiveBufferSize = 8192 * 4;
 
+            LocalEndPoint = socket.LocalEndPoint as IPEndPoint;
             RemoteEndPoint = endPoint;
         }
 
@@ -37,12 +39,17 @@ namespace Hive.Framework.Networking.Udp
 
         private bool _closed;
 
-        public UdpClient? UdpConnection { get; private set; }
-        public ConcurrentQueue<byte[]> DataQueue { get; } = new ConcurrentQueue<byte[]>();
+        public Socket? Socket { get; private set; }
+        public Channel<ReadOnlyMemory<byte>> DataChannel { get; } = Channel.CreateBounded<ReadOnlyMemory<byte>>(new BoundedChannelOptions(1000)
+        {
+            SingleWriter = true,
+            SingleReader = true,
+            FullMode = BoundedChannelFullMode.DropOldest
+        });
 
         public override bool CanSend => true;
         public override bool CanReceive => true;
-        public override bool IsConnected => UdpConnection?.Client != null;
+        public override bool IsConnected => Socket != null;
 
         protected override void DispatchPacket(object? packet, Type? packetType = null)
         {
@@ -58,14 +65,15 @@ namespace Hive.Framework.Networking.Udp
 
             // 创建新连接
             _closed = false;
-            UdpConnection = new UdpClient();
+            Socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            Socket.Connect(RemoteEndPoint!);
         }
 
         public override ValueTask DoDisconnect()
         {
-            if (_closed || UdpConnection == null) return default;
+            if (_closed || Socket == null) return default;
 
-            UdpConnection.Dispose();
+            Socket.Dispose();
             _closed = true;
 
             return default;
@@ -73,7 +81,7 @@ namespace Hive.Framework.Networking.Udp
 
         public override async ValueTask SendOnce(ReadOnlyMemory<byte> data)
         {
-            if (UdpConnection == null)
+            if (Socket == null)
                 throw new InvalidOperationException("Socket Init failed!");
 
             var totalLen = data.Length;
@@ -81,27 +89,31 @@ namespace Hive.Framework.Networking.Udp
 
             while (sentLen < totalLen)
             {
-                var sendThisTime = await UdpConnection.SendAsync(data[sentLen..].ToArray(), data.Length - sentLen, RemoteEndPoint);
+                var sendThisTime =
+                    await Socket.SendToAsync(new ArraySegment<byte>(data[sentLen..].ToArray()), SocketFlags.None, RemoteEndPoint);
                 sentLen += sendThisTime;
             }
         }
         
         public override async ValueTask<int> ReceiveOnce(Memory<byte> buffer)
         {
-            if (UdpConnection == null)
+            if (Socket == null)
                 throw new InvalidOperationException("Socket Init failed!");
 
-            byte[]? data;
+            var data = ReadOnlyMemory<byte>.Empty;
 
-            while (!DataQueue.TryDequeue(out data))
+            while (await DataChannel.Reader.WaitToReadAsync())
             {
+                if (DataChannel.Reader.TryRead(out data))
+                    break;
+
                 await Task.Delay(10);
             }
 
-            if (data == null || data.Length == 0)
+            if (data.Length == 0 || data.Length > buffer.Length)
                 return 0;
 
-            data.AsSpan().CopyTo(buffer.Span);
+            data.CopyTo(buffer);
 
             return data.Length;
         }

@@ -1,6 +1,8 @@
-﻿using ProtoBuf;
+﻿using MemoryPack;
+using ProtoBuf;
 
 namespace Hive.Framework.Networking.Tests.Messages;
 
 [ProtoContract]
-public class HeartBeatMessage { }
+[MemoryPackable]
+public partial class HeartBeatMessage { }

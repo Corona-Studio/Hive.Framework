@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net7.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DotNext.Unsafe" Version="4.12.4" />
+    <PackageReference Include="MemoryPack" Version="1.9.16" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Common\Hive.Common.Codec.Abstractions\Hive.Common.Codec.Abstractions.csproj" />
+    <ProjectReference Include="..\Common\Hive.Common.Shared\Hive.Common.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

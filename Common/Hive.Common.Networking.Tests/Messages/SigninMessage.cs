@@ -1,9 +1,11 @@
-﻿using ProtoBuf;
+﻿using MemoryPack;
+using ProtoBuf;
 
 namespace Hive.Framework.Networking.Tests.Messages;
 
 [ProtoContract]
-public class SigninMessage
+[MemoryPackable]
+public partial class SigninMessage
 {
     [ProtoMember(1)]
     public int Id { get; set; }

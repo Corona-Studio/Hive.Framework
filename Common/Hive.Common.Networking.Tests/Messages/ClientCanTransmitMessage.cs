@@ -1,9 +1,11 @@
-﻿using ProtoBuf;
+﻿using MemoryPack;
+using ProtoBuf;
 
 namespace Hive.Framework.Networking.Tests.Messages;
 
 [ProtoContract]
-public class ClientCanTransmitMessage
+[MemoryPackable]
+public partial class ClientCanTransmitMessage
 {
     
 }

@@ -25,6 +25,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\Hive.Common.Codec.MemoryPack\Hive.Common.Codec.MemoryPack.csproj" />
     <ProjectReference Include="..\Hive.Common.Codec.Bson\Hive.Common.Codec.Bson.csproj" />
     <ProjectReference Include="..\Hive.Common.Codec.Protobuf\Hive.Common.Codec.Protobuf.csproj" />
     <ProjectReference Include="..\Hive.Common.ECS\Hive.Common.ECS.csproj" />

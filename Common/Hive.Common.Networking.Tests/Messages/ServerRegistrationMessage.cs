@@ -1,9 +1,11 @@
-﻿using ProtoBuf;
+﻿using MemoryPack;
+using ProtoBuf;
 
 namespace Hive.Framework.Networking.Tests.Messages;
 
 [ProtoContract]
-public class ServerRegistrationMessage
+[MemoryPackable]
+public partial class ServerRegistrationMessage
 {
     [ProtoMember(1)]
     public ushort[] PackagesToReceive { get; set; }
