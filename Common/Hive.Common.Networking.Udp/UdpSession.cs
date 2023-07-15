@@ -68,7 +68,6 @@ namespace Hive.Framework.Networking.Udp
             // 创建新连接
             _closed = false;
             Socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-            Socket.Connect(RemoteEndPoint!);
         }
 
         public override ValueTask DoDisconnect()
@@ -85,8 +84,6 @@ namespace Hive.Framework.Networking.Udp
         {
             if (Socket == null)
                 throw new InvalidOperationException("Socket Init failed!");
-            if (!Socket.Connected)
-                await Socket.ConnectAsync(RemoteEndPoint!);
 
             var totalLen = data.Length;
             var sentLen = 0;
@@ -94,7 +91,7 @@ namespace Hive.Framework.Networking.Udp
             while (sentLen < totalLen)
             {
                 var sendThisTime =
-                    await Socket.SendAsync(data[sentLen..], SocketFlags.None);
+                    await Socket.SendToAsync(new ArraySegment<byte>(data[sentLen..].ToArray()), SocketFlags.None, RemoteEndPoint);
                 sentLen += sendThisTime;
             }
         }

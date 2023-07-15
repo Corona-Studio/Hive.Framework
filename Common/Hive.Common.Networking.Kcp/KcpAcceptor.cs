@@ -2,7 +2,6 @@
 using Hive.Framework.Networking.Abstractions;
 using Hive.Framework.Networking.Shared;
 using Hive.Framework.Networking.Shared.Helpers;
-using System;
 using System.Buffers;
 using System.Net;
 using System.Net.Sockets;
@@ -45,9 +44,9 @@ namespace Hive.Framework.Networking.Kcp
             }
         }
 
-        public override async ValueTask DoAcceptClient(Socket client, CancellationToken cancellationToken)
+        public override ValueTask DoAcceptClient(Socket client, CancellationToken cancellationToken)
         {
-            if (client.Available <= 0) return;
+            if (client.Available <= 0) return default;
 
             var buffer = ArrayPool<byte>.Shared.Rent(1024);
             try
@@ -55,18 +54,18 @@ namespace Hive.Framework.Networking.Kcp
                 EndPoint? endPoint = new IPEndPoint(IPAddress.Any, 0);
                 var received = client.ReceiveFrom(buffer, ref endPoint);
 
-                if (received == 0) return;
+                if (received == 0) return default;
 
                 if (ClientManager.TryGetSession((IPEndPoint)endPoint, out var session))
                 {
-                    await session!.DataChannel.Writer.WriteAsync(buffer.AsMemory()[..received], cancellationToken);
+                    session!.Kcp.Input(buffer[..received]);
 
-                    return;
+                    return default;
                 }
 
                 var clientSession = new KcpSession<TId>(client, (IPEndPoint)endPoint, PacketCodec, DataDispatcher);
 
-                await clientSession.DataChannel.Writer.WriteAsync(buffer.AsMemory()[..received], cancellationToken);
+                clientSession.Kcp.Input(buffer[..received]);
 
                 ClientManager.AddSession(clientSession);
             }
@@ -74,6 +73,8 @@ namespace Hive.Framework.Networking.Kcp
             {
                 ArrayPool<byte>.Shared.Return(buffer);
             }
+
+            return default;
         }
 
         public override void Dispose()
