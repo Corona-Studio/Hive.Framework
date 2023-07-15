@@ -51,9 +51,12 @@ namespace Hive.Framework.Networking.Tcp
         {
             // 释放先前的连接
             await DoDisconnect();
+            await base.DoConnect();
 
             // 创建新连接
             _closed = false;
+            Socket?.Shutdown(SocketShutdown.Both);
+            Socket?.Dispose();
             Socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             Socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
 
@@ -98,12 +101,6 @@ namespace Hive.Framework.Networking.Tcp
             Socket.Blocking = true;
 
             return await Socket.ReceiveAsync(buffer, SocketFlags.None);
-        }
-
-        public override void Dispose()
-        {
-            base.Dispose();
-            DoDisconnect();
         }
     }
 }

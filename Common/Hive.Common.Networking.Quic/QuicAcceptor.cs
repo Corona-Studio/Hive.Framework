@@ -31,7 +31,6 @@ public sealed class QuicAcceptor<TId, TSessionId> : AbstractAcceptor<QuicConnect
     public QuicListener? QuicListener { get; private set; }
     public X509Certificate2 ServerCertificate { get; }
 
-
     public override void Start()
     {
         TaskHelper.ManagedRun(StartAcceptClient, CancellationTokenSource.Token);
@@ -39,12 +38,7 @@ public sealed class QuicAcceptor<TId, TSessionId> : AbstractAcceptor<QuicConnect
 
     public override void Stop()
     {
-        if (QuicListener == null) return;
-
-        Task.Run(async () =>
-        {
-            await QuicListener.DisposeAsync();
-        });
+        QuicListener?.DisposeAsync().AsTask().Wait();
     }
 
     private async ValueTask InitListener()

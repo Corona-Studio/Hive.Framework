@@ -43,9 +43,12 @@ public abstract class TcpTestBase
 
         Assert.That(_clientManager.DisconnectedClient, Is.EqualTo(1));
 
+        await _client.DoConnect();
+        await Task.Delay(500);
+
         _client.Send(new ReconnectMessage());
 
-        await Task.Delay(100);
+        await Task.Delay(500);
 
         Assert.That(_clientManager.ReconnectedClient, Is.EqualTo(1));
     }

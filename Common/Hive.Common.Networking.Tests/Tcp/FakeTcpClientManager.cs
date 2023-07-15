@@ -1,4 +1,5 @@
-﻿using Hive.Framework.Networking.Shared;
+﻿using System.Net.Sockets;
+using Hive.Framework.Networking.Shared;
 using Hive.Framework.Networking.Tcp;
 using Hive.Framework.Networking.Tests.Messages;
 
@@ -35,6 +36,8 @@ public class FakeTcpClientManager : AbstractClientManager<Guid, TcpSession<ushor
             DisconnectedClient++;
 
         session.DataDispatcher.CallbackDictionary.Clear();
+        session.Socket?.Shutdown(SocketShutdown.Both);
+        session.Dispose();
     }
 
     protected override void RegisterSigninMessage(TcpSession<ushort> session)

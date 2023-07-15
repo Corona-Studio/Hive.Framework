@@ -54,6 +54,9 @@ public sealed class QuicSession<TId> : AbstractSession<TId, QuicSession<TId>> wh
 
     public override async ValueTask DoConnect()
     {
+        await DoDisconnect();
+        await base.DoConnect();
+
         var clientConnectionOptions = new QuicClientConnectionOptions
         {
             RemoteEndPoint = RemoteEndPoint!,
@@ -70,18 +73,6 @@ public sealed class QuicSession<TId> : AbstractSession<TId, QuicSession<TId>> wh
         QuicStream = await QuicConnection.OpenOutboundStreamAsync(QuicStreamType.Bidirectional);
     }
 
-    public override async ValueTask DoDisconnect()
-    {
-        if(QuicStream != null)
-            await QuicStream.DisposeAsync();
-
-        if (QuicConnection != null)
-        {
-            await QuicConnection.CloseAsync(0x0C);
-            await QuicConnection.DisposeAsync();
-        }
-    }
-
     public override async ValueTask SendOnce(ReadOnlyMemory<byte> data)
     {
         if (QuicStream == null)
@@ -96,5 +87,22 @@ public sealed class QuicSession<TId> : AbstractSession<TId, QuicSession<TId>> wh
             throw new InvalidOperationException("QuicStream Init failed!");
 
         return await QuicStream.ReadAsync(buffer);
+    }
+
+    public override async ValueTask DoDisconnect()
+    {
+        await base.DoDisconnect();
+
+        if (QuicConnection != null)
+        {
+            await QuicConnection.DisposeAsync();
+            QuicConnection = null;
+        }
+
+        if (QuicStream != null)
+        {
+            await QuicStream.DisposeAsync();
+            QuicStream = null;
+        }
     }
 }

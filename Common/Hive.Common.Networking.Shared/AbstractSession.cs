@@ -22,10 +22,8 @@ namespace Hive.Framework.Networking.Shared
         protected const int DefaultBufferSize = 40960;
         protected const int PacketHeaderLength = sizeof(ushort); // 包头长度2Byte
 
-        protected readonly ConcurrentQueue<ReadOnlyMemory<byte>> _sendQueue = new ();
-        protected readonly CancellationTokenSource CancellationTokenSource = new ();
-        private bool _receiveRegistered;
-        private bool _sendEnqueued;
+        protected readonly ConcurrentQueue<ReadOnlyMemory<byte>> SendQueue = new ();
+        protected CancellationTokenSource? CancellationTokenSource;
         protected bool ReceivingLoopRunning;
         protected bool SendingLoopRunning;
 
@@ -38,7 +36,7 @@ namespace Hive.Framework.Networking.Shared
 
         public abstract bool CanSend { get; }
         public abstract bool CanReceive { get; }
-        public bool Running => !CancellationTokenSource.IsCancellationRequested && SendingLoopRunning && ReceivingLoopRunning;
+        public bool Running => !(CancellationTokenSource?.IsCancellationRequested ?? true) && SendingLoopRunning && ReceivingLoopRunning;
         public abstract bool IsConnected { get; }
 
         public event EventHandler<ReceivedDataEventArgs>? OnDataReceived;
@@ -62,13 +60,13 @@ namespace Hive.Framework.Networking.Shared
 
         public virtual void Send(ReadOnlyMemory<byte> data)
         {
-            _sendQueue.Enqueue(data);
+            SendQueue.Enqueue(data);
 
-            if (_sendEnqueued) return;
+            if (SendingLoopRunning) return;
 
             BeginSend();
 
-            _sendEnqueued = true;
+            SendingLoopRunning = true;
         }
 
         public void Send<T>(T obj)
@@ -83,11 +81,11 @@ namespace Hive.Framework.Networking.Shared
         {
             DataDispatcher.Register(callback);
 
-            if (_receiveRegistered) return;
+            if (ReceivingLoopRunning) return;
 
             BeginReceive();
 
-            _receiveRegistered = true;
+            ReceivingLoopRunning = true;
         }
 
         public void RemoveOnReceive<T>(Action<T, TSession> callback)
@@ -97,16 +95,16 @@ namespace Hive.Framework.Networking.Shared
 
         public void BeginSend()
         {
-            if (SendingLoopRunning) return;
-            SendingLoopRunning = true;
-            TaskHelper.ManagedRun(SendLoop, CancellationTokenSource.Token);
+            ResetCancellationToken(new CancellationTokenSource());
+
+            TaskHelper.ManagedRun(SendLoop, CancellationTokenSource!.Token);
         }
         
         public void BeginReceive()
         {
-            if (ReceivingLoopRunning) return;
-            ReceivingLoopRunning = true;
-            TaskHelper.ManagedRun(ReceiveLoop, CancellationTokenSource.Token);
+            ResetCancellationToken(new CancellationTokenSource());
+
+            TaskHelper.ManagedRun(ReceiveLoop, CancellationTokenSource!.Token);
         }
 
         protected abstract void DispatchPacket(object? packet, Type? packetType = null);
@@ -144,15 +142,22 @@ namespace Hive.Framework.Networking.Shared
 
         protected virtual async Task SendLoop()
         {
-            while (!CancellationTokenSource.IsCancellationRequested)
+            try
             {
-                if (!IsConnected || !CanSend || !_sendQueue.TryDequeue(out var slice))
+                while (!(CancellationTokenSource?.IsCancellationRequested ?? true))
                 {
-                    await Task.Delay(1, CancellationTokenSource.Token);
-                    continue;
-                }
+                    if (!IsConnected || !CanSend || !SendQueue.TryDequeue(out var slice))
+                    {
+                        await Task.Delay(1, CancellationTokenSource.Token);
+                        continue;
+                    }
 
-                await SendOnce(slice);
+                    await SendOnce(slice);
+                }
+            }
+            catch (Exception)
+            {
+                SendingLoopRunning = false;
             }
         }
 
@@ -169,7 +174,7 @@ namespace Hive.Framework.Networking.Shared
 
             try
             {
-                while (!CancellationTokenSource.IsCancellationRequested)
+                while (!(CancellationTokenSource?.IsCancellationRequested ?? true))
                 {
                     if (!IsConnected || !CanReceive) SpinWait.SpinUntil(() => IsConnected && CanReceive);
 
@@ -231,13 +236,29 @@ namespace Hive.Framework.Networking.Shared
             finally
             {
                 ReceivingLoopRunning = false;
-                // Logger.LogInformation("Link receive loop stopped");
             }
         }
 
-        public abstract ValueTask DoConnect();
+        public virtual ValueTask DoConnect()
+        {
+            ResetCancellationToken(new CancellationTokenSource());
 
-        public abstract ValueTask DoDisconnect();
+            return default;
+        }
+
+        public virtual ValueTask DoDisconnect()
+        {
+            ResetCancellationToken();
+
+            return default;
+        }
+
+        private void ResetCancellationToken(CancellationTokenSource? cancellationToken = null)
+        {
+            CancellationTokenSource?.Cancel();
+            CancellationTokenSource?.Dispose();
+            CancellationTokenSource = cancellationToken;
+        }
 
         public abstract ValueTask SendOnce(ReadOnlyMemory<byte> data);
 
@@ -245,8 +266,7 @@ namespace Hive.Framework.Networking.Shared
 
         public virtual void Dispose()
         {
-            CancellationTokenSource.Cancel();
-            CancellationTokenSource.Dispose();
+            DoDisconnect();
         }
     }
 }

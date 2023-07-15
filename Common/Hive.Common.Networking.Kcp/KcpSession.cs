@@ -7,6 +7,7 @@ using Hive.Framework.Codec.Abstractions;
 using Hive.Framework.Networking.Abstractions;
 using Hive.Framework.Networking.Shared;
 using System.Buffers;
+using System.Diagnostics;
 using System.Threading;
 using Hive.Framework.Networking.Shared.Helpers;
 using System.Threading.Channels;
@@ -24,9 +25,7 @@ namespace Hive.Framework.Networking.Kcp
             Socket = socket;
             socket.ReceiveBufferSize = 8192 * 4;
 
-            _kcp = new PoolSegManager.Kcp(2001, this);
-            _kcp.NoDelay(1, 10, 2, 1);//fast
-            _kcp.WndSize(128, 128);
+            _kcp = CreateNewKcpManager();
 
             LocalEndPoint = socket.LocalEndPoint as IPEndPoint;
             RemoteEndPoint = endPoint;
@@ -34,25 +33,21 @@ namespace Hive.Framework.Networking.Kcp
 
         public KcpSession(IPEndPoint endPoint, IPacketCodec<TId> packetCodec, IDataDispatcher<KcpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
         {
-            _kcp = new PoolSegManager.Kcp(2001, this);
-            _kcp.NoDelay(1, 10, 2, 1);//fast
-            _kcp.WndSize(128, 128);
+            _kcp = CreateNewKcpManager();
 
             Connect(endPoint);
         }
 
         public KcpSession(string addressWithPort, IPacketCodec<TId> packetCodec, IDataDispatcher<KcpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
         {
-            _kcp = new PoolSegManager.Kcp(2001, this);
-            _kcp.NoDelay(1, 10, 2, 1);//fast
-            _kcp.WndSize(128, 128);
+            _kcp = CreateNewKcpManager();
 
             Connect(addressWithPort);
         }
 
         private bool _closed;
         private bool _isUpdateLoopRunning;
-        private readonly PoolSegManager.Kcp _kcp;
+        private UnSafeSegManager.Kcp _kcp;
 
         public Channel<ReadOnlyMemory<byte>> DataChannel { get; } = Channel.CreateBounded<ReadOnlyMemory<byte>>(new BoundedChannelOptions(1000)
         {
@@ -66,6 +61,16 @@ namespace Hive.Framework.Networking.Kcp
         public override bool CanReceive => true;
         public override bool IsConnected => Socket != null;
 
+        private UnSafeSegManager.Kcp CreateNewKcpManager()
+        {
+            var kcp = new UnSafeSegManager.Kcp(2001, this);
+            //kcp.NoDelay(1, 1, 2, 1);//fast
+            //kcp.Interval(1);
+            //kcp.WndSize(1024, 1024);
+
+            return kcp;
+        }
+
         protected override void DispatchPacket(object? packet, Type? packetType = null)
         {
             if (packet == null) return;
@@ -77,9 +82,12 @@ namespace Hive.Framework.Networking.Kcp
         {
             // 释放先前的连接
             await DoDisconnect();
+            await base.DoConnect();
 
             // 创建新连接
             _closed = false;
+            _kcp?.Dispose();
+            _kcp = CreateNewKcpManager();
             Socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
             Socket.Connect(RemoteEndPoint!);
         }
@@ -96,12 +104,13 @@ namespace Hive.Framework.Networking.Kcp
 
         protected override async Task SendLoop()
         {
+            if (CancellationTokenSource == null) return;
             if(!_isUpdateLoopRunning)
                 TaskHelper.ManagedRun(UpdateLoop, CancellationTokenSource.Token);
 
-            while (!CancellationTokenSource.IsCancellationRequested)
+            while (!(CancellationTokenSource?.IsCancellationRequested ?? true))
             {
-                if (!IsConnected || !CanSend || !_sendQueue.TryDequeue(out var slice))
+                if (!IsConnected || !CanSend || !SendQueue.TryDequeue(out var slice))
                 {
                     await Task.Delay(1, CancellationTokenSource.Token);
                     continue;
@@ -109,13 +118,15 @@ namespace Hive.Framework.Networking.Kcp
 
                 await SendOnce(slice);
             }
+
+            SendingLoopRunning = false;
         }
 
         private async Task UpdateLoop()
         {
             _isUpdateLoopRunning = true;
 
-            while (!CancellationTokenSource.IsCancellationRequested)
+            while (!(CancellationTokenSource?.IsCancellationRequested ?? true))
             {
                 if (!IsConnected || !CanSend)
                     await SpinWaitAsync.SpinUntil(() => IsConnected && CanReceive);
@@ -137,21 +148,23 @@ namespace Hive.Framework.Networking.Kcp
         /// <exception cref="InvalidOperationException"></exception>
         public override ValueTask SendOnce(ReadOnlyMemory<byte> data)
         {
-            if (Socket == null)
-                throw new InvalidOperationException("Socket Init failed!");
+            var sentLen = 0;
 
-            var result = _kcp.Send(data.Span);
-            if(result < 0)
-                throw new InvalidOperationException("KCP Send Failed!");
+            while (sentLen < data.Length)
+            {
+                var result = _kcp.Send(data.Span[sentLen..]);
+
+                if (result < 0)
+                    throw new InvalidOperationException("KCP Send Failed!");
+
+                sentLen += result;
+            }
 
             return default;
         }
         
         public override async ValueTask<int> ReceiveOnce(Memory<byte> buffer)
         {
-            if (Socket == null)
-                throw new InvalidOperationException("Socket Init failed!");
-
             var data = ReadOnlyMemory<byte>.Empty;
 
             while (await DataChannel.Reader.WaitToReadAsync())
@@ -159,7 +172,7 @@ namespace Hive.Framework.Networking.Kcp
                 if (DataChannel.Reader.TryRead(out data))
                     break;
 
-                await Task.Delay(10);
+                await Task.Delay(1);
             }
 
             if (data.Length == 0)
@@ -177,6 +190,7 @@ namespace Hive.Framework.Networking.Kcp
         /// <returns></returns>
         protected override async Task ReceiveLoop()
         {
+            if (CancellationTokenSource == null) return;
             if (!_isUpdateLoopRunning)
                 TaskHelper.ManagedRun(UpdateLoop, CancellationTokenSource.Token);
 
@@ -191,7 +205,7 @@ namespace Hive.Framework.Networking.Kcp
 
             try
             {
-                while (!CancellationTokenSource.IsCancellationRequested)
+                while (!(CancellationTokenSource?.IsCancellationRequested ?? true))
                 {
                     if (!IsConnected || !CanReceive) SpinWait.SpinUntil(() => IsConnected && CanReceive);
 
@@ -269,14 +283,18 @@ namespace Hive.Framework.Networking.Kcp
         {
             if (Socket == null)
                 throw new InvalidOperationException("Socket Init failed!");
+            if (CancellationTokenSource?.IsCancellationRequested ?? true) return;
+            if (!Socket.Connected)
+                await Socket.ConnectAsync(RemoteEndPoint!);
+
+            Debug.WriteLine(avalidLength);
 
             var data = buffer.Memory[..avalidLength];
             var sentLen = 0;
 
             while (sentLen < avalidLength)
             {
-                var sendThisTime = await Socket.SendToAsync(new ArraySegment<byte>(data[sentLen..].ToArray()),
-                    SocketFlags.None, RemoteEndPoint);
+                var sendThisTime = await Socket.SendAsync(data[sentLen..], SocketFlags.None);
                 sentLen += sendThisTime;
             }
 
@@ -286,7 +304,6 @@ namespace Hive.Framework.Networking.Kcp
         public override void Dispose()
         {
             base.Dispose();
-            DoDisconnect();
             _kcp.Dispose();
         }
     }

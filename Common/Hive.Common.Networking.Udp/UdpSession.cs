@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using System.Net;
 using System.Threading.Tasks;
 using System;
+using System.Buffers;
 using System.Threading.Channels;
 
 namespace Hive.Framework.Networking.Udp
@@ -62,6 +63,7 @@ namespace Hive.Framework.Networking.Udp
         {
             // 释放先前的连接
             await DoDisconnect();
+            await base.DoConnect();
 
             // 创建新连接
             _closed = false;
@@ -83,6 +85,8 @@ namespace Hive.Framework.Networking.Udp
         {
             if (Socket == null)
                 throw new InvalidOperationException("Socket Init failed!");
+            if (!Socket.Connected)
+                await Socket.ConnectAsync(RemoteEndPoint!);
 
             var totalLen = data.Length;
             var sentLen = 0;
@@ -90,7 +94,7 @@ namespace Hive.Framework.Networking.Udp
             while (sentLen < totalLen)
             {
                 var sendThisTime =
-                    await Socket.SendToAsync(new ArraySegment<byte>(data[sentLen..].ToArray()), SocketFlags.None, RemoteEndPoint);
+                    await Socket.SendAsync(data[sentLen..], SocketFlags.None);
                 sentLen += sendThisTime;
             }
         }
@@ -116,12 +120,6 @@ namespace Hive.Framework.Networking.Udp
             data.CopyTo(buffer);
 
             return data.Length;
-        }
-
-        public override void Dispose()
-        {
-            base.Dispose();
-            DoDisconnect();
         }
     }
 }
