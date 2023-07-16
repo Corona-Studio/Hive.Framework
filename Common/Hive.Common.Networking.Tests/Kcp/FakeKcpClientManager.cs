@@ -57,7 +57,7 @@ public class FakeKcpClientManager : AbstractClientManager<Guid, KcpSession<ushor
 
             var sessionId = GetSessionId(kcpSession);
 
-            InvokeOnClientDisconnected(sessionId, session, true);
+            InvokeOnClientDisconnected(sessionId, kcpSession, true);
         });
     }
 

@@ -57,7 +57,7 @@ public class FakeUdpClientManager : AbstractClientManager<Guid, UdpSession<ushor
 
             var sessionId = GetSessionId(udpSession);
 
-            InvokeOnClientDisconnected(sessionId, session, true);
+            InvokeOnClientDisconnected(sessionId, udpSession, true);
         });
     }
 

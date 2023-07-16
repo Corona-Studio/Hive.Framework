@@ -11,7 +11,7 @@ using Hive.Framework.Networking.Shared.Helpers;
 
 namespace Hive.Framework.Networking.Kcp
 {
-    public sealed class KcpSession<TId> : AbstractSession<TId, KcpSession<TId>>, IKcpCallback where TId : unmanaged
+    public sealed class KcpSession<TId> : AbstractSession<TId, KcpSession<TId>>, IKcpCallback, IRentable where TId : unmanaged
     {
         public KcpSession(
             Socket socket,
@@ -20,8 +20,7 @@ namespace Hive.Framework.Networking.Kcp
             IDataDispatcher<KcpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
         {
             Socket = socket;
-            socket.ReceiveBufferSize = 8192 * 4;
-
+            
             Kcp = CreateNewKcpManager();
 
             LocalEndPoint = socket.LocalEndPoint as IPEndPoint;
@@ -54,7 +53,7 @@ namespace Hive.Framework.Networking.Kcp
 
         private UnSafeSegManager.Kcp CreateNewKcpManager()
         {
-            var kcp = new UnSafeSegManager.Kcp(2001, this);
+            var kcp = new UnSafeSegManager.Kcp(2001, this, this);
             //kcp.NoDelay(1, 1, 2, 1);//fast
             //kcp.Interval(1);
             //kcp.WndSize(1024, 1024);
@@ -171,15 +170,17 @@ namespace Hive.Framework.Networking.Kcp
         {
             if (Kcp == null)
                 throw new NullReferenceException("Kcp Init Failed!");
-
+            
             var (received, receivedLength) = Kcp.TryRecv();
 
             while (received == null)
             {
                 await Task.Delay(10);
-
+                
                 (received, receivedLength) = Kcp.TryRecv();
             }
+
+            if (receivedLength > buffer.Length) return 0;
 
             received.Memory[..receivedLength].CopyTo(buffer);
 
@@ -215,6 +216,11 @@ namespace Hive.Framework.Networking.Kcp
         {
             base.Dispose();
             Kcp?.Dispose();
+        }
+
+        public IMemoryOwner<byte> RentBuffer(int length)
+        {
+            return MemoryPool<byte>.Shared.Rent(length);
         }
     }
 }

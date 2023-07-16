@@ -63,7 +63,7 @@ public class FakeQuicClientManager : AbstractClientManager<Guid, QuicSession<ush
 
             var sessionId = GetSessionId(tcpSession);
 
-            InvokeOnClientDisconnected(sessionId, session, true);
+            InvokeOnClientDisconnected(sessionId, tcpSession, true);
         });
     }
 
