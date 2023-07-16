@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="DotNext.Unsafe" Version="4.12.4" />
+    <PackageReference Include="DotNext.Unsafe" Version="4.13.0" />
     <PackageReference Include="MemoryPack" Version="1.9.16" />
   </ItemGroup>
 

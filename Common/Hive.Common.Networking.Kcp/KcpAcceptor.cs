@@ -58,14 +58,14 @@ namespace Hive.Framework.Networking.Kcp
 
                 if (ClientManager.TryGetSession((IPEndPoint)endPoint, out var session))
                 {
-                    session!.Kcp.Input(buffer[..received]);
+                    session!.Kcp!.Input(buffer[..received]);
 
                     return default;
                 }
 
                 var clientSession = new KcpSession<TId>(client, (IPEndPoint)endPoint, PacketCodec, DataDispatcher);
 
-                clientSession.Kcp.Input(buffer[..received]);
+                clientSession.Kcp!.Input(buffer[..received]);
 
                 ClientManager.AddSession(clientSession);
             }

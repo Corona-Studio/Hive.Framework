@@ -45,7 +45,7 @@ namespace Hive.Framework.Networking.Kcp
         private bool _closed;
         private bool _isUpdateLoopRunning;
 
-        public UnSafeSegManager.Kcp Kcp { get; private set; }
+        public UnSafeSegManager.Kcp? Kcp { get; private set; }
         public Socket? Socket { get; private set; }
 
         public override bool CanSend => true;
@@ -125,6 +125,9 @@ namespace Hive.Framework.Networking.Kcp
 
         private async Task UpdateLoop()
         {
+            if (Kcp == null)
+                throw new NullReferenceException("Kcp Init Failed!");
+
             _isUpdateLoopRunning = true;
 
             while (!(CancellationTokenSource?.IsCancellationRequested ?? true))
@@ -146,6 +149,9 @@ namespace Hive.Framework.Networking.Kcp
         /// <exception cref="InvalidOperationException"></exception>
         public override ValueTask SendOnce(ReadOnlyMemory<byte> data)
         {
+            if (Kcp == null)
+                throw new NullReferenceException("Kcp Init Failed!");
+
             var sentLen = 0;
 
             while (sentLen < data.Length)
@@ -163,6 +169,9 @@ namespace Hive.Framework.Networking.Kcp
         
         public override async ValueTask<int> ReceiveOnce(Memory<byte> buffer)
         {
+            if (Kcp == null)
+                throw new NullReferenceException("Kcp Init Failed!");
+
             var (received, receivedLength) = Kcp.TryRecv();
 
             while (received == null)
@@ -184,7 +193,7 @@ namespace Hive.Framework.Networking.Kcp
         /// <param name="buffer">处理后的数据</param>
         /// <param name="avalidLength">有效长度</param>
         /// <exception cref="InvalidOperationException">Socket 初始化失败时抛出</exception>
-        public async void Output(IMemoryOwner<byte> buffer, int avalidLength)
+        public void Output(IMemoryOwner<byte> buffer, int avalidLength)
         {
             if (Socket == null)
                 throw new InvalidOperationException("Socket Init failed!");
@@ -195,7 +204,7 @@ namespace Hive.Framework.Networking.Kcp
 
             while (sentLen < avalidLength)
             {
-                var sendThisTime = await Socket.SendToAsync(new ArraySegment<byte>(data[sentLen..].ToArray()), SocketFlags.None, RemoteEndPoint);
+                var sendThisTime = Socket.SendTo(data[sentLen..].ToArray(), RemoteEndPoint!);
                 sentLen += sendThisTime;
             }
 
@@ -205,7 +214,7 @@ namespace Hive.Framework.Networking.Kcp
         public override void Dispose()
         {
             base.Dispose();
-            Kcp.Dispose();
+            Kcp?.Dispose();
         }
     }
 }
