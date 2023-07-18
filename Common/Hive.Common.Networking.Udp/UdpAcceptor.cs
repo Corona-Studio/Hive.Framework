@@ -26,6 +26,7 @@ namespace Hive.Framework.Networking.Udp
         public override void Start()
         {
             Socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            Socket.PatchSocket();
             Socket.Bind(EndPoint);
 
             TaskHelper.ManagedRun(StartAcceptClient, CancellationTokenSource.Token);

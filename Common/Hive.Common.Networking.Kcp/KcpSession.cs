@@ -20,8 +20,10 @@ namespace Hive.Framework.Networking.Kcp
             IDataDispatcher<KcpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
         {
             Socket = socket;
-            
+            socket.ReceiveBufferSize = DefaultSocketBufferSize;
+
             Kcp = CreateNewKcpManager();
+            TaskHelper.ManagedRun(UpdateLoop, CancellationTokenSource!.Token);
 
             LocalEndPoint = socket.LocalEndPoint as IPEndPoint;
             RemoteEndPoint = endPoint;
@@ -42,7 +44,7 @@ namespace Hive.Framework.Networking.Kcp
         }
 
         private bool _closed;
-        private bool _isUpdateLoopRunning;
+        private static readonly Random _random = new Random();
 
         public UnSafeSegManager.Kcp? Kcp { get; private set; }
         public Socket? Socket { get; private set; }
@@ -53,10 +55,10 @@ namespace Hive.Framework.Networking.Kcp
 
         private UnSafeSegManager.Kcp CreateNewKcpManager()
         {
-            var kcp = new UnSafeSegManager.Kcp(2001, this, this);
-            //kcp.NoDelay(1, 1, 2, 1);//fast
-            //kcp.Interval(1);
-            //kcp.WndSize(1024, 1024);
+            var kcp = new UnSafeSegManager.Kcp(1, this, this);
+            kcp.NoDelay(1, 10, 2, 1);
+            kcp.WndSize(64, 64);
+            kcp.SetMtu(512);
 
             return kcp;
         }
@@ -78,6 +80,7 @@ namespace Hive.Framework.Networking.Kcp
             _closed = false;
             Kcp?.Dispose();
             Kcp = CreateNewKcpManager();
+            TaskHelper.ManagedRun(UpdateLoop, CancellationTokenSource!.Token);
 
             Socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
         }
@@ -92,51 +95,17 @@ namespace Hive.Framework.Networking.Kcp
             return default;
         }
 
-        protected override async Task SendLoop()
-        {
-            if (CancellationTokenSource == null) return;
-            if (!_isUpdateLoopRunning)
-                TaskHelper.ManagedRun(UpdateLoop, CancellationTokenSource!.Token);
-
-            while (!(CancellationTokenSource?.IsCancellationRequested ?? true))
-            {
-                if (!IsConnected || !CanSend || !SendQueue.TryDequeue(out var slice))
-                {
-                    await Task.Delay(1, CancellationTokenSource.Token);
-                    continue;
-                }
-
-                await SendOnce(slice);
-            }
-
-            SendingLoopRunning = false;
-        }
-
-        protected override Task ReceiveLoop()
-        {
-            var task = base.ReceiveLoop();
-
-            if (!_isUpdateLoopRunning)
-                TaskHelper.ManagedRun(UpdateLoop, CancellationTokenSource!.Token);
-
-            return task;
-        }
-
         private async Task UpdateLoop()
         {
             if (Kcp == null)
                 throw new NullReferenceException("Kcp Init Failed!");
-
-            _isUpdateLoopRunning = true;
-
+            
             while (!(CancellationTokenSource?.IsCancellationRequested ?? true))
             {
                 Kcp.Update(DateTimeOffset.UtcNow);
 
                 await Task.Delay(10, CancellationTokenSource.Token);
             }
-
-            _isUpdateLoopRunning = false;
         }
 
         /// <summary>

@@ -20,6 +20,7 @@ namespace Hive.Framework.Networking.Shared
     public abstract class AbstractSession<TId, TSession> : ISession<TSession>, ISender<TId>, ICanRedirectPacket<TId>, IHasCodec<TId> where TSession : ISession<TSession> where TId : unmanaged
     {
         protected const int DefaultBufferSize = 40960;
+        protected const int DefaultSocketBufferSize = 8192 * 4; 
         protected const int PacketHeaderLength = sizeof(ushort); // 包头长度2Byte
 
         protected readonly ConcurrentQueue<ReadOnlyMemory<byte>> SendQueue = new ();
@@ -43,6 +44,8 @@ namespace Hive.Framework.Networking.Shared
 
         protected AbstractSession(IPacketCodec<TId> packetCodec, IDataDispatcher<TSession> dataDispatcher)
         {
+            ResetCancellationToken(new CancellationTokenSource());
+
             PacketCodec = packetCodec;
             DataDispatcher = dataDispatcher;
         }
@@ -95,16 +98,18 @@ namespace Hive.Framework.Networking.Shared
 
         public void BeginSend()
         {
-            ResetCancellationToken(new CancellationTokenSource());
+            if (CancellationTokenSource == null)
+                throw new ArgumentNullException(nameof(CancellationTokenSource));
 
-            TaskHelper.ManagedRun(SendLoop, CancellationTokenSource!.Token);
+            TaskHelper.ManagedRun(SendLoop, CancellationTokenSource.Token);
         }
         
         public void BeginReceive()
         {
-            ResetCancellationToken(new CancellationTokenSource());
+            if (CancellationTokenSource == null)
+                throw new ArgumentNullException(nameof(CancellationTokenSource));
 
-            TaskHelper.ManagedRun(ReceiveLoop, CancellationTokenSource!.Token);
+            TaskHelper.ManagedRun(ReceiveLoop, CancellationTokenSource.Token);
         }
 
         protected abstract void DispatchPacket(object? packet, Type? packetType = null);
@@ -253,7 +258,7 @@ namespace Hive.Framework.Networking.Shared
             return default;
         }
 
-        private void ResetCancellationToken(CancellationTokenSource? cancellationToken = null)
+        protected void ResetCancellationToken(CancellationTokenSource? cancellationToken = null)
         {
             CancellationTokenSource?.Cancel();
             CancellationTokenSource?.Dispose();
@@ -266,6 +271,8 @@ namespace Hive.Framework.Networking.Shared
 
         public virtual void Dispose()
         {
+            CancellationTokenSource?.Cancel();
+            CancellationTokenSource?.Dispose();
             DoDisconnect();
         }
     }

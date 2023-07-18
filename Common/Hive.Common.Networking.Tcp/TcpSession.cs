@@ -16,7 +16,7 @@ namespace Hive.Framework.Networking.Tcp
         public TcpSession(Socket socket, IPacketCodec<TId> packetCodec, IDataDispatcher<TcpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
         {
             Socket = socket;
-            socket.ReceiveBufferSize = 8192 * 4;
+            socket.ReceiveBufferSize = DefaultSocketBufferSize;
 
             LocalEndPoint = socket.LocalEndPoint as IPEndPoint;
             RemoteEndPoint = socket.RemoteEndPoint as IPEndPoint;

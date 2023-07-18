@@ -6,6 +6,7 @@ using System.Net;
 using System.Threading.Tasks;
 using System;
 using System.Threading.Channels;
+using Hive.Framework.Networking.Shared.Helpers;
 
 namespace Hive.Framework.Networking.Udp
 {
@@ -21,7 +22,8 @@ namespace Hive.Framework.Networking.Udp
             IDataDispatcher<UdpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
         {
             Socket = socket;
-            socket.ReceiveBufferSize = 8192 * 4;
+            socket.PatchSocket();
+            socket.ReceiveBufferSize = DefaultSocketBufferSize;
 
             LocalEndPoint = socket.LocalEndPoint as IPEndPoint;
             RemoteEndPoint = endPoint;
@@ -67,6 +69,7 @@ namespace Hive.Framework.Networking.Udp
             // 创建新连接
             _closed = false;
             Socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            Socket.PatchSocket();
         }
 
         public override ValueTask DoDisconnect()
