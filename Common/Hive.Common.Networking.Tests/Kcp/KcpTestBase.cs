@@ -31,10 +31,10 @@ public abstract class KcpTestBase
 
         _client.Send(new SigninMessage { Id = 114514 });
 
-        await Task.Delay(5000);
+         await Task.Delay(5000);
 
-        Assert.That(_clientManager.SigninMessageVal, Is.EqualTo(114514));
         Assert.That(_clientManager.ConnectedClient, Is.EqualTo(1));
+        Assert.That(_clientManager.SigninMessageVal, Is.EqualTo(114514));
     }
 
     [Test]

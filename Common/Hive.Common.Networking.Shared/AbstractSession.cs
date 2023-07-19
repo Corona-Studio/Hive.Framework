@@ -151,7 +151,8 @@ namespace Hive.Framework.Networking.Shared
             {
                 while (!(CancellationTokenSource?.IsCancellationRequested ?? true))
                 {
-                    if (!IsConnected || !CanSend || !SendQueue.TryDequeue(out var slice))
+                    if (!IsConnected || !CanSend) SpinWait.SpinUntil(() => IsConnected && CanSend);
+                    if (!SendQueue.TryDequeue(out var slice))
                     {
                         await Task.Delay(1, CancellationTokenSource.Token);
                         continue;

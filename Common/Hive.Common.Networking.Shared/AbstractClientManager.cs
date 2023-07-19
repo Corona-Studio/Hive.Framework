@@ -138,7 +138,6 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
                         count++;
                     }
 
-
                     // 如果客户端超过五次都查活失败，则强制下线客户端
                     if (count > 5)
                     {

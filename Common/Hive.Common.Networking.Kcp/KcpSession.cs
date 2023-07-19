@@ -7,6 +7,7 @@ using Hive.Framework.Codec.Abstractions;
 using Hive.Framework.Networking.Abstractions;
 using Hive.Framework.Networking.Shared;
 using System.Buffers;
+using System.Diagnostics;
 using Hive.Framework.Networking.Shared.Helpers;
 
 namespace Hive.Framework.Networking.Kcp
@@ -16,13 +17,16 @@ namespace Hive.Framework.Networking.Kcp
         public KcpSession(
             Socket socket,
             IPEndPoint endPoint,
+            uint conv,
             IPacketCodec<TId> packetCodec,
             IDataDispatcher<KcpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
         {
             Socket = socket;
             socket.ReceiveBufferSize = DefaultSocketBufferSize;
 
-            Kcp = CreateNewKcpManager();
+            _conv = conv;
+            _connectionReady = true;
+            Kcp = CreateNewKcpManager(conv);
             TaskHelper.ManagedRun(UpdateLoop, CancellationTokenSource!.Token);
 
             LocalEndPoint = socket.LocalEndPoint as IPEndPoint;
@@ -31,31 +35,32 @@ namespace Hive.Framework.Networking.Kcp
 
         public KcpSession(IPEndPoint endPoint, IPacketCodec<TId> packetCodec, IDataDispatcher<KcpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
         {
-            Kcp = CreateNewKcpManager();
-
             Connect(endPoint);
         }
 
         public KcpSession(string addressWithPort, IPacketCodec<TId> packetCodec, IDataDispatcher<KcpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
         {
-            Kcp = CreateNewKcpManager();
-
             Connect(addressWithPort);
         }
 
         private bool _closed;
-        private static readonly Random _random = new Random();
+        private uint _conv;
+        private bool _connectionReady;
 
+        private const int DefaultConnectWaitTime = 100;
+        private const int DefaultConnectMaxTrial = 25;
+
+        public const uint UnsetConv = 20010726;
         public UnSafeSegManager.Kcp? Kcp { get; private set; }
         public Socket? Socket { get; private set; }
 
-        public override bool CanSend => true;
-        public override bool CanReceive => true;
+        public override bool CanSend => _connectionReady;
+        public override bool CanReceive => _connectionReady;
         public override bool IsConnected => Socket != null;
 
-        private UnSafeSegManager.Kcp CreateNewKcpManager()
+        private UnSafeSegManager.Kcp CreateNewKcpManager(uint conv)
         {
-            var kcp = new UnSafeSegManager.Kcp(1, this, this);
+            var kcp = new UnSafeSegManager.Kcp(conv, this, this);
             kcp.NoDelay(1, 10, 2, 1);
             kcp.WndSize(64, 64);
             kcp.SetMtu(512);
@@ -78,11 +83,68 @@ namespace Hive.Framework.Networking.Kcp
 
             // 创建新连接
             _closed = false;
-            Kcp?.Dispose();
-            Kcp = CreateNewKcpManager();
-            TaskHelper.ManagedRun(UpdateLoop, CancellationTokenSource!.Token);
-
             Socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+
+            var unsetConvBytes = BitConverter.GetBytes(UnsetConv);
+            await Socket.RawSendTo(unsetConvBytes, RemoteEndPoint!);
+
+            var clientRegistered = false;
+            var convReceived = false;
+            var tryCount = 0;
+            var buffer = ArrayPool<byte>.Shared.Rent(1024);
+
+            while (tryCount < DefaultConnectMaxTrial || convReceived)
+            {
+                tryCount++;
+
+                EndPoint? endPoint = new IPEndPoint(IPAddress.Any, 0);
+                var received = Socket.ReceiveFrom(buffer, ref endPoint);
+
+                if (!endPoint.Equals(RemoteEndPoint) || received < sizeof(uint))
+                {
+                    await Task.Delay(DefaultConnectWaitTime);
+                    continue;
+                }
+
+                try
+                {
+                    var assignedConv = BitConverter.ToUInt32(buffer);
+
+                    if (!convReceived)
+                    {
+                        _conv = assignedConv;
+                        convReceived = true;
+
+                        await Socket!.RawSendTo(buffer[..sizeof(uint)], endPoint);
+
+                        await Task.Delay(DefaultConnectWaitTime);
+                        continue;
+                    }
+
+                    if (_conv != assignedConv || !convReceived) break;
+
+                    clientRegistered = true;
+                    break;
+                }
+                catch (Exception e)
+                {
+                    Debug.WriteLine(e);
+                    await Task.Delay(DefaultConnectWaitTime);
+                }
+            }
+
+            ArrayPool<byte>.Shared.Return(buffer);
+
+            if (!clientRegistered)
+            {
+                await DoDisconnect();
+                return;
+            }
+
+            Kcp?.Dispose();
+            Kcp = CreateNewKcpManager(_conv);
+            _connectionReady = true;
+            TaskHelper.ManagedRun(UpdateLoop, CancellationTokenSource!.Token);
         }
 
         public override ValueTask DoDisconnect()
@@ -91,6 +153,7 @@ namespace Hive.Framework.Networking.Kcp
 
             Socket.Dispose();
             _closed = true;
+            _connectionReady = false;
 
             return default;
         }
