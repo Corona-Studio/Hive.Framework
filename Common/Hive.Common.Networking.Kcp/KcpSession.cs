@@ -54,6 +54,7 @@ namespace Hive.Framework.Networking.Kcp
         public UnSafeSegManager.Kcp? Kcp { get; private set; }
         public Socket? Socket { get; private set; }
 
+        public override bool ShouldDestroyAfterDisconnected => false;
         public override bool CanSend => _connectionReady;
         public override bool CanReceive => _connectionReady;
         public override bool IsConnected => Socket != null;

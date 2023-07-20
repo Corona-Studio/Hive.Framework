@@ -35,6 +35,7 @@ namespace Hive.Framework.Networking.Shared
         public TId[]? ExcludeRedirectPacketIds { get; set; }
         public bool RedirectReceivedData { get; set; }
 
+        public abstract bool ShouldDestroyAfterDisconnected { get; }
         public abstract bool CanSend { get; }
         public abstract bool CanReceive { get; }
         public bool Running => !(CancellationTokenSource?.IsCancellationRequested ?? true) && SendingLoopRunning && ReceivingLoopRunning;

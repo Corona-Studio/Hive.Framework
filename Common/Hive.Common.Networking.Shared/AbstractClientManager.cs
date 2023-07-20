@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,7 +23,7 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
     private readonly ConcurrentDictionary<TSession, TSessionId> _sessionIdMapper = new ();
     private readonly ConcurrentDictionary<IPEndPoint, TSession> _endPointSessionMapper = new ();
     private readonly ConcurrentDictionary<TSessionId, DateTime> _lastHeartBeatReceiveTimeDic = new();
-    private readonly ConcurrentBag<TSession> _disconnectedSessions = new ();
+    private readonly HashSet<TSession> _disconnectedSessions = new ();
 
     private bool _isClientLinkHolderRunning;
 
@@ -183,7 +184,21 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
     /// <returns></returns>
     public virtual bool TryGetSession(IPEndPoint remoteEndPoint, out TSession? session)
     {
-        return _endPointSessionMapper.TryGetValue(remoteEndPoint, out session);
+        var connectedSessionResult = _endPointSessionMapper.TryGetValue(remoteEndPoint, out session);
+
+        if (connectedSessionResult) return connectedSessionResult;
+
+        TSession? disconnectedSession;
+
+        lock (_disconnectedSessions)
+        {
+            disconnectedSession =
+                _disconnectedSessions.FirstOrDefault(s => s.RemoteEndPoint.Equals(remoteEndPoint));
+
+            session = disconnectedSession;
+        }
+
+        return disconnectedSession != null;
     }
 
     /// <summary>
@@ -217,7 +232,14 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
         _idSessionMapper.TryRemove(sessionId, out _);
         _sessionIdMapper.TryRemove(session, out _);
         _endPointSessionMapper.TryRemove(session.RemoteEndPoint, out _);
-        _disconnectedSessions.Add(session);
+        lock(_disconnectedSessions)
+            _disconnectedSessions.Add(session);
+
+        if (session.ShouldDestroyAfterDisconnected)
+        {
+            session.DataDispatcher.CallbackDictionary.Clear();
+            session.DoDisconnect();
+        }
 
         OnClientDisconnected?.Invoke(this, new ClientConnectionChangedEventArgs<TSession>(session, ClientConnectionStatus.Disconnected));
     }
@@ -238,6 +260,9 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
             InvokeOnClientConnected(session);
             return;
         }
+
+        lock (_disconnectedSessions)
+            _disconnectedSessions.Remove(session);
 
         UpdateSession(sessionId, session);
     }

@@ -41,6 +41,7 @@ public sealed class QuicSession<TId> : AbstractSession<TId, QuicSession<TId>> wh
     public QuicConnection? QuicConnection { get; private set; }
     public QuicStream? QuicStream { get; private set; }
 
+    public override bool ShouldDestroyAfterDisconnected => true;
     public override bool CanSend => true;
     public override bool CanReceive => true;
     public override bool IsConnected => true;

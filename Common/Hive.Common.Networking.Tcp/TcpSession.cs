@@ -36,6 +36,7 @@ namespace Hive.Framework.Networking.Tcp
 
         public Socket? Socket { get; private set; }
 
+        public override bool ShouldDestroyAfterDisconnected => true;
         public override bool CanSend => true;
         public override bool CanReceive => true;
         public override bool IsConnected => Socket is { Connected: true };

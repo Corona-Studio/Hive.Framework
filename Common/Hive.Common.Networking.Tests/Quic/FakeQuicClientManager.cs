@@ -1,8 +1,5 @@
-﻿using System.Net;
-using System.Net.Sockets;
-using System.Runtime.Versioning;
+﻿using System.Runtime.Versioning;
 using System.Text;
-using Hive.Framework.Networking.Kcp;
 using Hive.Framework.Networking.Quic;
 using Hive.Framework.Networking.Shared;
 using Hive.Framework.Networking.Tests.Messages;
@@ -39,9 +36,6 @@ public class FakeQuicClientManager : AbstractClientManager<Guid, QuicSession<ush
 
         if (!isClientRequest)
             DisconnectedClient++;
-
-        session.DataDispatcher.CallbackDictionary.Clear();
-        session.Dispose();
     }
 
     protected override void RegisterSigninMessage(QuicSession<ushort> session)

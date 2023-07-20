@@ -34,8 +34,6 @@ public class FakeUdpClientManager : AbstractClientManager<Guid, UdpSession<ushor
 
         if (!isClientRequest)
             DisconnectedClient++;
-
-        session.DataDispatcher.CallbackDictionary.Clear();
     }
 
     protected override void RegisterSigninMessage(UdpSession<ushort> session)

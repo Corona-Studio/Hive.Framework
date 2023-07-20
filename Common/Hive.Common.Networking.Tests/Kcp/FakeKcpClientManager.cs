@@ -34,8 +34,6 @@ public class FakeKcpClientManager : AbstractClientManager<Guid, KcpSession<ushor
 
         if (!isClientRequest)
             DisconnectedClient++;
-
-        session.DataDispatcher.CallbackDictionary.Clear();
     }
 
     protected override void RegisterSigninMessage(KcpSession<ushort> session)

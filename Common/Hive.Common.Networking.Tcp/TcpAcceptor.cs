@@ -18,7 +18,7 @@ namespace Hive.Framework.Networking.Tcp
             IClientManager<TSessionId, TcpSession<TId>> clientManager) : base(endPoint, packetCodec, dataDispatcher, clientManager)
         {
         }
-
+        
         public Socket? ServerSocket { get; private set; }
 
         private void InitSocket()

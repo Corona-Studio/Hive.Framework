@@ -86,7 +86,7 @@ namespace Hive.Framework.Networking.Kcp
 
                 if (received == 0) return;
 
-                lock (_convDictionary)
+                lock (_convSessionDictionary)
                 {
                     if (ClientManager.TryGetSession((IPEndPoint)endPoint, out var session))
                     {
@@ -137,10 +137,13 @@ namespace Hive.Framework.Networking.Kcp
 
                 // 如果在字典中发现了这个会话，说明 Conv 已经协商成功但是客户端管理器还没有接收到登录报文
                 // 在客户端管理器还没有接受该会话时，需要将收到的数据临时转发至 Session
-                if (_convSessionDictionary.TryGetValueByKey(receivedConv, out var savedSession))
+                lock (_convSessionDictionary)
                 {
-                    savedSession.Kcp!.Input(buffer[..received]);
-                    return;
+                    if (_convSessionDictionary.TryGetValueByKey(receivedConv, out var savedSession))
+                    {
+                        savedSession.Kcp!.Input(buffer[..received]);
+                        return;
+                    }
                 }
 
                 var clientSession = new KcpSession<TId>(
@@ -150,8 +153,9 @@ namespace Hive.Framework.Networking.Kcp
                     PacketCodec,
                     DataDispatcher);
 
+                lock (_convSessionDictionary)
+                    _convSessionDictionary.Add(receivedConv, clientSession);
                 ClientManager.AddSession(clientSession);
-                _convSessionDictionary.Add(receivedConv, clientSession);
             }
             finally
             {

@@ -34,10 +34,6 @@ public class FakeTcpClientManager : AbstractClientManager<Guid, TcpSession<ushor
 
         if (!isClientRequest)
             DisconnectedClient++;
-
-        session.DataDispatcher.CallbackDictionary.Clear();
-        session.Socket?.Shutdown(SocketShutdown.Both);
-        session.Dispose();
     }
 
     protected override void RegisterSigninMessage(TcpSession<ushort> session)

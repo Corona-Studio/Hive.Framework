@@ -9,7 +9,7 @@ namespace Hive.Framework.Networking.Abstractions
     /// 代表一个连接会话
     /// </summary>
     /// <typeparam name="TSender">分包发送者，通常为自己</typeparam>
-    public interface ISession<TSender> where TSender : ISession<TSender>
+    public interface ISession<TSender> : IShouldDestroySession where TSender : ISession<TSender>
     {
         IPEndPoint? LocalEndPoint { get; }
         IPEndPoint RemoteEndPoint { get; }

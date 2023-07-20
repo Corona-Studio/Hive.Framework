@@ -49,6 +49,7 @@ namespace Hive.Framework.Networking.Udp
             FullMode = BoundedChannelFullMode.DropOldest
         });
 
+        public override bool ShouldDestroyAfterDisconnected => false;
         public override bool CanSend => true;
         public override bool CanReceive => true;
         public override bool IsConnected => Socket != null;
