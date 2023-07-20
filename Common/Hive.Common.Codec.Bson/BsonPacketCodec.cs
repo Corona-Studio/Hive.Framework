@@ -102,7 +102,7 @@ public class BsonPacketCodec : IPacketCodec<ushort>
 
         fixed (byte* bp = &packetData.GetPinnableReference())
         {
-            using var dataMs = new UnmanagedMemoryStream(bp, data.Length);
+            using var dataMs = new UnmanagedMemoryStream(bp, packetData.Length);
 
             // var packetLength = BitConverter.ToUInt16(packetLengthSpan);
             var packetType = PacketIdMapper.GetPacketType(packetId);

@@ -1,6 +1,5 @@
 ﻿using Hive.Framework.Networking.Kcp;
 using Hive.Framework.Networking.Shared;
-using Hive.Framework.Networking.Tests.Messages;
 using Hive.Framework.Shared;
 using System.Net;
 using Hive.Common.Codec.MemoryPack;
@@ -15,19 +14,16 @@ public class KcpMemoryPackTests : KcpTestBase
     [OneTimeSetUp]
     public void Setup()
     {
-        _packetIdMapper = new MemoryPackPacketIdMapper();
-        _packetIdMapper.Register<HeartBeatMessage>();
-        _packetIdMapper.Register<SigninMessage>();
-        _packetIdMapper.Register<SignOutMessage>();
-        _packetIdMapper.Register<ReconnectMessage>();
+        PacketIdMapper = new MemoryPackPacketIdMapper();
+        RegisterMessages();
 
-        _codec = new MemoryPackPacketCodec(_packetIdMapper);
-        _clientManager = new FakeKcpClientManager();
-        _dataDispatcher = new DefaultDataDispatcher<KcpSession<ushort>>();
+        Codec = new MemoryPackPacketCodec(PacketIdMapper);
+        ClientManager = new FakeKcpClientManager();
+        DataDispatcher = new DefaultDataDispatcher<KcpSession<ushort>>();
 
-        _server = new KcpAcceptor<ushort, Guid>(_endPoint, _codec, _dataDispatcher, _clientManager);
-        _server.Start();
+        Server = new KcpAcceptor<ushort, Guid>(_endPoint, Codec, DataDispatcher, ClientManager);
+        Server.Start();
 
-        _client = new KcpSession<ushort>(_endPoint, _codec, _dataDispatcher);
+        Client = new KcpSession<ushort>(_endPoint, Codec, DataDispatcher);
     }
 }

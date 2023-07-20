@@ -15,19 +15,16 @@ public class TcpBsonTests : TcpTestBase
     [OneTimeSetUp]
     public void Setup()
     {
-        _packetIdMapper = new BsonPacketIdMapper();
-        _packetIdMapper.Register<HeartBeatMessage>();
-        _packetIdMapper.Register<SigninMessage>();
-        _packetIdMapper.Register<SignOutMessage>();
-        _packetIdMapper.Register<ReconnectMessage>();
+        PacketIdMapper = new BsonPacketIdMapper();
+        RegisterMessages();
 
-        _codec = new BsonPacketCodec(_packetIdMapper);
-        _clientManager = new FakeTcpClientManager();
-        _dataDispatcher = new DefaultDataDispatcher<TcpSession<ushort>>();
+        Codec = new BsonPacketCodec(PacketIdMapper);
+        ClientManager = new FakeTcpClientManager();
+        DataDispatcher = new DefaultDataDispatcher<TcpSession<ushort>>();
 
-        _server = new TcpAcceptor<ushort, Guid>(_endPoint, _codec, _dataDispatcher, _clientManager);
-        _server.Start();
+        Server = new TcpAcceptor<ushort, Guid>(_endPoint, Codec, DataDispatcher, ClientManager);
+        Server.Start();
 
-        _client = new TcpSession<ushort>(_endPoint, _codec, _dataDispatcher);
+        Client = new TcpSession<ushort>(_endPoint, Codec, DataDispatcher);
     }
 }

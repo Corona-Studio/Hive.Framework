@@ -1,7 +1,6 @@
 ﻿using Hive.Framework.Codec.Bson;
 using Hive.Framework.Networking.Quic;
 using Hive.Framework.Networking.Shared;
-using Hive.Framework.Networking.Tests.Messages;
 using System.Net;
 using System.Runtime.Versioning;
 using Hive.Framework.Shared;
@@ -17,19 +16,16 @@ public class QuicBsonTests : QuicTestBase
     [OneTimeSetUp]
     public void Setup()
     {
-        _packetIdMapper = new BsonPacketIdMapper();
-        _packetIdMapper.Register<HeartBeatMessage>();
-        _packetIdMapper.Register<SigninMessage>();
-        _packetIdMapper.Register<SignOutMessage>();
-        _packetIdMapper.Register<ReconnectMessage>();
+        PacketIdMapper = new BsonPacketIdMapper();
+        RegisterMessages();
 
-        _codec = new BsonPacketCodec(_packetIdMapper);
-        _clientManager = new FakeQuicClientManager();
-        _dataDispatcher = new DefaultDataDispatcher<QuicSession<ushort>>();
+        Codec = new BsonPacketCodec(PacketIdMapper);
+        ClientManager = new FakeQuicClientManager();
+        DataDispatcher = new DefaultDataDispatcher<QuicSession<ushort>>();
 
-        _server = new QuicAcceptor<ushort, Guid>(_endPoint, QuicCertHelper.GenerateTestCertificate(), _codec, _dataDispatcher, _clientManager);
-        _server.Start();
+        Server = new QuicAcceptor<ushort, Guid>(_endPoint, QuicCertHelper.GenerateTestCertificate(), Codec, DataDispatcher, ClientManager);
+        Server.Start();
 
-        _client = new QuicSession<ushort>(_endPoint, _codec, _dataDispatcher);
+        Client = new QuicSession<ushort>(_endPoint, Codec, DataDispatcher);
     }
 }

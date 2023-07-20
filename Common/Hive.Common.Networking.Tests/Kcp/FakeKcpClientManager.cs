@@ -5,7 +5,7 @@ using System.Text;
 
 namespace Hive.Framework.Networking.Tests.Kcp;
 
-public class FakeKcpClientManager : AbstractClientManager<Guid, KcpSession<ushort>>
+public class FakeKcpClientManager : AbstractClientManager<Guid, KcpSession<ushort>>, INetworkingTestProperties
 {
     protected override void RegisterHeartBeatMessage(KcpSession<ushort> session)
     {
@@ -16,12 +16,14 @@ public class FakeKcpClientManager : AbstractClientManager<Guid, KcpSession<ushor
             UpdateHeartBeatReceiveTime(sessionId);
         });
     }
-
+    
     public int ConnectedClient { get; private set; }
     public int SigninMessageVal { get; private set; }
     public int SignOutMessageVal { get; private set; }
     public int ReconnectedClient { get; private set; }
     public int DisconnectedClient { get; private set; }
+    public int AdderCount { get; private set; }
+    public int AdderPackageReceiveCount { get; private set; }
 
     public override ReadOnlyMemory<byte> GetEncodedSessionId(KcpSession<ushort> session)
     {
@@ -43,6 +45,12 @@ public class FakeKcpClientManager : AbstractClientManager<Guid, KcpSession<ushor
             SigninMessageVal = message.Id;
             ConnectedClient++;
             InvokeOnClientConnected(kcpSession);
+        });
+
+        session.OnReceive<CountTestMessage>((message, _) =>
+        {
+            AdderPackageReceiveCount++;
+            AdderCount += message.Adder;
         });
     }
 

@@ -5,7 +5,7 @@ using System.Text;
 
 namespace Hive.Framework.Networking.Tests.Udp;
 
-public class FakeUdpClientManager : AbstractClientManager<Guid, UdpSession<ushort>>
+public class FakeUdpClientManager : AbstractClientManager<Guid, UdpSession<ushort>>, INetworkingTestProperties
 {
     protected override void RegisterHeartBeatMessage(UdpSession<ushort> session)
     {
@@ -22,6 +22,8 @@ public class FakeUdpClientManager : AbstractClientManager<Guid, UdpSession<ushor
     public int SignOutMessageVal { get; private set; }
     public int ReconnectedClient { get; private set; }
     public int DisconnectedClient { get; private set; }
+    public int AdderCount { get; private set; }
+    public int AdderPackageReceiveCount { get; private set; }
 
     public override ReadOnlyMemory<byte> GetEncodedSessionId(UdpSession<ushort> session)
     {
@@ -43,6 +45,12 @@ public class FakeUdpClientManager : AbstractClientManager<Guid, UdpSession<ushor
             SigninMessageVal = message.Id;
             ConnectedClient++;
             InvokeOnClientConnected(udpSession);
+        });
+
+        session.OnReceive<CountTestMessage>((message, _) =>
+        {
+            AdderPackageReceiveCount++;
+            AdderCount += message.Adder;
         });
     }
 

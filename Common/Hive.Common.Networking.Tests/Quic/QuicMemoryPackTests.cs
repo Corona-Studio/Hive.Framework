@@ -1,6 +1,5 @@
 ﻿using Hive.Framework.Networking.Quic;
 using Hive.Framework.Networking.Shared;
-using Hive.Framework.Networking.Tests.Messages;
 using Hive.Framework.Shared;
 using System.Net;
 using System.Runtime.Versioning;
@@ -17,19 +16,16 @@ public class QuicMemoryPackTests : QuicTestBase
     [OneTimeSetUp]
     public void Setup()
     {
-        _packetIdMapper = new MemoryPackPacketIdMapper();
-        _packetIdMapper.Register<HeartBeatMessage>();
-        _packetIdMapper.Register<SigninMessage>();
-        _packetIdMapper.Register<SignOutMessage>();
-        _packetIdMapper.Register<ReconnectMessage>();
+        PacketIdMapper = new MemoryPackPacketIdMapper();
+        RegisterMessages();
 
-        _codec = new MemoryPackPacketCodec(_packetIdMapper);
-        _clientManager = new FakeQuicClientManager();
-        _dataDispatcher = new DefaultDataDispatcher<QuicSession<ushort>>();
+        Codec = new MemoryPackPacketCodec(PacketIdMapper);
+        ClientManager = new FakeQuicClientManager();
+        DataDispatcher = new DefaultDataDispatcher<QuicSession<ushort>>();
 
-        _server = new QuicAcceptor<ushort, Guid>(_endPoint, QuicCertHelper.GenerateTestCertificate(), _codec, _dataDispatcher, _clientManager);
-        _server.Start();
+        Server = new QuicAcceptor<ushort, Guid>(_endPoint, QuicCertHelper.GenerateTestCertificate(), Codec, DataDispatcher, ClientManager);
+        Server.Start();
 
-        _client = new QuicSession<ushort>(_endPoint, _codec, _dataDispatcher);
+        Client = new QuicSession<ushort>(_endPoint, Codec, DataDispatcher);
     }
 }

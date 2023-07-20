@@ -7,7 +7,7 @@ using Hive.Framework.Networking.Tests.Messages;
 namespace Hive.Framework.Networking.Tests.Quic;
 
 [RequiresPreviewFeatures]
-public class FakeQuicClientManager : AbstractClientManager<Guid, QuicSession<ushort>>
+public class FakeQuicClientManager : AbstractClientManager<Guid, QuicSession<ushort>>, INetworkingTestProperties
 {
     protected override void RegisterHeartBeatMessage(QuicSession<ushort> session)
     {
@@ -24,6 +24,8 @@ public class FakeQuicClientManager : AbstractClientManager<Guid, QuicSession<ush
     public int SignOutMessageVal { get; private set; }
     public int ReconnectedClient { get; private set; }
     public int DisconnectedClient { get; private set; }
+    public int AdderCount { get; private set; }
+    public int AdderPackageReceiveCount { get; private set; }
 
     public override ReadOnlyMemory<byte> GetEncodedSessionId(QuicSession<ushort> session)
     {
@@ -45,6 +47,12 @@ public class FakeQuicClientManager : AbstractClientManager<Guid, QuicSession<ush
             SigninMessageVal = message.Id;
             ConnectedClient++;
             InvokeOnClientConnected(tcpSession);
+        });
+
+        session.OnReceive<CountTestMessage>((message, _) =>
+        {
+            AdderPackageReceiveCount++;
+            AdderCount += message.Adder;
         });
     }
 

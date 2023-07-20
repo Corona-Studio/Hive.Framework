@@ -15,19 +15,16 @@ public class UdpBsonTests : UdpTestBase
     [OneTimeSetUp]
     public void Setup()
     {
-        _packetIdMapper = new BsonPacketIdMapper();
-        _packetIdMapper.Register<HeartBeatMessage>();
-        _packetIdMapper.Register<SigninMessage>();
-        _packetIdMapper.Register<SignOutMessage>();
-        _packetIdMapper.Register<ReconnectMessage>();
+        PacketIdMapper = new BsonPacketIdMapper();
+        RegisterMessages();
 
-        _codec = new BsonPacketCodec(_packetIdMapper);
-        _clientManager = new FakeUdpClientManager();
-        _dataDispatcher = new DefaultDataDispatcher<UdpSession<ushort>>();
+        Codec = new BsonPacketCodec(PacketIdMapper);
+        ClientManager = new FakeUdpClientManager();
+        DataDispatcher = new DefaultDataDispatcher<UdpSession<ushort>>();
 
-        _server = new UdpAcceptor<ushort, Guid>(_endPoint, _codec, _dataDispatcher, _clientManager);
-        _server.Start();
+        Server = new UdpAcceptor<ushort, Guid>(_endPoint, Codec, DataDispatcher, ClientManager);
+        Server.Start();
 
-        _client = new UdpSession<ushort>(_endPoint, _codec, _dataDispatcher);
+        Client = new UdpSession<ushort>(_endPoint, Codec, DataDispatcher);
     }
 }

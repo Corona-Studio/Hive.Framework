@@ -1,7 +1,6 @@
 ﻿using Hive.Framework.Codec.Bson;
 using Hive.Framework.Networking.Kcp;
 using Hive.Framework.Networking.Shared;
-using Hive.Framework.Networking.Tests.Messages;
 using Hive.Framework.Shared;
 using System.Net;
 
@@ -15,19 +14,16 @@ public class KcpBsonTests : KcpTestBase
     [OneTimeSetUp]
     public void Setup()
     {
-        _packetIdMapper = new BsonPacketIdMapper();
-        _packetIdMapper.Register<HeartBeatMessage>();
-        _packetIdMapper.Register<SigninMessage>();
-        _packetIdMapper.Register<SignOutMessage>();
-        _packetIdMapper.Register<ReconnectMessage>();
+        PacketIdMapper = new BsonPacketIdMapper();
+        RegisterMessages();
 
-        _codec = new BsonPacketCodec(_packetIdMapper);
-        _clientManager = new FakeKcpClientManager();
-        _dataDispatcher = new DefaultDataDispatcher<KcpSession<ushort>>();
+        Codec = new BsonPacketCodec(PacketIdMapper);
+        ClientManager = new FakeKcpClientManager();
+        DataDispatcher = new DefaultDataDispatcher<KcpSession<ushort>>();
 
-        _server = new KcpAcceptor<ushort, Guid>(_endPoint, _codec, _dataDispatcher, _clientManager);
-        _server.Start();
+        Server = new KcpAcceptor<ushort, Guid>(_endPoint, Codec, DataDispatcher, ClientManager);
+        Server.Start();
 
-        _client = new KcpSession<ushort>(_endPoint, _codec, _dataDispatcher);
+        Client = new KcpSession<ushort>(_endPoint, Codec, DataDispatcher);
     }
 }

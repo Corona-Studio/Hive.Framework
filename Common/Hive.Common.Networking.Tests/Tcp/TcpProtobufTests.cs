@@ -15,19 +15,16 @@ public class TcpProtobufTests : TcpTestBase
     [OneTimeSetUp]
     public void Setup()
     {
-        _packetIdMapper = new ProtoBufPacketIdMapper();
-        _packetIdMapper.Register<HeartBeatMessage>();
-        _packetIdMapper.Register<SigninMessage>();
-        _packetIdMapper.Register<SignOutMessage>();
-        _packetIdMapper.Register<ReconnectMessage>();
+        PacketIdMapper = new ProtoBufPacketIdMapper();
+        RegisterMessages();
 
-        _codec = new ProtoBufPacketCodec(_packetIdMapper);
-        _clientManager = new FakeTcpClientManager();
-        _dataDispatcher = new DefaultDataDispatcher<TcpSession<ushort>>();
+        Codec = new ProtoBufPacketCodec(PacketIdMapper);
+        ClientManager = new FakeTcpClientManager();
+        DataDispatcher = new DefaultDataDispatcher<TcpSession<ushort>>();
 
-        _server = new TcpAcceptor<ushort, Guid>(_endPoint, _codec, _dataDispatcher, _clientManager);
-        _server.Start();
+        Server = new TcpAcceptor<ushort, Guid>(_endPoint, Codec, DataDispatcher, ClientManager);
+        Server.Start();
 
-        _client = new TcpSession<ushort>(_endPoint, _codec, _dataDispatcher);
+        Client = new TcpSession<ushort>(_endPoint, Codec, DataDispatcher);
     }
 }

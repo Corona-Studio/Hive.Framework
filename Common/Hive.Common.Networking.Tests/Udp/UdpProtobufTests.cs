@@ -15,19 +15,16 @@ public class UdpProtobufTests : UdpTestBase
     [OneTimeSetUp]
     public void Setup()
     {
-        _packetIdMapper = new ProtoBufPacketIdMapper();
-        _packetIdMapper.Register<HeartBeatMessage>();
-        _packetIdMapper.Register<SigninMessage>();
-        _packetIdMapper.Register<SignOutMessage>();
-        _packetIdMapper.Register<ReconnectMessage>();
+        PacketIdMapper = new ProtoBufPacketIdMapper();
+        RegisterMessages();
 
-        _codec = new ProtoBufPacketCodec(_packetIdMapper);
-        _clientManager = new FakeUdpClientManager();
-        _dataDispatcher = new DefaultDataDispatcher<UdpSession<ushort>>();
+        Codec = new ProtoBufPacketCodec(PacketIdMapper);
+        ClientManager = new FakeUdpClientManager();
+        DataDispatcher = new DefaultDataDispatcher<UdpSession<ushort>>();
 
-        _server = new UdpAcceptor<ushort, Guid>(_endPoint, _codec, _dataDispatcher, _clientManager);
-        _server.Start();
+        Server = new UdpAcceptor<ushort, Guid>(_endPoint, Codec, DataDispatcher, ClientManager);
+        Server.Start();
 
-        _client = new UdpSession<ushort>(_endPoint, _codec, _dataDispatcher);
+        Client = new UdpSession<ushort>(_endPoint, Codec, DataDispatcher);
     }
 }

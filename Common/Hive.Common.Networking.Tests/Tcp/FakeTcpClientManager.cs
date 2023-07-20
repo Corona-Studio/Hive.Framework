@@ -1,11 +1,10 @@
-﻿using System.Net.Sockets;
-using Hive.Framework.Networking.Shared;
+﻿using Hive.Framework.Networking.Shared;
 using Hive.Framework.Networking.Tcp;
 using Hive.Framework.Networking.Tests.Messages;
 
 namespace Hive.Framework.Networking.Tests.Tcp;
 
-public class FakeTcpClientManager : AbstractClientManager<Guid, TcpSession<ushort>>
+public class FakeTcpClientManager : AbstractClientManager<Guid, TcpSession<ushort>>, INetworkingTestProperties
 {
     protected override void RegisterHeartBeatMessage(TcpSession<ushort> session)
     {
@@ -22,6 +21,8 @@ public class FakeTcpClientManager : AbstractClientManager<Guid, TcpSession<ushor
     public int SignOutMessageVal { get; private set; }
     public int ReconnectedClient { get; private set; }
     public int DisconnectedClient { get; private set; }
+    public int AdderCount { get; private set; }
+    public int AdderPackageReceiveCount { get; private set; }
 
     public override ReadOnlyMemory<byte> GetEncodedSessionId(TcpSession<ushort> session)
     {
@@ -43,6 +44,12 @@ public class FakeTcpClientManager : AbstractClientManager<Guid, TcpSession<ushor
             SigninMessageVal = message.Id;
             ConnectedClient++;
             InvokeOnClientConnected(tcpSession);
+        });
+
+        session.OnReceive<CountTestMessage>((message, _) =>
+        {
+            AdderPackageReceiveCount++;
+            AdderCount += message.Adder;
         });
     }
 

@@ -15,19 +15,16 @@ public class UdpMemoryPackTests : UdpTestBase
     [OneTimeSetUp]
     public void Setup()
     {
-        _packetIdMapper = new MemoryPackPacketIdMapper();
-        _packetIdMapper.Register<HeartBeatMessage>();
-        _packetIdMapper.Register<SigninMessage>();
-        _packetIdMapper.Register<SignOutMessage>();
-        _packetIdMapper.Register<ReconnectMessage>();
+        PacketIdMapper = new MemoryPackPacketIdMapper();
+        RegisterMessages();
 
-        _codec = new MemoryPackPacketCodec(_packetIdMapper);
-        _clientManager = new FakeUdpClientManager();
-        _dataDispatcher = new DefaultDataDispatcher<UdpSession<ushort>>();
+        Codec = new MemoryPackPacketCodec(PacketIdMapper);
+        ClientManager = new FakeUdpClientManager();
+        DataDispatcher = new DefaultDataDispatcher<UdpSession<ushort>>();
 
-        _server = new UdpAcceptor<ushort, Guid>(_endPoint, _codec, _dataDispatcher, _clientManager);
-        _server.Start();
+        Server = new UdpAcceptor<ushort, Guid>(_endPoint, Codec, DataDispatcher, ClientManager);
+        Server.Start();
 
-        _client = new UdpSession<ushort>(_endPoint, _codec, _dataDispatcher);
+        Client = new UdpSession<ushort>(_endPoint, Codec, DataDispatcher);
     }
 }
