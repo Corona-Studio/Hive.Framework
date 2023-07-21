@@ -45,7 +45,7 @@ public sealed class QuicAcceptor<TId, TSessionId> : AbstractAcceptor<QuicConnect
     {
         var listenerOptions = new QuicListenerOptions
         {
-            ApplicationProtocols = new List<SslApplicationProtocol> { SslApplicationProtocol.Http3 },
+            ApplicationProtocols = new List<SslApplicationProtocol> { SslApplicationProtocol.Http2 },
             ListenEndPoint = EndPoint,
             ConnectionOptionsCallback = (_, _, _) => ValueTask.FromResult(new QuicServerConnectionOptions
             {
@@ -55,7 +55,8 @@ public sealed class QuicAcceptor<TId, TSessionId> : AbstractAcceptor<QuicConnect
                 {
                     ApplicationProtocols = new List<SslApplicationProtocol> { SslApplicationProtocol.Http3 },
                     ServerCertificate = ServerCertificate
-                }
+                },
+                IdleTimeout = TimeSpan.FromMinutes(5)
             })
         };
 
@@ -73,7 +74,7 @@ public sealed class QuicAcceptor<TId, TSessionId> : AbstractAcceptor<QuicConnect
 
         while (!CancellationTokenSource.IsCancellationRequested)
         {
-            var connection = await QuicListener.AcceptConnectionAsync();
+            var connection = await QuicListener.AcceptConnectionAsync(CancellationTokenSource.Token);
 
             await DoAcceptClient(connection, CancellationTokenSource.Token);
         }

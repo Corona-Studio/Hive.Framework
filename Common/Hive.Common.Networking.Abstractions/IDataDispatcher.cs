@@ -1,5 +1,8 @@
 ﻿using System.Collections.Generic;
 using System;
+using System.Collections.Concurrent;
+using System.Threading.Channels;
+using System.Threading.Tasks;
 
 namespace Hive.Framework.Networking.Abstractions
 {
@@ -9,12 +12,16 @@ namespace Hive.Framework.Networking.Abstractions
     /// <typeparam name="TSession">发送者，通常为对应协议的 Session</typeparam>
     public interface IDataDispatcher<TSession> where TSession : ISession<TSession>
     {
-        Dictionary<Type, CallbackWarp> CallbackDictionary { get; }
+        Channel<(Type, TSession, object)> DataDispatchChannel { get; }
+        ConcurrentDictionary<Type, CallbackWarp> CallbackDictionary { get; }
 
         protected void CheckCallbackDictionary(Type type)
         {
-            if (!CallbackDictionary.ContainsKey(type)) CallbackDictionary.Add(type, new CallbackWarp());
+            if (!CallbackDictionary.ContainsKey(type))
+                CallbackDictionary.AddOrUpdate(type, new CallbackWarp(), (_, warp) => warp);
         }
+
+        Task StartDispatchLoop();
 
         public void Register<T>(Action<T, TSession> callback)
         {
@@ -30,15 +37,13 @@ namespace Hive.Framework.Networking.Abstractions
         }
 
 
-        public bool Dispatch(TSession sender, object data, Type? dataType = null)
+        public async Task DispatchAsync(TSession sender, object data, Type? dataType = null)
         {
             var type = dataType ?? data.GetType();
 
-            if (!CallbackDictionary.ContainsKey(type)) return false;
-
-            var callbackWarp = CallbackDictionary[type];
-
-            return callbackWarp.InvokeAll(data, sender);
+            if (!CallbackDictionary.ContainsKey(type)) return;
+            if (await DataDispatchChannel.Writer.WaitToWriteAsync())
+                await DataDispatchChannel.Writer.WriteAsync((type, sender, data));
         }
 
         public readonly struct CallbackWarp

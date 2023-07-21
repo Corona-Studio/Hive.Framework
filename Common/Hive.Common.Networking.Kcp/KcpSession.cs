@@ -9,10 +9,11 @@ using Hive.Framework.Networking.Shared;
 using System.Buffers;
 using System.Diagnostics;
 using Hive.Framework.Networking.Shared.Helpers;
+using System.Threading;
 
 namespace Hive.Framework.Networking.Kcp
 {
-    public sealed class KcpSession<TId> : AbstractSession<TId, KcpSession<TId>>, IKcpCallback, IRentable where TId : unmanaged
+    public sealed class KcpSession<TId> : AbstractSession<TId, KcpSession<TId>> where TId : unmanaged
     {
         public KcpSession(
             Socket socket,
@@ -26,6 +27,8 @@ namespace Hive.Framework.Networking.Kcp
 
             _conv = conv;
             _connectionReady = true;
+            _passiveMode = true;
+
             Kcp = CreateNewKcpManager(conv);
             TaskHelper.ManagedRun(UpdateLoop, CancellationTokenSource!.Token);
 
@@ -35,11 +38,13 @@ namespace Hive.Framework.Networking.Kcp
 
         public KcpSession(IPEndPoint endPoint, IPacketCodec<TId> packetCodec, IDataDispatcher<KcpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
         {
+            _passiveMode = false;
             Connect(endPoint);
         }
 
         public KcpSession(string addressWithPort, IPacketCodec<TId> packetCodec, IDataDispatcher<KcpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
         {
+            _passiveMode = false;
             Connect(addressWithPort);
         }
 
@@ -47,11 +52,18 @@ namespace Hive.Framework.Networking.Kcp
         private uint _conv;
         private bool _connectionReady;
 
+        // 指示是否为被动模式，如果是被动模式，则所有数据将通过 Acceptor 接受后注入 KCP
+        // 如果为非被动模式，则使用内部的 Receive 方法从 Socket 接收数据
+        private readonly bool _passiveMode;
+        
+        private readonly ArrayBufferWriter<byte> _sendBuffer = new ArrayBufferWriter<byte>(1024);
+        private readonly ArrayBufferWriter<byte> _receiveBuffer = new ArrayBufferWriter<byte>(1024);
+
         private const int DefaultConnectWaitTime = 100;
         private const int DefaultConnectMaxTrial = 25;
 
         public const uint UnsetConv = 20010726;
-        public UnSafeSegManager.Kcp? Kcp { get; private set; }
+        public UnSafeSegManager.KcpIO? Kcp { get; private set; }
         public Socket? Socket { get; private set; }
 
         public override bool ShouldDestroyAfterDisconnected => false;
@@ -59,21 +71,22 @@ namespace Hive.Framework.Networking.Kcp
         public override bool CanReceive => _connectionReady;
         public override bool IsConnected => Socket != null;
 
-        private UnSafeSegManager.Kcp CreateNewKcpManager(uint conv)
+        private UnSafeSegManager.KcpIO CreateNewKcpManager(uint conv)
         {
-            var kcp = new UnSafeSegManager.Kcp(conv, this, this);
-            kcp.NoDelay(1, 10, 2, 1);
-            kcp.WndSize(64, 64);
-            kcp.SetMtu(512);
+            var kcp = new UnSafeSegManager.KcpIO(conv);
+            kcp.NoDelay(2, 5, 2, 1);
+            kcp.WndSize(1024, 1024);
+            //kcp.SetMtu(512);
+            kcp.fastlimit = -1;
 
             return kcp;
         }
 
-        protected override void DispatchPacket(object? packet, Type? packetType = null)
+        protected override async ValueTask DispatchPacket(object? packet, Type? packetType = null)
         {
             if (packet == null) return;
 
-            DataDispatcher.Dispatch(this, packet, packetType);
+            await DataDispatcher.DispatchAsync(this, packet, packetType);
         }
 
         public override async ValueTask DoConnect()
@@ -144,8 +157,11 @@ namespace Hive.Framework.Networking.Kcp
 
             Kcp?.Dispose();
             Kcp = CreateNewKcpManager(_conv);
-            _connectionReady = true;
+            
             TaskHelper.ManagedRun(UpdateLoop, CancellationTokenSource!.Token);
+            TaskHelper.ManagedRun(NonPassiveModeRawReceiveLoop, CancellationTokenSource!.Token);
+
+            _connectionReady = true;
         }
 
         public override ValueTask DoDisconnect()
@@ -172,6 +188,51 @@ namespace Hive.Framework.Networking.Kcp
             }
         }
 
+        public override async ValueTask Send(ReadOnlyMemory<byte> data)
+        {
+            if (CancellationTokenSource == null)
+                throw new ArgumentNullException(nameof(CancellationTokenSource));
+
+            await SpinWaitAsync.SpinUntil(() => CanSend);
+
+            if(Kcp == null)
+                throw new ArgumentNullException(nameof(Kcp));
+
+            var sentLen = 0;
+            while (sentLen < data.Length)
+            {
+                var sendThisTime = Kcp.Send(data.Span);
+
+                if (sendThisTime < 0)
+                    throw new InvalidOperationException("KCP 返回了小于零的发送长度，可能为 KcpCore 的内部错误！");
+
+                sentLen += sendThisTime;
+            }
+
+            if (SendingLoopRunning) return;
+
+            BeginSend();
+
+            SendingLoopRunning = true;
+        }
+
+        protected override async Task SendLoop()
+        {
+            try
+            {
+                while (!(CancellationTokenSource?.IsCancellationRequested ?? true))
+                {
+                    if (!IsConnected || !CanSend) SpinWait.SpinUntil(() => IsConnected && CanSend);
+                    
+                    await SendOnce(ReadOnlyMemory<byte>.Empty);
+                }
+            }
+            catch (Exception)
+            {
+                SendingLoopRunning = false;
+            }
+        }
+
         /// <summary>
         /// KCP 发送方法，
         /// 将数据发送至 KCP 库加以处理并排序
@@ -179,81 +240,91 @@ namespace Hive.Framework.Networking.Kcp
         /// <param name="data"></param>
         /// <returns></returns>
         /// <exception cref="InvalidOperationException"></exception>
-        public override ValueTask SendOnce(ReadOnlyMemory<byte> data)
+        public override async ValueTask SendOnce(ReadOnlyMemory<byte> data)
         {
             if (Kcp == null)
                 throw new NullReferenceException("Kcp Init Failed!");
+            if (Socket == null)
+                throw new NullReferenceException(nameof(Socket));
 
             var sentLen = 0;
 
-            while (sentLen < data.Length)
+            await Kcp.OutputAsync(_sendBuffer);
+
+            var sendData = _sendBuffer.WrittenMemory.ToArray();
+
+            while (sentLen < sendData.Length)
             {
-                var result = Kcp.Send(data.Span[sentLen..]);
+                var sendThisTime = Socket.SendTo(sendData[sentLen..], RemoteEndPoint!);
 
-                if (result < 0)
-                    throw new InvalidOperationException("KCP Send Failed!");
-
-                sentLen += result;
+                sentLen += sendThisTime;
             }
 
-            return default;
+            _sendBuffer.Clear();
         }
         
+
+        private async Task NonPassiveModeRawReceiveLoop()
+        {
+            if (Kcp == null)
+                throw new NullReferenceException("Kcp Init Failed!");
+            if (Socket == null)
+                throw new NullReferenceException(nameof(Socket));
+            if (CancellationTokenSource == null)
+                throw new ArgumentNullException(nameof(CancellationTokenSource));
+            if (_passiveMode)
+                throw new InvalidOperationException("该方法仅支持在非被动模式下启用！");
+
+            while (!(CancellationTokenSource?.IsCancellationRequested ?? true))
+            {
+                if (Socket!.Available <= 0)
+                {
+                    await Task.Delay(1);
+                    continue;
+                }
+
+                var buffer = ArrayPool<byte>.Shared.Rent(1024);
+                try
+                {
+                    EndPoint? endPoint = new IPEndPoint(IPAddress.Any, 0);
+                    var received = Socket.ReceiveFrom(buffer, ref endPoint);
+
+                    if (received == 0 || !endPoint.Equals(RemoteEndPoint))
+                    {
+                        await Task.Delay(10);
+                        continue;
+                    }
+
+                    Kcp.Input(buffer[..received]);
+                    await Task.Delay(10);
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(buffer);
+                }
+            }
+        }
+
         public override async ValueTask<int> ReceiveOnce(Memory<byte> buffer)
         {
             if (Kcp == null)
                 throw new NullReferenceException("Kcp Init Failed!");
+
+            _receiveBuffer.Clear();
+
+            await Kcp.RecvAsync(_receiveBuffer);
+
+            if (_receiveBuffer.WrittenCount > buffer.Length) return 0;
+
+            _receiveBuffer.WrittenMemory.CopyTo(buffer);
             
-            var (received, receivedLength) = Kcp.TryRecv();
-
-            while (received == null)
-            {
-                await Task.Delay(10);
-                
-                (received, receivedLength) = Kcp.TryRecv();
-            }
-
-            if (receivedLength > buffer.Length) return 0;
-
-            received.Memory[..receivedLength].CopyTo(buffer);
-
-            return receivedLength;
-        }
-
-        /// <summary>
-        /// KCP 库发送实现，
-        /// 在 KCP 完成封包处理后，通过该方法发送
-        /// </summary>
-        /// <param name="buffer">处理后的数据</param>
-        /// <param name="avalidLength">有效长度</param>
-        /// <exception cref="InvalidOperationException">Socket 初始化失败时抛出</exception>
-        public void Output(IMemoryOwner<byte> buffer, int avalidLength)
-        {
-            if (Socket == null)
-                throw new InvalidOperationException("Socket Init failed!");
-            if (CancellationTokenSource?.IsCancellationRequested ?? true) return;
-
-            var data = buffer.Memory[..avalidLength];
-            var sentLen = 0;
-
-            while (sentLen < avalidLength)
-            {
-                var sendThisTime = Socket.SendTo(data[sentLen..].ToArray(), RemoteEndPoint!);
-                sentLen += sendThisTime;
-            }
-
-            buffer.Dispose();
+            return _receiveBuffer.WrittenCount;
         }
 
         public override void Dispose()
         {
             base.Dispose();
             Kcp?.Dispose();
-        }
-
-        public IMemoryOwner<byte> RentBuffer(int length)
-        {
-            return MemoryPool<byte>.Shared.Rent(length);
         }
     }
 }

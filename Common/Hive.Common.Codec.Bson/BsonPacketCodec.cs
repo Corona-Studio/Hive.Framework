@@ -107,7 +107,7 @@ public class BsonPacketCodec : IPacketCodec<ushort>
             // var packetLength = BitConverter.ToUInt16(packetLengthSpan);
             var packetType = PacketIdMapper.GetPacketType(packetId);
             var payload = BsonSerializer.Deserialize(dataMs, packetType);
-
+            
             return new PacketDecodeResult<ushort>(packetPrefixes, packetId, payload);
         }
     }

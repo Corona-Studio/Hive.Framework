@@ -1,6 +1,5 @@
 ﻿using Hive.Framework.Networking.Shared;
 using Hive.Framework.Networking.Tcp;
-using Hive.Framework.Networking.Tests.Messages;
 using Hive.Framework.Shared;
 using System.Net;
 using Hive.Common.Codec.MemoryPack;
@@ -8,7 +7,7 @@ using Hive.Common.Codec.MemoryPack;
 namespace Hive.Framework.Networking.Tests.Tcp;
 
 [TestFixture]
-public class TcpMemoryPackTests : TcpTestBase
+public sealed class TcpMemoryPackTests : TcpTestBase
 {
     private readonly IPEndPoint _endPoint = IPEndPoint.Parse($"127.0.0.1:{NetworkHelper.GetRandomPort()}");
 

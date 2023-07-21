@@ -1,6 +1,7 @@
 ﻿using Hive.Framework.Codec.Abstractions;
 using Hive.Framework.Networking.Abstractions;
 using Hive.Framework.Networking.Shared;
+using Hive.Framework.Networking.Shared.Helpers;
 using Hive.Framework.Networking.Tests.Messages;
 
 namespace Hive.Framework.Networking.Tests;
@@ -16,7 +17,6 @@ public interface INetworkingTestProperties
     public int AdderPackageReceiveCount { get; }
 }
 
-[TestFixture]
 public abstract class AbstractNetworkingTestBase<TSession, TClient, TAcceptor, TClientManager> 
     where TSession : AbstractSession<ushort, TSession>
     where TAcceptor : AbstractAcceptor<TClient, TSession, ushort, Guid>
@@ -68,6 +68,8 @@ public abstract class AbstractNetworkingTestBase<TSession, TClient, TAcceptor, T
     {
         Assert.That(ClientManager.ConnectedClient, Is.EqualTo(0));
 
+        await SpinWaitAsync.SpinUntil(() => Client.CanSend);
+
         Client.Send(new SigninMessage { Id = 114514 });
 
         await Task.Delay(100);
@@ -105,10 +107,9 @@ public abstract class AbstractNetworkingTestBase<TSession, TClient, TAcceptor, T
 
         for (var i = 0; i < times; i++)
         {
-            var r = Random.Shared.Next(0, 100);
-            realResult += r;
+            realResult += i;
 
-            Client.Send(new CountTestMessage { Adder = r });
+            Client.Send(new CountTestMessage { Adder = i });
             await Task.Delay(10);
         }
 
@@ -131,8 +132,11 @@ public abstract class AbstractNetworkingTestBase<TSession, TClient, TAcceptor, T
 
         Assert.That(ClientManager.DisconnectedClient, Is.EqualTo(1));
 
-        await Client.DoConnect();
-        await Task.Delay(500);
+        if (Client.ShouldDestroyAfterDisconnected)
+        {
+            await Client.DoConnect();
+            await Task.Delay(500);
+        }
 
         Client.Send(new ReconnectMessage());
 

@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Buffers;
-using System.Collections.Concurrent;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using Hive.Framework.Codec.Abstractions;
 using Hive.Framework.Networking.Abstractions;
@@ -23,7 +24,13 @@ namespace Hive.Framework.Networking.Shared
         protected const int DefaultSocketBufferSize = 8192 * 4; 
         protected const int PacketHeaderLength = sizeof(ushort); // 包头长度2Byte
 
-        protected readonly ConcurrentQueue<ReadOnlyMemory<byte>> SendQueue = new ();
+        protected readonly Channel<ReadOnlyMemory<byte>> SendChannel =
+            Channel.CreateBounded<ReadOnlyMemory<byte>>(new BoundedChannelOptions(1024)
+            {
+                SingleReader = true,
+                SingleWriter = true,
+                FullMode = BoundedChannelFullMode.DropOldest
+            });
         protected CancellationTokenSource? CancellationTokenSource;
         protected bool ReceivingLoopRunning;
         protected bool SendingLoopRunning;
@@ -62,9 +69,13 @@ namespace Hive.Framework.Networking.Shared
             DoConnect();
         }
 
-        public virtual void Send(ReadOnlyMemory<byte> data)
+        public virtual async ValueTask Send(ReadOnlyMemory<byte> data)
         {
-            SendQueue.Enqueue(data);
+            if (CancellationTokenSource == null)
+                throw new ArgumentNullException(nameof(CancellationTokenSource));
+
+            if (await SendChannel.Writer.WaitToWriteAsync(CancellationTokenSource.Token))
+                await SendChannel.Writer.WriteAsync(data);
 
             if (SendingLoopRunning) return;
 
@@ -113,9 +124,9 @@ namespace Hive.Framework.Networking.Shared
             TaskHelper.ManagedRun(ReceiveLoop, CancellationTokenSource.Token);
         }
 
-        protected abstract void DispatchPacket(object? packet, Type? packetType = null);
+        protected abstract ValueTask DispatchPacket(object? packet, Type? packetType = null);
 
-        protected void ProcessPacket(ReadOnlyMemory<byte> payloadBytes)
+        protected async ValueTask ProcessPacket(ReadOnlyMemory<byte> payloadBytes)
         {
             var idMemory = PacketCodec.GetPacketIdMemory(payloadBytes);
             var id = PacketCodec.GetPacketId(idMemory);
@@ -130,7 +141,7 @@ namespace Hive.Framework.Networking.Shared
             var packet = PacketCodec.Decode(payloadBytes.Span);
             var packetType = PacketCodec.PacketIdMapper.GetPacketType(id);
 
-            DispatchPacket(packet.Payload, packetType);
+            await DispatchPacket(packet.Payload, packetType);
         }
 
         protected void InvokeDataReceivedEvent(ReadOnlyMemory<byte> id, ReadOnlyMemory<byte> data)
@@ -153,12 +164,13 @@ namespace Hive.Framework.Networking.Shared
                 while (!(CancellationTokenSource?.IsCancellationRequested ?? true))
                 {
                     if (!IsConnected || !CanSend) SpinWait.SpinUntil(() => IsConnected && CanSend);
-                    if (!SendQueue.TryDequeue(out var slice))
+                    if (!await SendChannel.Reader.WaitToReadAsync(CancellationTokenSource.Token))
                     {
                         await Task.Delay(1, CancellationTokenSource.Token);
                         continue;
                     }
 
+                    var slice = await SendChannel.Reader.ReadAsync(CancellationTokenSource.Token);
                     await SendOnce(slice);
                 }
             }
@@ -217,7 +229,7 @@ namespace Hive.Framework.Networking.Shared
 #endif
                         */
 
-                        ProcessPacket(buffer.Slice(offset, actualLen));
+                        await ProcessPacket(buffer.Slice(offset, actualLen));
 
                         offset += actualLen;
                         receivedLen -= actualLen;
@@ -273,8 +285,6 @@ namespace Hive.Framework.Networking.Shared
 
         public virtual void Dispose()
         {
-            CancellationTokenSource?.Cancel();
-            CancellationTokenSource?.Dispose();
             DoDisconnect();
         }
     }

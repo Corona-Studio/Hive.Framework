@@ -20,6 +20,8 @@ public sealed class QuicSession<TId> : AbstractSession<TId, QuicSession<TId>> wh
 
         LocalEndPoint = connection.LocalEndPoint;
         RemoteEndPoint = connection.RemoteEndPoint;
+
+        _connectionReady = true;
     }
 
     public QuicSession(IPEndPoint endPoint, IPacketCodec<TId> packetCodec, IDataDispatcher<QuicSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
@@ -38,19 +40,21 @@ public sealed class QuicSession<TId> : AbstractSession<TId, QuicSession<TId>> wh
         Connect(addressWithPort);
     }
 
+    private bool _connectionReady;
+
     public QuicConnection? QuicConnection { get; private set; }
     public QuicStream? QuicStream { get; private set; }
 
     public override bool ShouldDestroyAfterDisconnected => true;
-    public override bool CanSend => true;
-    public override bool CanReceive => true;
-    public override bool IsConnected => true;
+    public override bool CanSend => _connectionReady;
+    public override bool CanReceive => _connectionReady;
+    public override bool IsConnected => _connectionReady;
 
-    protected override void DispatchPacket(object? packet, Type? packetType = null)
+    protected override async ValueTask DispatchPacket(object? packet, Type? packetType = null)
     {
         if (packet == null) return;
 
-        DataDispatcher.Dispatch(this, packet, packetType);
+        await DataDispatcher.DispatchAsync(this, packet, packetType);
     }
 
     public override async ValueTask DoConnect()
@@ -65,13 +69,16 @@ public sealed class QuicSession<TId> : AbstractSession<TId, QuicSession<TId>> wh
             DefaultCloseErrorCode = 0,
             ClientAuthenticationOptions = new SslClientAuthenticationOptions
             {
-                ApplicationProtocols = new List<SslApplicationProtocol> { SslApplicationProtocol.Http3 },
+                ApplicationProtocols = new List<SslApplicationProtocol> { SslApplicationProtocol.Http2 },
                 RemoteCertificateValidationCallback = (_, _, _, _) => true
-            }
+            },
+            IdleTimeout = TimeSpan.FromMinutes(5)
         };
 
         QuicConnection = await QuicConnection.ConnectAsync(clientConnectionOptions);
         QuicStream = await QuicConnection.OpenOutboundStreamAsync(QuicStreamType.Bidirectional);
+
+        _connectionReady = true;
     }
 
     public override async ValueTask SendOnce(ReadOnlyMemory<byte> data)
@@ -93,6 +100,8 @@ public sealed class QuicSession<TId> : AbstractSession<TId, QuicSession<TId>> wh
     public override async ValueTask DoDisconnect()
     {
         await base.DoDisconnect();
+
+        _connectionReady = false;
 
         if (QuicConnection != null)
         {

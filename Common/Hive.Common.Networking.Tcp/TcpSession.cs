@@ -20,6 +20,8 @@ namespace Hive.Framework.Networking.Tcp
 
             LocalEndPoint = socket.LocalEndPoint as IPEndPoint;
             RemoteEndPoint = socket.RemoteEndPoint as IPEndPoint;
+
+            _connectionReady = true;
         }
 
         public TcpSession(IPEndPoint endPoint, IPacketCodec<TId> packetCodec, IDataDispatcher<TcpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
@@ -33,19 +35,20 @@ namespace Hive.Framework.Networking.Tcp
         }
 
         private bool _closed;
+        private bool _connectionReady;
 
         public Socket? Socket { get; private set; }
 
         public override bool ShouldDestroyAfterDisconnected => true;
-        public override bool CanSend => true;
-        public override bool CanReceive => true;
-        public override bool IsConnected => Socket is { Connected: true };
+        public override bool CanSend => _connectionReady;
+        public override bool CanReceive => _connectionReady;
+        public override bool IsConnected => Socket is { Connected: true } && _connectionReady;
 
-        protected override void DispatchPacket(object? packet, Type? packetType = null)
+        protected override async ValueTask DispatchPacket(object? packet, Type? packetType = null)
         {
             if (packet == null) return;
 
-            DataDispatcher.Dispatch(this, packet, packetType);
+            await DataDispatcher.DispatchAsync(this, packet, packetType);
         }
 
         public override async ValueTask DoConnect()
@@ -63,10 +66,15 @@ namespace Hive.Framework.Networking.Tcp
 
             // 连接到指定地址
             await Socket.ConnectAsync(RemoteEndPoint);
+
+            _connectionReady = true;
         }
 
         public override ValueTask DoDisconnect()
         {
+            base.DoDisconnect();
+            _connectionReady = false;
+
             if (_closed || Socket == null) return default;
 
             Socket?.Shutdown(SocketShutdown.Both);

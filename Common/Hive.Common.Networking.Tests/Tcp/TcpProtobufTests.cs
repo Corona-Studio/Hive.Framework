@@ -1,14 +1,13 @@
 ﻿using Hive.Framework.Codec.Protobuf;
 using Hive.Framework.Networking.Shared;
 using Hive.Framework.Networking.Tcp;
-using Hive.Framework.Networking.Tests.Messages;
 using Hive.Framework.Shared;
 using System.Net;
 
 namespace Hive.Framework.Networking.Tests.Tcp;
 
 [TestFixture]
-public class TcpProtobufTests : TcpTestBase
+public sealed class TcpProtobufTests : TcpTestBase
 {
     private readonly IPEndPoint _endPoint = IPEndPoint.Parse($"127.0.0.1:{NetworkHelper.GetRandomPort()}");
 

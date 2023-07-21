@@ -9,7 +9,7 @@ namespace Hive.Framework.Networking.Tests.Quic;
 
 [TestFixture]
 [RequiresPreviewFeatures]
-public class QuicMemoryPackTests : QuicTestBase
+public sealed class QuicMemoryPackTests : QuicTestBase
 {
     private readonly IPEndPoint _endPoint = IPEndPoint.Parse($"127.0.0.1:{NetworkHelper.GetRandomPort()}");
 

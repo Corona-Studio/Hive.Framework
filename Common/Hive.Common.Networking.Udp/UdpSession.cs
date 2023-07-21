@@ -54,11 +54,11 @@ namespace Hive.Framework.Networking.Udp
         public override bool CanReceive => true;
         public override bool IsConnected => Socket != null;
 
-        protected override void DispatchPacket(object? packet, Type? packetType = null)
+        protected override async ValueTask DispatchPacket(object? packet, Type? packetType = null)
         {
             if (packet == null) return;
 
-            DataDispatcher.Dispatch(this, packet, packetType);
+            await DataDispatcher.DispatchAsync(this, packet, packetType);
         }
 
         public override async ValueTask DoConnect()

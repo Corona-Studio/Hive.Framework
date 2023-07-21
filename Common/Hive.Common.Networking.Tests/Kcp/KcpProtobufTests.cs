@@ -7,7 +7,7 @@ using System.Net;
 namespace Hive.Framework.Networking.Tests.Kcp;
 
 [TestFixture]
-public class KcpProtobufTests : KcpTestBase
+public sealed class KcpProtobufTests : KcpTestBase
 {
     private readonly IPEndPoint _endPoint = IPEndPoint.Parse($"127.0.0.1:{NetworkHelper.GetRandomPort()}");
 

@@ -1,5 +1,4 @@
 ﻿using Hive.Framework.Networking.Shared;
-using Hive.Framework.Networking.Tests.Messages;
 using Hive.Framework.Networking.Udp;
 using Hive.Framework.Shared;
 using System.Net;
@@ -8,7 +7,7 @@ using Hive.Common.Codec.MemoryPack;
 namespace Hive.Framework.Networking.Tests.Udp;
 
 [TestFixture]
-public class UdpMemoryPackTests : UdpTestBase
+public sealed class UdpMemoryPackTests : UdpTestBase
 {
     private readonly IPEndPoint _endPoint = IPEndPoint.Parse($"127.0.0.1:{NetworkHelper.GetRandomPort()}");
 
