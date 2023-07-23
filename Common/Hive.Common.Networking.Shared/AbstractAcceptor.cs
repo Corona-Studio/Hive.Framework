@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using System;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Hive.Framework.Codec.Abstractions;
@@ -17,7 +18,7 @@ public abstract class AbstractAcceptor<TClient, TSession, TId, TSessionId> : IAc
 {
     public IPEndPoint EndPoint { get; }
     public IPacketCodec<TId> PacketCodec { get; }
-    public IDataDispatcher<TSession> DataDispatcher { get; }
+    public Func<IDataDispatcher<TSession>> DataDispatcherProvider { get; }
     public IClientManager<TSessionId, TSession> ClientManager { get; }
 
     protected readonly CancellationTokenSource CancellationTokenSource = new ();
@@ -25,12 +26,12 @@ public abstract class AbstractAcceptor<TClient, TSession, TId, TSessionId> : IAc
     protected AbstractAcceptor(
         IPEndPoint endPoint,
         IPacketCodec<TId> packetCodec,
-        IDataDispatcher<TSession> dataDispatcher,
+        Func<IDataDispatcher<TSession>> dataDispatcherProvider,
         IClientManager<TSessionId, TSession> clientManager)
     {
         EndPoint = endPoint;
         PacketCodec = packetCodec;
-        DataDispatcher = dataDispatcher;
+        DataDispatcherProvider = dataDispatcherProvider;
         ClientManager = clientManager;
     }
 

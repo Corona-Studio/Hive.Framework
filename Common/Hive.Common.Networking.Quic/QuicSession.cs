@@ -86,6 +86,8 @@ public sealed class QuicSession<TId> : AbstractSession<TId, QuicSession<TId>> wh
         if (QuicStream == null)
             throw new InvalidOperationException("QuicStream Init failed!");
 
+        if (!IsConnected || !CanSend) SpinWait.SpinUntil(() => IsConnected && CanReceive);
+
         await QuicStream.WriteAsync(data);
     }
 
@@ -94,6 +96,8 @@ public sealed class QuicSession<TId> : AbstractSession<TId, QuicSession<TId>> wh
         if (QuicStream == null)
             throw new InvalidOperationException("QuicStream Init failed!");
 
+        if (!IsConnected || !CanReceive || !QuicStream.CanRead)
+            SpinWait.SpinUntil(() => IsConnected && CanReceive && QuicStream.CanRead);
         return await QuicStream.ReadAsync(buffer);
     }
 

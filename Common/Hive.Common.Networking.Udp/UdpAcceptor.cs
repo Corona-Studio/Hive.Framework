@@ -16,8 +16,9 @@ namespace Hive.Framework.Networking.Udp
         public UdpAcceptor(
             IPEndPoint endPoint,
             IPacketCodec<TId> packetCodec,
-            IDataDispatcher<UdpSession<TId>> dataDispatcher,
-            IClientManager<TSessionId, UdpSession<TId>> clientManager) : base(endPoint, packetCodec, dataDispatcher, clientManager)
+            Func<IDataDispatcher<UdpSession<TId>>> dataDispatcherProvider,
+            IClientManager<TSessionId, UdpSession<TId>> clientManager)
+            : base(endPoint, packetCodec, dataDispatcherProvider, clientManager)
         {
         }
 
@@ -26,7 +27,7 @@ namespace Hive.Framework.Networking.Udp
         public override void Start()
         {
             Socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-            Socket.PatchSocket();
+            Socket.ReceiveBufferSize = UdpSession<int>.DefaultSocketBufferSize;
             Socket.Bind(EndPoint);
 
             TaskHelper.ManagedRun(StartAcceptClient, CancellationTokenSource.Token);
@@ -48,7 +49,7 @@ namespace Hive.Framework.Networking.Udp
 
         public override async ValueTask DoAcceptClient(Socket client, CancellationToken cancellationToken)
         {
-            if(client.Available <= 0) return;
+            if (client.Available <= 0) return;
 
             var buffer = ArrayPool<byte>.Shared.Rent(1024);
             try
@@ -65,11 +66,17 @@ namespace Hive.Framework.Networking.Udp
                     return;
                 }
 
-                var clientSession = new UdpSession<TId>(client, (IPEndPoint)endPoint, PacketCodec, DataDispatcher);
+                var clientSession =
+                    new UdpSession<TId>(client, (IPEndPoint)endPoint, PacketCodec, DataDispatcherProvider());
 
                 await clientSession.DataChannel.Writer.WriteAsync(buffer.AsMemory()[..received], cancellationToken);
 
                 ClientManager.AddSession(clientSession);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                throw;
             }
             finally
             {

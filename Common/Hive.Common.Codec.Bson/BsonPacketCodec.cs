@@ -4,7 +4,7 @@ using System;
 using System.Buffers;
 using System.IO;
 using System.Linq;
-using DotNext.Buffers;
+using Microsoft.Extensions.ObjectPool;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 
@@ -12,16 +12,11 @@ namespace Hive.Framework.Codec.Bson;
 
 public class BsonPacketCodec : IPacketCodec<ushort>
 {
-    private static readonly ObjectPool<PooledBufferWriter<byte>> WriterPool;
+    private static readonly ObjectPool<ArrayBufferWriter<byte>> WriterPool;
 
     static BsonPacketCodec()
     {
-        WriterPool = new ObjectPool<PooledBufferWriter<byte>>(
-            () => new PooledBufferWriter<byte>
-            {
-                BufferAllocator = UnmanagedMemoryPool<byte>.Shared.ToAllocator()
-            },
-            writer => writer.Clear());
+        WriterPool = new DefaultObjectPool<ArrayBufferWriter<byte>>(new BufferWriterPoolPolicy(), 20);
     }
 
     public BsonPacketCodec(IPacketIdMapper<ushort> packetIdMapper, IPacketPrefixResolver[]? prefixResolvers = null)
@@ -49,31 +44,40 @@ public class BsonPacketCodec : IPacketCodec<ushort>
     public ReadOnlyMemory<byte> Encode<T>(T obj)
     {
         var writer = WriterPool.Get();
-        var dataSpan = obj.ToBson().AsSpan();
 
-        if (dataSpan.Length + 4 > ushort.MaxValue)
-            throw new InvalidOperationException($"Message to large [Length - {dataSpan.Length}]");
+        try
+        {
+            var dataSpan = obj.ToBson().AsSpan();
 
-        var packetId = PacketIdMapper.GetPacketId(typeof(T));
+            if (dataSpan.Length + 4 > ushort.MaxValue)
+                throw new InvalidOperationException($"Message to large [Length - {dataSpan.Length}]");
 
-        Span<byte> lengthHeader = stackalloc byte[2];
-        Span<byte> typeHeader = stackalloc byte[2];
+            var packetId = PacketIdMapper.GetPacketId(typeof(T));
 
-        // Packet Length [LENGTH (2) | TYPE (2) | CONTENT]
-        BitConverter.TryWriteBytes(lengthHeader, (ushort)(dataSpan.Length + 2));
-        writer.Write(lengthHeader);
+            Span<byte> lengthHeader = stackalloc byte[2];
+            Span<byte> typeHeader = stackalloc byte[2];
 
-        // Packet Id
-        BitConverter.TryWriteBytes(typeHeader, packetId);
-        writer.Write(typeHeader);
+            // Packet Length [LENGTH (2) | TYPE (2) | CONTENT]
+            BitConverter.TryWriteBytes(lengthHeader, (ushort)(dataSpan.Length + 2));
+            writer.Write(lengthHeader);
 
-        writer.Write(dataSpan);
+            // Packet Id
+            BitConverter.TryWriteBytes(typeHeader, packetId);
+            writer.Write(typeHeader);
 
-        var result = writer.WrittenMemory;
-
-        WriterPool.Return(writer);
-
-        return result;
+            writer.Write(dataSpan);
+            
+            return new ReadOnlyMemory<byte>(writer.WrittenMemory.ToArray());
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+            throw;
+        }
+        finally
+        {
+            WriterPool.Return(writer);
+        }
     }
 
     public unsafe PacketDecodeResult<ushort> Decode(ReadOnlySpan<byte> data)

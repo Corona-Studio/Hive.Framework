@@ -1,6 +1,7 @@
 ﻿using Hive.Framework.Networking.Shared;
 using Hive.Framework.Networking.Tcp;
 using Hive.Framework.Networking.Tests.Messages;
+using Hive.Framework.Networking.Tests.Messages.BidirectionalPacket;
 
 namespace Hive.Framework.Networking.Tests.Tcp;
 
@@ -23,6 +24,7 @@ public class FakeTcpClientManager : AbstractClientManager<Guid, TcpSession<ushor
     public int DisconnectedClient { get; private set; }
     public int AdderCount { get; private set; }
     public int AdderPackageReceiveCount { get; private set; }
+    public int BidirectionalPacketAddResult { get; private set; }
 
     public override ReadOnlyMemory<byte> GetEncodedSessionId(TcpSession<ushort> session)
     {
@@ -51,6 +53,12 @@ public class FakeTcpClientManager : AbstractClientManager<Guid, TcpSession<ushor
             AdderPackageReceiveCount++;
             AdderCount += message.Adder;
         });
+
+        session.OnReceive<C2STestPacket>(async (message, tcpSession) =>
+        {
+            BidirectionalPacketAddResult += message.RandomNumber;
+            await tcpSession.Send(new S2CTestPacket { ReversedRandomNumber = -message.RandomNumber });
+        });
     }
 
     protected override void RegisterClientSignOutMessage(TcpSession<ushort> session)
@@ -76,11 +84,6 @@ public class FakeTcpClientManager : AbstractClientManager<Guid, TcpSession<ushor
 
             InvokeOnClientReconnected(tcpSession, sessionId, true);
         });
-    }
-
-    protected override void SendHeartBeat(TcpSession<ushort> session)
-    {
-        session.Send(new HeartBeatMessage());
     }
 
     protected override Guid CreateNewSessionId() => Guid.NewGuid();

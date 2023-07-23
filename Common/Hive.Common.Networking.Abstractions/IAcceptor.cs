@@ -9,7 +9,7 @@ namespace Hive.Framework.Networking.Abstractions;
 public interface IAcceptorImpl<TSession, TSessionId> : IDisposable where TSession : ISession<TSession>
 {
     IPEndPoint EndPoint { get; }
-    IDataDispatcher<TSession> DataDispatcher { get; }
+    Func<IDataDispatcher<TSession>> DataDispatcherProvider { get; }
     IClientManager<TSessionId, TSession> ClientManager { get; }
 
     void Start();

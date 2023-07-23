@@ -3,6 +3,7 @@ using Hive.Framework.Networking.Abstractions;
 using Hive.Framework.Networking.Shared;
 using Hive.Framework.Networking.Shared.Helpers;
 using Hive.Framework.Networking.Tests.Messages;
+using Hive.Framework.Networking.Tests.Messages.BidirectionalPacket;
 
 namespace Hive.Framework.Networking.Tests;
 
@@ -15,6 +16,7 @@ public interface INetworkingTestProperties
     public int DisconnectedClient { get; }
     public int AdderCount { get; }
     public int AdderPackageReceiveCount { get; }
+    public int BidirectionalPacketAddResult { get; }
 }
 
 public abstract class AbstractNetworkingTestBase<TSession, TClient, TAcceptor, TClientManager> 
@@ -28,7 +30,7 @@ public abstract class AbstractNetworkingTestBase<TSession, TClient, TAcceptor, T
     protected TAcceptor Server = null!;
     protected IPacketCodec<ushort> Codec = null!;
     protected TClientManager ClientManager = null!;
-    protected IDataDispatcher<TSession> DataDispatcher = null!;
+    protected Func<IDataDispatcher<TSession>> DataDispatcherProvider = null!;
 
     private bool ShouldSendHeartBeat { get; set; } = true;
     private void StartHeartBeat()
@@ -37,11 +39,14 @@ public abstract class AbstractNetworkingTestBase<TSession, TClient, TAcceptor, T
         {
             while (true)
             {
-                await Task.Delay(1000);
+                if (!ShouldSendHeartBeat)
+                {
+                    await Task.Delay(1);
+                    continue;
+                }
 
-                if (!ShouldSendHeartBeat) continue;
-
-                Client.Send(new HeartBeatMessage());
+                await Client.Send(new HeartBeatMessage());
+                await Task.Delay(100);
             }
         });
     }
@@ -53,6 +58,8 @@ public abstract class AbstractNetworkingTestBase<TSession, TClient, TAcceptor, T
         PacketIdMapper.Register<SignOutMessage>();
         PacketIdMapper.Register<ReconnectMessage>();
         PacketIdMapper.Register<CountTestMessage>();
+        PacketIdMapper.Register<C2STestPacket>();
+        PacketIdMapper.Register<S2CTestPacket>();
     }
 
     [OneTimeTearDown]
@@ -70,7 +77,7 @@ public abstract class AbstractNetworkingTestBase<TSession, TClient, TAcceptor, T
 
         await SpinWaitAsync.SpinUntil(() => Client.CanSend);
 
-        Client.Send(new SigninMessage { Id = 114514 });
+        await Client.Send(new SigninMessage { Id = 114514 });
 
         await Task.Delay(100);
 
@@ -79,15 +86,15 @@ public abstract class AbstractNetworkingTestBase<TSession, TClient, TAcceptor, T
             Assert.That(ClientManager.SigninMessageVal, Is.EqualTo(114514));
             Assert.That(ClientManager.ConnectedClient, Is.EqualTo(1));
         });
-
-        StartHeartBeat();
     }
 
     [Test]
     [Order(2)]
     public async Task HeartBeatTest()
     {
-        await Task.Delay(TimeSpan.FromSeconds(35));
+        StartHeartBeat();
+
+        await Task.Delay(TimeSpan.FromSeconds(30));
 
         Assert.Multiple(() =>
         {
@@ -96,20 +103,21 @@ public abstract class AbstractNetworkingTestBase<TSession, TClient, TAcceptor, T
         });
     }
 
+    const int SendTimes = 100;
+
     [Test]
     [Order(3)]
     public async Task MessageReceiveTest()
     {
         await Task.Delay(1000);
 
-        const int times = 100;
         var realResult = 0;
 
-        for (var i = 0; i < times; i++)
+        for (var i = 0; i < SendTimes; i++)
         {
             realResult += i;
 
-            Client.Send(new CountTestMessage { Adder = i });
+            await Client.Send(new CountTestMessage { Adder = i });
             await Task.Delay(10);
         }
 
@@ -117,7 +125,7 @@ public abstract class AbstractNetworkingTestBase<TSession, TClient, TAcceptor, T
 
         Assert.Multiple(() =>
         {
-            Assert.That(ClientManager.AdderPackageReceiveCount, Is.EqualTo(times));
+            Assert.That(ClientManager.AdderPackageReceiveCount, Is.EqualTo(SendTimes));
             Assert.That(ClientManager.AdderCount, Is.EqualTo(realResult));
         });
     }
@@ -138,22 +146,70 @@ public abstract class AbstractNetworkingTestBase<TSession, TClient, TAcceptor, T
             await Task.Delay(500);
         }
 
-        Client.Send(new ReconnectMessage());
+        await Client.Send(new ReconnectMessage());
 
         await Task.Delay(500);
+
+        ShouldSendHeartBeat = true;
 
         Assert.That(ClientManager.ReconnectedClient, Is.EqualTo(1));
     }
 
     [Test]
     [Order(5)]
+    public async Task ReconnectedMessageReceiveTest()
+    {
+        await Task.Delay(1000);
+
+        for (var i = 0; i < SendTimes; i++)
+        {
+            await Client.Send(new CountTestMessage { Adder = -i });
+            await Task.Delay(10);
+        }
+
+        await Task.Delay(1000);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(ClientManager.AdderPackageReceiveCount, Is.EqualTo(SendTimes * 2));
+            Assert.That(ClientManager.AdderCount, Is.EqualTo(0));
+        });
+    }
+
+    [Test]
+    [Order(6)]
+    public async Task BidirectionalPacketSendReceiveTest()
+    {
+        await Task.Delay(1000);
+
+        var receivedCount = 0;
+
+        Client.OnReceive<S2CTestPacket>((message, _) =>
+        {
+            Console.WriteLine(message.ReversedRandomNumber);
+            receivedCount += message.ReversedRandomNumber;
+        });
+
+        for (var i = 0; i < SendTimes; i++)
+        {
+            await Client.Send(new C2STestPacket { RandomNumber = i });
+            await Task.Delay(10);
+        }
+
+        await Task.Delay(6000);
+
+        Assert.That(receivedCount + ClientManager.BidirectionalPacketAddResult, Is.EqualTo(0));
+    }
+
+    [Test]
+    [Order(7)]
     public async Task SignOutTest()
     {
         Assert.That(ClientManager.ConnectedClient, Is.EqualTo(1));
 
-        Client.Send(new SignOutMessage { Id = 1919870 });
+        await Client.Send(new SignOutMessage { Id = 1919870 });
 
-        await Task.Delay(100);
+        await Task.Delay(3000);
 
         Assert.Multiple(() =>
         {

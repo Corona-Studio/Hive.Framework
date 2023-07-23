@@ -19,7 +19,7 @@ public class TcpGateWayServerTests
     private IPacketCodec<ushort> _serverPacketCodec;
     private FakeTcpGatewayServer _gatewayServer;
 
-    private IDataDispatcher<TcpSession<ushort>> _gatewayServerDataDispatcher;
+    private Func<IDataDispatcher<TcpSession<ushort>>> _gatewayServerDataDispatcherProvider;
     private IDataDispatcher<TcpSession<ushort>> _serverDataDispatcher;
     private IDataDispatcher<TcpSession<ushort>> _dataDispatcher1;
     private IDataDispatcher<TcpSession<ushort>> _dataDispatcher2;
@@ -55,14 +55,18 @@ public class TcpGateWayServerTests
             new ClientIdPrefixResolver()
         });
 
-        _gatewayServerDataDispatcher = new DefaultDataDispatcher<TcpSession<ushort>>();
+        _gatewayServerDataDispatcherProvider = () => new DefaultDataDispatcher<TcpSession<ushort>>();
         _serverDataDispatcher = new DefaultDataDispatcher<TcpSession<ushort>>();
         _dataDispatcher1 = new DefaultDataDispatcher<TcpSession<ushort>>();
         _dataDispatcher2 = new DefaultDataDispatcher<TcpSession<ushort>>();
 
         _gatewayServer = new FakeTcpGatewayServer(
             _clientPacketCodec,
-            new TcpAcceptor<ushort, Guid>(_gatewayServerEndPoint, _clientPacketCodec, _gatewayServerDataDispatcher, new FakeTcpClientManager()),
+            new TcpAcceptor<ushort, Guid>(
+                _gatewayServerEndPoint,
+                _clientPacketCodec,
+                _gatewayServerDataDispatcherProvider,
+                new FakeTcpClientManager()),
             session =>
             {
                 var lb = new BasicLoadBalancer<TcpSession<ushort>>();

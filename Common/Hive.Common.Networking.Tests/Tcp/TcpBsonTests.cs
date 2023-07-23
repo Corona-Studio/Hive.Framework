@@ -19,11 +19,11 @@ public sealed class TcpBsonTests : TcpTestBase
 
         Codec = new BsonPacketCodec(PacketIdMapper);
         ClientManager = new FakeTcpClientManager();
-        DataDispatcher = new DefaultDataDispatcher<TcpSession<ushort>>();
+        DataDispatcherProvider = () => new DefaultDataDispatcher<TcpSession<ushort>>();
 
-        Server = new TcpAcceptor<ushort, Guid>(_endPoint, Codec, DataDispatcher, ClientManager);
+        Server = new TcpAcceptor<ushort, Guid>(_endPoint, Codec, DataDispatcherProvider, ClientManager);
         Server.Start();
 
-        Client = new TcpSession<ushort>(_endPoint, Codec, DataDispatcher);
+        Client = new TcpSession<ushort>(_endPoint, Codec, DataDispatcherProvider());
     }
 }

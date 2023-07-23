@@ -8,10 +8,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.Threading.Channels" Version="7.0.0" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\Hive.Common.Codec.Abstractions\Hive.Common.Codec.Abstractions.csproj" />
   </ItemGroup>
 

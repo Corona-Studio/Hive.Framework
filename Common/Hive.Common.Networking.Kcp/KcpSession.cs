@@ -8,6 +8,7 @@ using Hive.Framework.Networking.Abstractions;
 using Hive.Framework.Networking.Shared;
 using System.Buffers;
 using System.Diagnostics;
+using System.Linq;
 using Hive.Framework.Networking.Shared.Helpers;
 using System.Threading;
 
@@ -93,11 +94,13 @@ namespace Hive.Framework.Networking.Kcp
         {
             // 释放先前的连接
             await DoDisconnect();
-            await base.DoConnect();
+
+            ResetCancellationToken(new CancellationTokenSource());
 
             // 创建新连接
             _closed = false;
             Socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            Socket.ReceiveBufferSize = DefaultSocketBufferSize;
 
             var unsetConvBytes = BitConverter.GetBytes(UnsetConv);
             await Socket.RawSendTo(unsetConvBytes, RemoteEndPoint!);
@@ -255,14 +258,16 @@ namespace Hive.Framework.Networking.Kcp
 
             while (sentLen < sendData.Length)
             {
-                var sendThisTime = Socket.SendTo(sendData[sentLen..], RemoteEndPoint!);
+                var sendThisTime = await Socket.SendToAsync(
+                    new ArraySegment<byte>(sendData[sentLen..]),
+                    SocketFlags.None,
+                    RemoteEndPoint!);
 
                 sentLen += sendThisTime;
             }
 
             _sendBuffer.Clear();
         }
-        
 
         private async Task NonPassiveModeRawReceiveLoop()
         {
@@ -297,6 +302,11 @@ namespace Hive.Framework.Networking.Kcp
 
                     Kcp.Input(buffer[..received]);
                     await Task.Delay(10);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex);
+                    throw;
                 }
                 finally
                 {

@@ -17,8 +17,9 @@ namespace Hive.Framework.Networking.Kcp
         public KcpAcceptor(
             IPEndPoint endPoint,
             IPacketCodec<TId> packetCodec,
-            IDataDispatcher<KcpSession<TId>> dataDispatcher,
-            IClientManager<TSessionId, KcpSession<TId>> clientManager) : base(endPoint, packetCodec, dataDispatcher, clientManager)
+            Func<IDataDispatcher<KcpSession<TId>>> dataDispatcherProvider,
+            IClientManager<TSessionId, KcpSession<TId>> clientManager)
+            : base(endPoint, packetCodec, dataDispatcherProvider, clientManager)
         {
         }
         
@@ -31,6 +32,7 @@ namespace Hive.Framework.Networking.Kcp
         public override void Start()
         {
             Socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            Socket.ReceiveBufferSize = KcpSession<int>.DefaultSocketBufferSize;
             Socket.Bind(EndPoint);
 
             TaskHelper.ManagedRun(StartAcceptClient, CancellationTokenSource.Token);
@@ -151,11 +153,16 @@ namespace Hive.Framework.Networking.Kcp
                     (IPEndPoint)endPoint,
                     receivedConv,
                     PacketCodec,
-                    DataDispatcher);
+                    DataDispatcherProvider());
 
                 lock (_convSessionDictionary)
                     _convSessionDictionary.Add(receivedConv, clientSession);
                 ClientManager.AddSession(clientSession);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                throw;
             }
             finally
             {

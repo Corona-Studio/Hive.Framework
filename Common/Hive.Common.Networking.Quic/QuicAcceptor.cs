@@ -19,8 +19,9 @@ public sealed class QuicAcceptor<TId, TSessionId> : AbstractAcceptor<QuicConnect
         IPEndPoint endPoint,
         X509Certificate2 serverCertificate,
         IPacketCodec<TId> packetCodec,
-        IDataDispatcher<QuicSession<TId>> dataDispatcher,
-        IClientManager<TSessionId, QuicSession<TId>> clientManager) : base(endPoint, packetCodec, dataDispatcher, clientManager)
+        Func<IDataDispatcher<QuicSession<TId>>> dataDispatcherProvider,
+        IClientManager<TSessionId, QuicSession<TId>> clientManager)
+        : base(endPoint, packetCodec, dataDispatcherProvider, clientManager)
     {
         if (!QuicListener.IsSupported)
             throw new NotSupportedException("QUIC is not supported on this platform!");
@@ -83,7 +84,7 @@ public sealed class QuicAcceptor<TId, TSessionId> : AbstractAcceptor<QuicConnect
     public override async ValueTask DoAcceptClient(QuicConnection client, CancellationToken cancellationToken)
     {
         var stream = await client.AcceptInboundStreamAsync(cancellationToken);
-        var clientSession = new QuicSession<TId>(client, stream, PacketCodec, DataDispatcher);
+        var clientSession = new QuicSession<TId>(client, stream, PacketCodec, DataDispatcherProvider());
 
         ClientManager.AddSession(clientSession);
     }

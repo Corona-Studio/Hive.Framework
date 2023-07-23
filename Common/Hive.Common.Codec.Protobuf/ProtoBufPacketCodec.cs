@@ -1,28 +1,23 @@
-﻿using DotNext.Buffers;
-using Hive.Framework.Codec.Abstractions;
+﻿using Hive.Framework.Codec.Abstractions;
 using Hive.Framework.Shared;
 using ProtoBuf;
 using System;
 using System.Buffers;
 using ProtoBuf.Meta;
 using System.Linq;
+using Microsoft.Extensions.ObjectPool;
 
 namespace Hive.Framework.Codec.Protobuf;
 
 public class ProtoBufPacketCodec : IPacketCodec<ushort>
 {
-    private static readonly ObjectPool<PooledBufferWriter<byte>> WriterPool;
+    private static readonly ObjectPool<ArrayBufferWriter<byte>> WriterPool;
 
     static ProtoBufPacketCodec()
     {
-        WriterPool = new ObjectPool<PooledBufferWriter<byte>>(
-            () => new PooledBufferWriter<byte>
-            {
-                BufferAllocator = UnmanagedMemoryPool<byte>.Shared.ToAllocator()
-            },
-            writer => writer.Clear());
+        WriterPool = new DefaultObjectPool<ArrayBufferWriter<byte>>(new BufferWriterPoolPolicy());
     }
-    
+
     public ProtoBufPacketCodec(IPacketIdMapper<ushort> packetIdMapper, IPacketPrefixResolver[]? prefixResolvers = null)
     {
         PacketIdMapper = packetIdMapper;
@@ -49,31 +44,39 @@ public class ProtoBufPacketCodec : IPacketCodec<ushort>
     {
         var writer = WriterPool.Get();
 
-        using var contentMeasure = Serializer.Measure(obj);
+        try
+        {
+            using var contentMeasure = Serializer.Measure(obj);
 
-        if (contentMeasure.Length + 4 > ushort.MaxValue)
-            throw new InvalidOperationException($"Message to large [Length - {contentMeasure.Length}]");
+            if (contentMeasure.Length + 4 > ushort.MaxValue)
+                throw new InvalidOperationException($"Message to large [Length - {contentMeasure.Length}]");
 
-        var packetId = PacketIdMapper.GetPacketId(typeof(T));
+            var packetId = PacketIdMapper.GetPacketId(typeof(T));
 
-        Span<byte> lengthHeader = stackalloc byte[2];
-        Span<byte> typeHeader = stackalloc byte[2];
+            Span<byte> lengthHeader = stackalloc byte[2];
+            Span<byte> typeHeader = stackalloc byte[2];
 
-        // Packet Length [LENGTH (2) | TYPE (2) | CONTENT]
-        BitConverter.TryWriteBytes(lengthHeader, (ushort)(contentMeasure.Length + 2));
-        writer.Write(lengthHeader);
+            // Packet Length [LENGTH (2) | TYPE (2) | CONTENT]
+            BitConverter.TryWriteBytes(lengthHeader, (ushort)(contentMeasure.Length + 2));
+            writer.Write(lengthHeader);
 
-        // Packet Id
-        BitConverter.TryWriteBytes(typeHeader, packetId);
-        writer.Write(typeHeader);
+            // Packet Id
+            BitConverter.TryWriteBytes(typeHeader, packetId);
+            writer.Write(typeHeader);
 
-        contentMeasure.Serialize(writer);
+            contentMeasure.Serialize(writer);
 
-        var result = writer.WrittenMemory;
-
-        WriterPool.Return(writer);
-
-        return result;
+            return new ReadOnlyMemory<byte>(writer.WrittenMemory.ToArray());
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+            throw;
+        }
+        finally
+        {
+            WriterPool.Return(writer);
+        }
     }
 
     public PacketDecodeResult<ushort> Decode(ReadOnlySpan<byte> data)

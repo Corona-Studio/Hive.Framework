@@ -1,6 +1,7 @@
 ﻿using Hive.Framework.Networking.Kcp;
 using Hive.Framework.Networking.Shared;
 using Hive.Framework.Networking.Tests.Messages;
+using Hive.Framework.Networking.Tests.Messages.BidirectionalPacket;
 using System.Text;
 
 namespace Hive.Framework.Networking.Tests.Kcp;
@@ -24,6 +25,7 @@ public class FakeKcpClientManager : AbstractClientManager<Guid, KcpSession<ushor
     public int DisconnectedClient { get; private set; }
     public int AdderCount { get; private set; }
     public int AdderPackageReceiveCount { get; private set; }
+    public int BidirectionalPacketAddResult { get; private set; }
 
     public override ReadOnlyMemory<byte> GetEncodedSessionId(KcpSession<ushort> session)
     {
@@ -52,6 +54,12 @@ public class FakeKcpClientManager : AbstractClientManager<Guid, KcpSession<ushor
             AdderPackageReceiveCount++;
             AdderCount += message.Adder;
         });
+
+        session.OnReceive<C2STestPacket>(async (message, kcpSession) =>
+        {
+            BidirectionalPacketAddResult += message.RandomNumber;
+            await kcpSession.Send(new S2CTestPacket { ReversedRandomNumber = -message.RandomNumber });
+        });
     }
 
     protected override void RegisterClientSignOutMessage(KcpSession<ushort> session)
@@ -77,11 +85,6 @@ public class FakeKcpClientManager : AbstractClientManager<Guid, KcpSession<ushor
 
             InvokeOnClientReconnected(kcpSession, sessionId, true);
         });
-    }
-
-    protected override void SendHeartBeat(KcpSession<ushort> session)
-    {
-        session.Send(new HeartBeatMessage());
     }
 
     protected override Guid CreateNewSessionId() => Guid.NewGuid();

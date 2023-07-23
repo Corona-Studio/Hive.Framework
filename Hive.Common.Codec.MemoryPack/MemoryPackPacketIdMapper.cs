@@ -1,4 +1,5 @@
 ﻿using Hive.Framework.Codec.Abstractions;
+using Hive.Framework.Shared.Collections;
 using System.Data;
 using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
@@ -10,8 +11,8 @@ public class MemoryPackPacketIdMapper : IPacketIdMapper<ushort>
 {
     private const ushort HashMode = 65521; // 小于 65535 的质数
 
-    private readonly Dictionary<Type, ushort> _typeIdMapping = new();
-    private readonly Dictionary<ushort, Type> _idTypeMapping = new();
+    private readonly object _locker = new();
+    private readonly BiDictionary<Type, ushort> _typeIdMapping = new();
 
     private static ushort GetIdHash(Type type)
     {
@@ -32,31 +33,39 @@ public class MemoryPackPacketIdMapper : IPacketIdMapper<ushort>
 
     public void Register(Type type, [UnscopedRef] out ushort id)
     {
-        if (_typeIdMapping.ContainsKey(type))
-            throw new DuplicateNameException($"Failed to register msg type {type}. You already registered it!");
+        lock (_locker)
+        {
+            if (_typeIdMapping.ContainsKey(type))
+                throw new DuplicateNameException($"Failed to register msg type {type}. You already registered it!");
 
-        var newId = GetIdHash(type);
+            var newId = GetIdHash(type);
 
-        if (_idTypeMapping.ContainsKey(newId))
-            throw new DuplicateNameException($"Failed to register msg type {type}. Duplicate id found [ID - {newId}]!");
+            if (_typeIdMapping.ContainsValue(newId))
+                throw new DuplicateNameException($"Failed to register msg type {type}. Duplicate id found [ID - {newId}]!");
 
-        _typeIdMapping[type] = newId;
-        _idTypeMapping[newId] = type;
+            _typeIdMapping.Add(type, newId);
 
-        id = newId;
+            id = newId;
+        }
     }
 
     public ushort GetPacketId(Type type)
     {
-        if (_typeIdMapping.TryGetValue(type, out var id)) return id;
+        lock (_locker)
+        {
+            if (_typeIdMapping.TryGetValueByKey(type, out var id)) return id;
+        }
 
-        throw new ArgumentOutOfRangeException($"Cannot get id of msg type {type}");
+        throw new InvalidOperationException($"Cannot get id of msg type {type}");
     }
 
     public Type GetPacketType(ushort id)
     {
-        if (_idTypeMapping.TryGetValue(id, out var type)) return type;
+        lock (_locker)
+        {
+            if (_typeIdMapping.TryGetKeyByValue(id, out var type)) return type;
+        }
 
-        throw new ArgumentOutOfRangeException($"Cannot get type of msg id {id}");
+        throw new InvalidOperationException($"Cannot get type of msg id {id}");
     }
 }

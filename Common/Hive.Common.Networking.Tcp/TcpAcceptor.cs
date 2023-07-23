@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using System;
+using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,8 +15,9 @@ namespace Hive.Framework.Networking.Tcp
         public TcpAcceptor(
             IPEndPoint endPoint,
             IPacketCodec<TId> packetCodec,
-            IDataDispatcher<TcpSession<TId>> dataDispatcher,
-            IClientManager<TSessionId, TcpSession<TId>> clientManager) : base(endPoint, packetCodec, dataDispatcher, clientManager)
+            Func<IDataDispatcher<TcpSession<TId>>> dataDispatcherProvider,
+            IClientManager<TSessionId, TcpSession<TId>> clientManager)
+            : base(endPoint, packetCodec, dataDispatcherProvider, clientManager)
         {
         }
         
@@ -56,7 +58,7 @@ namespace Hive.Framework.Networking.Tcp
 
         public override ValueTask DoAcceptClient(Socket client, CancellationToken cancellationToken)
         {
-            var clientSession = new TcpSession<TId>(client, PacketCodec, DataDispatcher);
+            var clientSession = new TcpSession<TId>(client, PacketCodec, DataDispatcherProvider());
 
             ClientManager.AddSession(clientSession);
 

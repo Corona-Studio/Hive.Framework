@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System;
 using System.Threading.Channels;
 using Hive.Framework.Networking.Shared.Helpers;
+using System.Buffers;
 
 namespace Hive.Framework.Networking.Udp
 {
@@ -22,8 +23,10 @@ namespace Hive.Framework.Networking.Udp
             IDataDispatcher<UdpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
         {
             Socket = socket;
-            socket.PatchSocket();
+            //socket.PatchSocket();
             socket.ReceiveBufferSize = DefaultSocketBufferSize;
+
+            _passiveMode = true;
 
             LocalEndPoint = socket.LocalEndPoint as IPEndPoint;
             RemoteEndPoint = endPoint;
@@ -31,15 +34,21 @@ namespace Hive.Framework.Networking.Udp
 
         public UdpSession(IPEndPoint endPoint, IPacketCodec<TId> packetCodec, IDataDispatcher<UdpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
         {
+            _passiveMode = false;
             Connect(endPoint);
         }
 
         public UdpSession(string addressWithPort, IPacketCodec<TId> packetCodec, IDataDispatcher<UdpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
         {
+            _passiveMode = false;
             Connect(addressWithPort);
         }
 
         private bool _closed;
+
+        // 指示是否为被动模式，如果是被动模式，则所有数据将通过 Acceptor 接受后注入 KCP
+        // 如果为非被动模式，则使用内部的 Receive 方法从 Socket 接收数据
+        private readonly bool _passiveMode;
 
         public Socket? Socket { get; private set; }
         public Channel<ReadOnlyMemory<byte>> DataChannel { get; } = Channel.CreateBounded<ReadOnlyMemory<byte>>(new BoundedChannelOptions(1000)
@@ -70,7 +79,10 @@ namespace Hive.Framework.Networking.Udp
             // 创建新连接
             _closed = false;
             Socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-            Socket.PatchSocket();
+            Socket.ReceiveBufferSize = DefaultSocketBufferSize;
+            // Socket.PatchSocket();
+
+            TaskHelper.ManagedRun(NonPassiveModeRawReceiveLoop, CancellationTokenSource!.Token);
         }
 
         public override ValueTask DoDisconnect()
@@ -83,7 +95,7 @@ namespace Hive.Framework.Networking.Udp
             return default;
         }
 
-        public override async ValueTask SendOnce(ReadOnlyMemory<byte> data)
+        public override ValueTask SendOnce(ReadOnlyMemory<byte> data)
         {
             if (Socket == null)
                 throw new InvalidOperationException("Socket Init failed!");
@@ -93,26 +105,68 @@ namespace Hive.Framework.Networking.Udp
 
             while (sentLen < totalLen)
             {
-                var sendThisTime =
-                    await Socket.SendToAsync(new ArraySegment<byte>(data[sentLen..].ToArray()), SocketFlags.None, RemoteEndPoint);
+                var sendThisTime = Socket.SendTo(data[sentLen..].ToArray(), RemoteEndPoint!);
                 sentLen += sendThisTime;
             }
+
+            return default;
         }
-        
+
+        private async Task NonPassiveModeRawReceiveLoop()
+        {
+            if (Socket == null)
+                throw new NullReferenceException(nameof(Socket));
+            if (CancellationTokenSource == null)
+                throw new ArgumentNullException(nameof(CancellationTokenSource));
+            if (_passiveMode)
+                throw new InvalidOperationException("该方法仅支持在非被动模式下启用！");
+
+            while (!(CancellationTokenSource?.IsCancellationRequested ?? true))
+            {
+                if (Socket!.Available <= 0)
+                {
+                    await Task.Delay(1);
+                    continue;
+                }
+
+                var buffer = ArrayPool<byte>.Shared.Rent(1024);
+                try
+                {
+                    EndPoint? endPoint = new IPEndPoint(IPAddress.Any, 0);
+                    var received = Socket.ReceiveFrom(buffer, ref endPoint);
+
+                    if (received == 0 || !endPoint.Equals(RemoteEndPoint))
+                    {
+                        await Task.Delay(10);
+                        continue;
+                    }
+
+                    await DataChannel.Writer.WriteAsync(buffer[..received], CancellationTokenSource.Token);
+                    await Task.Delay(10);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex);
+                    throw;
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(buffer);
+                }
+            }
+        }
+
         public override async ValueTask<int> ReceiveOnce(Memory<byte> buffer)
         {
             if (Socket == null)
                 throw new InvalidOperationException("Socket Init failed!");
+            if (CancellationTokenSource == null)
+                throw new ArgumentNullException(nameof(CancellationTokenSource));
 
-            var data = ReadOnlyMemory<byte>.Empty;
+            if (!await DataChannel.Reader.WaitToReadAsync())
+                return 0;
 
-            while (await DataChannel.Reader.WaitToReadAsync())
-            {
-                if (DataChannel.Reader.TryRead(out data))
-                    break;
-
-                await Task.Delay(10);
-            }
+            var data = await DataChannel.Reader.ReadAsync(CancellationTokenSource.Token);
 
             if (data.Length == 0 || data.Length > buffer.Length)
                 return 0;

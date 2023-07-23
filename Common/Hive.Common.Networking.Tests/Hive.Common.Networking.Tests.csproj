@@ -39,6 +39,7 @@
   <ItemGroup>
     <Folder Include="ECS" />
     <Folder Include="Kcp\" />
+    <Folder Include="Messages\BidirectionalPacket\" />
   </ItemGroup>
 
 </Project>

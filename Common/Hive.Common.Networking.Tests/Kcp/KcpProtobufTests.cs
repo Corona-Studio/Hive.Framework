@@ -19,11 +19,11 @@ public sealed class KcpProtobufTests : KcpTestBase
 
         Codec = new ProtoBufPacketCodec(PacketIdMapper);
         ClientManager = new FakeKcpClientManager();
-        DataDispatcher = new DefaultDataDispatcher<KcpSession<ushort>>();
+        DataDispatcherProvider = () => new DefaultDataDispatcher<KcpSession<ushort>>();
 
-        Server = new KcpAcceptor<ushort, Guid>(_endPoint, Codec, DataDispatcher, ClientManager);
+        Server = new KcpAcceptor<ushort, Guid>(_endPoint, Codec, DataDispatcherProvider, ClientManager);
         Server.Start();
 
-        Client = new KcpSession<ushort>(_endPoint, Codec, DataDispatcher);
+        Client = new KcpSession<ushort>(_endPoint, Codec, DataDispatcherProvider());
     }
 }

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Buffers;
-using System.IO;
 using System.Linq;
 using System.Net;
 using System.Threading;
@@ -21,16 +20,10 @@ namespace Hive.Framework.Networking.Shared
     public abstract class AbstractSession<TId, TSession> : ISession<TSession>, ISender<TId>, ICanRedirectPacket<TId>, IHasCodec<TId> where TSession : ISession<TSession> where TId : unmanaged
     {
         protected const int DefaultBufferSize = 40960;
-        protected const int DefaultSocketBufferSize = 8192 * 4; 
+        public const int DefaultSocketBufferSize = 8192 * 4; 
         protected const int PacketHeaderLength = sizeof(ushort); // 包头长度2Byte
 
-        protected readonly Channel<ReadOnlyMemory<byte>> SendChannel =
-            Channel.CreateBounded<ReadOnlyMemory<byte>>(new BoundedChannelOptions(1024)
-            {
-                SingleReader = true,
-                SingleWriter = true,
-                FullMode = BoundedChannelFullMode.DropOldest
-            });
+        protected Channel<ReadOnlyMemory<byte>>? SendChannel;
         protected CancellationTokenSource? CancellationTokenSource;
         protected bool ReceivingLoopRunning;
         protected bool SendingLoopRunning;
@@ -53,6 +46,12 @@ namespace Hive.Framework.Networking.Shared
         protected AbstractSession(IPacketCodec<TId> packetCodec, IDataDispatcher<TSession> dataDispatcher)
         {
             ResetCancellationToken(new CancellationTokenSource());
+            ResetSendChannel(Channel.CreateBounded<ReadOnlyMemory<byte>>(new BoundedChannelOptions(1024)
+            {
+                SingleReader = true,
+                SingleWriter = true,
+                FullMode = BoundedChannelFullMode.DropOldest
+            }));
 
             PacketCodec = packetCodec;
             DataDispatcher = dataDispatcher;
@@ -73,6 +72,8 @@ namespace Hive.Framework.Networking.Shared
         {
             if (CancellationTokenSource == null)
                 throw new ArgumentNullException(nameof(CancellationTokenSource));
+            if (SendChannel == null)
+                throw new ArgumentNullException(nameof(SendChannel));
 
             if (await SendChannel.Writer.WaitToWriteAsync(CancellationTokenSource.Token))
                 await SendChannel.Writer.WriteAsync(data);
@@ -84,12 +85,12 @@ namespace Hive.Framework.Networking.Shared
             SendingLoopRunning = true;
         }
 
-        public void Send<T>(T obj)
+        public async ValueTask Send<T>(T obj)
         {
             if (obj == null) throw new ArgumentNullException($"The data trying to send [{nameof(obj)}] is null!");
 
             var encodedBytes = PacketCodec.Encode(obj);
-            Send(encodedBytes);
+            await Send(encodedBytes);
         }
 
         public void OnReceive<T>(Action<T, TSession> callback) // 用于兼容旧的基于Action的回调
@@ -103,9 +104,15 @@ namespace Hive.Framework.Networking.Shared
             ReceivingLoopRunning = true;
         }
 
-        public void RemoveOnReceive<T>(Action<T, TSession> callback)
+        public void OnReceiveOneTime<T>(Action<T, TSession> callback)
         {
-            DataDispatcher.Unregister(callback);
+            DataDispatcher.OneTimeRegister(callback);
+
+            if (ReceivingLoopRunning) return;
+
+            BeginReceive();
+
+            ReceivingLoopRunning = true;
         }
 
         public void BeginSend()
@@ -164,11 +171,8 @@ namespace Hive.Framework.Networking.Shared
                 while (!(CancellationTokenSource?.IsCancellationRequested ?? true))
                 {
                     if (!IsConnected || !CanSend) SpinWait.SpinUntil(() => IsConnected && CanSend);
-                    if (!await SendChannel.Reader.WaitToReadAsync(CancellationTokenSource.Token))
-                    {
-                        await Task.Delay(1, CancellationTokenSource.Token);
-                        continue;
-                    }
+                    if (SendChannel == null) throw new InvalidOperationException(nameof(SendChannel));
+                    if (!await SendChannel.Reader.WaitToReadAsync(CancellationTokenSource.Token)) break;
 
                     var slice = await SendChannel.Reader.ReadAsync(CancellationTokenSource.Token);
                     await SendOnce(slice);
@@ -182,7 +186,7 @@ namespace Hive.Framework.Networking.Shared
 
         protected virtual async Task ReceiveLoop()
         {
-            using var bufferOwner = MemoryPool<byte>.Shared.Rent(DefaultBufferSize);
+            var bufferOwner = MemoryPool<byte>.Shared.Rent(DefaultBufferSize);
             var buffer = bufferOwner.Memory;
 
             var receivedLen = 0; //当前共接受了多少数据
@@ -212,6 +216,8 @@ namespace Hive.Framework.Networking.Shared
                         actualLen = GetTotalLength(payloadLen);
                         isNewPacket = false;
                     }
+
+                    if (actualLen == 0) continue;
 
                     /*
 #if TRACE
@@ -252,15 +258,27 @@ namespace Hive.Framework.Networking.Shared
                     offset = 0;
                 }
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                throw;
+            }
             finally
             {
                 ReceivingLoopRunning = false;
+                bufferOwner.Dispose();
             }
         }
 
         public virtual ValueTask DoConnect()
         {
             ResetCancellationToken(new CancellationTokenSource());
+            ResetSendChannel(Channel.CreateBounded<ReadOnlyMemory<byte>>(new BoundedChannelOptions(1024)
+            {
+                SingleReader = true,
+                SingleWriter = true,
+                FullMode = BoundedChannelFullMode.DropOldest
+            }));
 
             return default;
         }
@@ -268,6 +286,7 @@ namespace Hive.Framework.Networking.Shared
         public virtual ValueTask DoDisconnect()
         {
             ResetCancellationToken();
+            ResetSendChannel();
 
             return default;
         }
@@ -277,6 +296,12 @@ namespace Hive.Framework.Networking.Shared
             CancellationTokenSource?.Cancel();
             CancellationTokenSource?.Dispose();
             CancellationTokenSource = cancellationToken;
+        }
+
+        protected void ResetSendChannel(Channel<ReadOnlyMemory<byte>>? channel = null)
+        {
+            SendChannel?.Writer?.TryComplete();
+            SendChannel = channel;
         }
 
         public abstract ValueTask SendOnce(ReadOnlyMemory<byte> data);

@@ -19,11 +19,11 @@ public sealed class UdpProtobufTests : UdpTestBase
 
         Codec = new ProtoBufPacketCodec(PacketIdMapper);
         ClientManager = new FakeUdpClientManager();
-        DataDispatcher = new DefaultDataDispatcher<UdpSession<ushort>>();
+        DataDispatcherProvider = () => new DefaultDataDispatcher<UdpSession<ushort>>();
 
-        Server = new UdpAcceptor<ushort, Guid>(_endPoint, Codec, DataDispatcher, ClientManager);
+        Server = new UdpAcceptor<ushort, Guid>(_endPoint, Codec, DataDispatcherProvider, ClientManager);
         Server.Start();
 
-        Client = new UdpSession<ushort>(_endPoint, Codec, DataDispatcher);
+        Client = new UdpSession<ushort>(_endPoint, Codec, DataDispatcherProvider());
     }
 }

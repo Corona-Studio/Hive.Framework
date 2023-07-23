@@ -20,7 +20,7 @@ namespace Hive.Framework.Shared
                 index += memory.Length;
             }
 
-            return resultMem;
+            return new ReadOnlyMemory<T>(resultMem.ToArray());
         }
     }
 }

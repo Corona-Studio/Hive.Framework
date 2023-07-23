@@ -7,8 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="DotNext" Version="4.13.0" />
-    <PackageReference Include="DotNext.Unsafe" Version="4.13.0" />
     <PackageReference Include="protobuf-net" Version="3.2.26" />
   </ItemGroup>
 

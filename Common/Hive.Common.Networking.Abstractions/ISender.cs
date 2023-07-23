@@ -1,4 +1,5 @@
-﻿using Hive.Framework.Codec.Abstractions;
+﻿using System.Threading.Tasks;
+using Hive.Framework.Codec.Abstractions;
 
 namespace Hive.Framework.Networking.Abstractions
 {
@@ -8,6 +9,6 @@ namespace Hive.Framework.Networking.Abstractions
     /// <typeparam name="TId">封包 ID 类型（通常为 ushort）</typeparam>
     public interface ISender<TId>
     {
-        void Send<T>(T obj);
+        ValueTask Send<T>(T obj);
     }
 }

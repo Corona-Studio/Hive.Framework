@@ -3,6 +3,7 @@ using System.Text;
 using Hive.Framework.Networking.Quic;
 using Hive.Framework.Networking.Shared;
 using Hive.Framework.Networking.Tests.Messages;
+using Hive.Framework.Networking.Tests.Messages.BidirectionalPacket;
 
 namespace Hive.Framework.Networking.Tests.Quic;
 
@@ -11,9 +12,9 @@ public class FakeQuicClientManager : AbstractClientManager<Guid, QuicSession<ush
 {
     protected override void RegisterHeartBeatMessage(QuicSession<ushort> session)
     {
-        session.OnReceive<HeartBeatMessage>((_, tcpSession) =>
+        session.OnReceive<HeartBeatMessage>((_, quicSession) =>
         {
-            var sessionId = GetSessionId(tcpSession);
+            var sessionId = GetSessionId(quicSession);
 
             UpdateHeartBeatReceiveTime(sessionId);
         });
@@ -26,6 +27,7 @@ public class FakeQuicClientManager : AbstractClientManager<Guid, QuicSession<ush
     public int DisconnectedClient { get; private set; }
     public int AdderCount { get; private set; }
     public int AdderPackageReceiveCount { get; private set; }
+    public int BidirectionalPacketAddResult { get; private set; }
 
     public override ReadOnlyMemory<byte> GetEncodedSessionId(QuicSession<ushort> session)
     {
@@ -42,17 +44,23 @@ public class FakeQuicClientManager : AbstractClientManager<Guid, QuicSession<ush
 
     protected override void RegisterSigninMessage(QuicSession<ushort> session)
     {
-        session.OnReceive<SigninMessage>((message, tcpSession) =>
+        session.OnReceive<SigninMessage>((message, quicSession) =>
         {
             SigninMessageVal = message.Id;
             ConnectedClient++;
-            InvokeOnClientConnected(tcpSession);
+            InvokeOnClientConnected(quicSession);
         });
 
         session.OnReceive<CountTestMessage>((message, _) =>
         {
             AdderPackageReceiveCount++;
             AdderCount += message.Adder;
+        });
+
+        session.OnReceive<C2STestPacket>(async (message, quicSession) =>
+        {
+            BidirectionalPacketAddResult += message.RandomNumber;
+            await quicSession.Send(new S2CTestPacket { ReversedRandomNumber = -message.RandomNumber });
         });
     }
 
@@ -79,11 +87,6 @@ public class FakeQuicClientManager : AbstractClientManager<Guid, QuicSession<ush
 
             InvokeOnClientReconnected(tcpSession, sessionId, true);
         });
-    }
-
-    protected override void SendHeartBeat(QuicSession<ushort> session)
-    {
-        session.Send(new HeartBeatMessage());
     }
 
     protected override Guid CreateNewSessionId() => Guid.NewGuid();

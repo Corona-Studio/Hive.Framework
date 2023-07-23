@@ -2,6 +2,7 @@
 using Hive.Framework.Networking.Tests.Messages;
 using Hive.Framework.Networking.Udp;
 using System.Text;
+using Hive.Framework.Networking.Tests.Messages.BidirectionalPacket;
 
 namespace Hive.Framework.Networking.Tests.Udp;
 
@@ -24,6 +25,7 @@ public class FakeUdpClientManager : AbstractClientManager<Guid, UdpSession<ushor
     public int DisconnectedClient { get; private set; }
     public int AdderCount { get; private set; }
     public int AdderPackageReceiveCount { get; private set; }
+    public int BidirectionalPacketAddResult { get; private set; }
 
     public override ReadOnlyMemory<byte> GetEncodedSessionId(UdpSession<ushort> session)
     {
@@ -52,6 +54,12 @@ public class FakeUdpClientManager : AbstractClientManager<Guid, UdpSession<ushor
             AdderPackageReceiveCount++;
             AdderCount += message.Adder;
         });
+
+        session.OnReceive<C2STestPacket>(async (message, udpSession) =>
+        {
+            BidirectionalPacketAddResult += message.RandomNumber;
+            await udpSession.Send(new S2CTestPacket { ReversedRandomNumber = -message.RandomNumber });
+        });
     }
 
     protected override void RegisterClientSignOutMessage(UdpSession<ushort> session)
@@ -77,11 +85,6 @@ public class FakeUdpClientManager : AbstractClientManager<Guid, UdpSession<ushor
 
             InvokeOnClientReconnected(udpSession, sessionId, true);
         });
-    }
-
-    protected override void SendHeartBeat(UdpSession<ushort> session)
-    {
-        session.Send(new HeartBeatMessage());
     }
 
     protected override Guid CreateNewSessionId() => Guid.NewGuid();

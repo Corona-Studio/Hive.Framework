@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Threading;
 using System;
+using System.Collections.Concurrent;
 
 namespace Hive.Framework.Networking.Shared.Helpers;
 
@@ -12,19 +13,24 @@ namespace Hive.Framework.Networking.Shared.Helpers;
 public static class TaskHelper
 {
     public const int OptimalMaxSpinWaitsPerSpinIteration = 12;
-    private static readonly Dictionary<Task, CancellationToken> AllTasks = new();
 
-    private static readonly Dictionary<CancellationToken, List<Task>> CancelTokenToTask = new();
+    private static readonly ConcurrentDictionary<Task, CancellationToken> AllTasks = new();
+    private static readonly ConcurrentDictionary<CancellationToken, List<Task>> CancelTokenToTask = new();
 
     public static void ManagedRun(Task task, CancellationToken ct)
     {
         // 无法抛出异常
-        AllTasks.Add(task, ct);
+        AllTasks.AddOrUpdate(task, ct, (_, _) => ct);
 
-        if (CancelTokenToTask.TryGetValue(ct, out var value))
-            value.Add(task);
-        else
-            CancelTokenToTask.Add(ct, new List<Task> { task });
+        CancelTokenToTask.AddOrUpdate(
+            ct,
+            new List<Task> { task },
+            (_, list) =>
+            {
+                list.Add(task);
+
+                return list;
+            });
 
         task.CatchException();
     }
@@ -38,12 +44,19 @@ public static class TaskHelper
     public static void ManagedRun(Action function, CancellationToken ct)
     {
         var task = Task.Run(function, ct);
-        AllTasks.Add(task, ct);
 
-        if (CancelTokenToTask.TryGetValue(ct, out var value))
-            value.Add(task);
-        else
-            CancelTokenToTask.Add(ct, new List<Task> { task });
+        AllTasks.AddOrUpdate(task, ct, (_, _) => ct);
+
+        CancelTokenToTask.AddOrUpdate(
+            ct,
+            new List<Task> { task },
+            (_, list) =>
+            {
+                list.Add(task);
+
+                return list;
+            });
+
         task.CatchException();
     }
 
@@ -59,13 +72,12 @@ public static class TaskHelper
             return;
         }
 
-        if (!CancelTokenToTask.ContainsKey(token))
-            return;
-
         cts.CancelAfter(timeSpan);
 
-        await Task.WhenAll(CancelTokenToTask[token]);
-        CancelTokenToTask.Remove(token);
+        if (!CancelTokenToTask.TryRemove(token, out var tasks))
+            return;
+
+        await Task.WhenAll(tasks);
     }
 
     public static void CancelAndWaitTaskComplete(this CancellationTokenSource cts, int timeoutMillisecond = 20000)
@@ -80,21 +92,20 @@ public static class TaskHelper
             return;
         }
 
-        if (!CancelTokenToTask.ContainsKey(token))
-            return;
-
         cts.Cancel();
 
-        Task.WaitAll(CancelTokenToTask[token].ToArray(), timeoutMillisecond);
-        CancelTokenToTask.Remove(token);
+        if (!CancelTokenToTask.TryRemove(token, out var tasks))
+            return;
+
+        Task.WaitAll(tasks.ToArray(), timeoutMillisecond);
     }
 
     public static async Task CancelAndWaitAllTaskAsync(this CancellationTokenSource cts)
     {
+        CancellationToken token;
         try
         {
-            if (!CancelTokenToTask.ContainsKey(cts.Token))
-                return;
+            token = cts.Token;
         }
         catch (ObjectDisposedException)
         {
@@ -103,8 +114,10 @@ public static class TaskHelper
 
         cts.Cancel();
 
-        await Task.WhenAll(CancelTokenToTask[cts.Token]);
-        CancelTokenToTask.Remove(cts.Token);
+        if (!CancelTokenToTask.TryRemove(token, out var tasks))
+            return;
+
+        await Task.WhenAll(tasks);
     }
 
     public static async Task WaitUtil(Func<bool> condition, int interval = 5)

@@ -162,19 +162,13 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
                     continue;
                 }
 
-                // 发送心跳包查活
-                SendHeartBeat(session);
+                // 重置未收到心跳包的记录
+                receiveTimeNotFoundCounter.Remove(id);
             }
 
             await Task.Delay(5000, cancellationToken);
         }
     }
-
-    /// <summary>
-    /// 向客户端发送心跳包
-    /// </summary>
-    /// <param name="session"></param>
-    protected abstract void SendHeartBeat(TSession session);
 
     /// <summary>
     /// 使用远程终结点获取会话
@@ -194,6 +188,12 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
         {
             disconnectedSession =
                 _disconnectedSessions.FirstOrDefault(s => s.RemoteEndPoint.Equals(remoteEndPoint));
+
+            if (disconnectedSession != null && disconnectedSession.ShouldDestroyAfterDisconnected)
+            {
+                session = default;
+                return false;
+            }
 
             session = disconnectedSession;
         }
@@ -232,12 +232,13 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
         _idSessionMapper.TryRemove(sessionId, out _);
         _sessionIdMapper.TryRemove(session, out _);
         _endPointSessionMapper.TryRemove(session.RemoteEndPoint, out _);
+
         lock(_disconnectedSessions)
             _disconnectedSessions.Add(session);
 
         if (session.ShouldDestroyAfterDisconnected)
         {
-            session.DataDispatcher.CallbackDictionary.Clear();
+            session.DataDispatcher.UnregisterAll();
             session.DoDisconnect();
         }
 
@@ -255,14 +256,14 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
     /// <param name="treatAsNewClient">是否将该会话当做新客户端处理</param>
     public virtual void InvokeOnClientReconnected(TSession session, TSessionId? sessionId, bool treatAsNewClient)
     {
+        lock (_disconnectedSessions)
+            _disconnectedSessions.Remove(session);
+
         if (treatAsNewClient || sessionId == null)
         {
             InvokeOnClientConnected(session);
             return;
         }
-
-        lock (_disconnectedSessions)
-            _disconnectedSessions.Remove(session);
 
         UpdateSession(sessionId, session);
     }

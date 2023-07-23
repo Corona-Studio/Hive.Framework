@@ -21,11 +21,11 @@ public sealed class QuicBsonTests : QuicTestBase
 
         Codec = new BsonPacketCodec(PacketIdMapper);
         ClientManager = new FakeQuicClientManager();
-        DataDispatcher = new DefaultDataDispatcher<QuicSession<ushort>>();
+        DataDispatcherProvider = () => new DefaultDataDispatcher<QuicSession<ushort>>();
 
-        Server = new QuicAcceptor<ushort, Guid>(_endPoint, QuicCertHelper.GenerateTestCertificate(), Codec, DataDispatcher, ClientManager);
+        Server = new QuicAcceptor<ushort, Guid>(_endPoint, QuicCertHelper.GenerateTestCertificate(), Codec, DataDispatcherProvider, ClientManager);
         Server.Start();
 
-        Client = new QuicSession<ushort>(_endPoint, Codec, DataDispatcher);
+        Client = new QuicSession<ushort>(_endPoint, Codec, DataDispatcherProvider());
     }
 }
