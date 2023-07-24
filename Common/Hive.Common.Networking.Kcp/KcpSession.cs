@@ -8,7 +8,6 @@ using Hive.Framework.Networking.Abstractions;
 using Hive.Framework.Networking.Shared;
 using System.Buffers;
 using System.Diagnostics;
-using System.Linq;
 using Hive.Framework.Networking.Shared.Helpers;
 using System.Threading;
 
@@ -32,6 +31,9 @@ namespace Hive.Framework.Networking.Kcp
 
             Kcp = CreateNewKcpManager(conv);
             TaskHelper.ManagedRun(UpdateLoop, CancellationTokenSource!.Token);
+
+            BeginSend();
+            SendingLoopRunning = true;
 
             LocalEndPoint = socket.LocalEndPoint as IPEndPoint;
             RemoteEndPoint = endPoint;
@@ -204,12 +206,14 @@ namespace Hive.Framework.Networking.Kcp
             var sentLen = 0;
             while (sentLen < data.Length)
             {
-                var sendThisTime = Kcp.Send(data.Span);
+                var sendThisTime = Kcp.Send(data.Span[sentLen..]);
 
                 if (sendThisTime < 0)
                     throw new InvalidOperationException("KCP 返回了小于零的发送长度，可能为 KcpCore 的内部错误！");
 
                 sentLen += sendThisTime;
+
+                await Task.Delay(1);
             }
 
             if (SendingLoopRunning) return;
@@ -249,7 +253,7 @@ namespace Hive.Framework.Networking.Kcp
                 throw new NullReferenceException("Kcp Init Failed!");
             if (Socket == null)
                 throw new NullReferenceException(nameof(Socket));
-
+            
             var sentLen = 0;
 
             await Kcp.OutputAsync(_sendBuffer);
@@ -282,7 +286,7 @@ namespace Hive.Framework.Networking.Kcp
 
             while (!(CancellationTokenSource?.IsCancellationRequested ?? true))
             {
-                if (Socket!.Available <= 0)
+                if (Socket.Available <= 0)
                 {
                     await Task.Delay(1);
                     continue;
@@ -299,7 +303,7 @@ namespace Hive.Framework.Networking.Kcp
                         await Task.Delay(10);
                         continue;
                     }
-
+                    
                     Kcp.Input(buffer[..received]);
                     await Task.Delay(10);
                 }

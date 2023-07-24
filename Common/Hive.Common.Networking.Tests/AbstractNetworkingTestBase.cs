@@ -46,7 +46,7 @@ public abstract class AbstractNetworkingTestBase<TSession, TClient, TAcceptor, T
                 }
 
                 await Client.Send(new HeartBeatMessage());
-                await Task.Delay(100);
+                await Task.Delay(TimeSpan.FromSeconds(10));
             }
         });
     }
