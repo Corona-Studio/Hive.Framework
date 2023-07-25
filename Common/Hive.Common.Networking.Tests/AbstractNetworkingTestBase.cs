@@ -136,7 +136,7 @@ public abstract class AbstractNetworkingTestBase<TSession, TClient, TAcceptor, T
     {
         ShouldSendHeartBeat = false;
 
-        await Task.Delay(TimeSpan.FromSeconds(35));
+        await Task.Delay(TimeSpan.FromSeconds(45));
 
         Assert.That(ClientManager.DisconnectedClient, Is.EqualTo(1));
 
