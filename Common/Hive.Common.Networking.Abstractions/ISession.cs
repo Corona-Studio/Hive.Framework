@@ -2,6 +2,7 @@
 using System.Net;
 using System.Threading.Tasks;
 using Hive.Framework.Networking.Abstractions.EventArgs;
+using Hive.Framework.Shared;
 
 namespace Hive.Framework.Networking.Abstractions
 {
@@ -21,6 +22,6 @@ namespace Hive.Framework.Networking.Abstractions
         ValueTask SendOnce(ReadOnlyMemory<byte> data);
         ValueTask<int> ReceiveOnce(Memory<byte> buffer);
 
-        event EventHandler<ReceivedDataEventArgs>? OnDataReceived;
+        AsyncEventHandler<ReceivedDataEventArgs>? OnDataReceived { get; set; }
     }
 }

@@ -6,7 +6,7 @@ namespace Hive.Framework.Codec.Abstractions
     /// 封包编解码器接口
     /// </summary>
     /// <typeparam name="TId">封包 ID 类型（通常为 ushort）</typeparam>
-    public interface IPacketCodec<TId> where TId : unmanaged
+    public interface IPacketCodec<TId> where TId : struct
     {
         IPacketPrefixResolver[]? PrefixResolvers { get; }
 

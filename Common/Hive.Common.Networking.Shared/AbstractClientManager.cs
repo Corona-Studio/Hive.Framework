@@ -30,7 +30,7 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
     public event EventHandler<ClientConnectionChangedEventArgs<TSession>>? OnClientConnected;
     public event EventHandler<ClientConnectionChangedEventArgs<TSession>>? OnClientDisconnected;
 
-    public abstract ReadOnlyMemory<byte> GetEncodedSessionId(TSession session);
+    public abstract ReadOnlyMemory<byte> GetEncodedSessionPrefix(TSession session);
 
     public TSessionId? GetSessionId(TSession session)
     {

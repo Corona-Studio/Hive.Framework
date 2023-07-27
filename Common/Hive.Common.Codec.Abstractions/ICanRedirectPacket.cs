@@ -1,10 +1,10 @@
-﻿using System;
+﻿using System.Collections.Generic;
 
 namespace Hive.Framework.Codec.Abstractions
 {
     public interface ICanRedirectPacket<TId> where TId : unmanaged
     {
-        TId[]? ExcludeRedirectPacketIds { get; set; }
+        ISet<TId>? RedirectPacketIds { get; set; }
         public bool RedirectReceivedData { get; set; }
     }
 }

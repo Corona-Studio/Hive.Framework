@@ -19,12 +19,14 @@ public class BsonPacketCodec : IPacketCodec<ushort>
         WriterPool = new DefaultObjectPool<ArrayBufferWriter<byte>>(new BufferWriterPoolPolicy(), 20);
     }
 
-    public BsonPacketCodec(IPacketIdMapper<ushort> packetIdMapper, IPacketPrefixResolver[]? prefixResolvers = null)
+    public BsonPacketCodec(
+        IPacketIdMapper<ushort> packetIdMapper,
+        IPacketPrefixResolver[]? prefixResolvers = null)
     {
         PacketIdMapper = packetIdMapper;
         PrefixResolvers = prefixResolvers;
     }
-
+    
     public IPacketIdMapper<ushort> PacketIdMapper { get; }
     public IPacketPrefixResolver[]? PrefixResolvers { get; }
 
@@ -67,7 +69,7 @@ public class BsonPacketCodec : IPacketCodec<ushort>
 
             writer.Write(dataSpan);
             
-            return new ReadOnlyMemory<byte>(writer.WrittenMemory.ToArray());
+            return writer.WrittenMemory.ToArray();
         }
         catch (Exception ex)
         {
@@ -100,9 +102,9 @@ public class BsonPacketCodec : IPacketCodec<ushort>
                 packetPrefixes[i] = PrefixResolvers[i].Resolve(data, ref payloadStartIndex);
             }
         }
-
+        
         // 封包数据段
-        var packetData = data[payloadStartIndex..];
+        var packetData = data[(payloadStartIndex + 1)..];
 
         fixed (byte* bp = &packetData.GetPinnableReference())
         {

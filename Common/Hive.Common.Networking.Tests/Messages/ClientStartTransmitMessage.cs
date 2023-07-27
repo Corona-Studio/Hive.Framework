@@ -8,5 +8,5 @@ namespace Hive.Framework.Networking.Tests.Messages;
 public partial class ClientStartTransmitMessage
 {
     [ProtoMember(1)]
-    public ushort[] ExcludeRedirectPacketIds { get; set; }
+    public ushort[] RedirectPacketIds { get; set; }
 }

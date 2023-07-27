@@ -30,16 +30,16 @@ public class FakeTcpGatewayServer : AbstractGatewayServer<TcpSession<ushort>, Gu
         });
     }
 
-    protected override void NotifyClientCanStartTransmitMessage(TcpSession<ushort> session)
+    protected override async void NotifyClientCanStartTransmitMessage(TcpSession<ushort> session)
     {
-        session.Send(new ClientCanTransmitMessage());
+        await session.SendAsync(new ClientCanTransmitMessage());
     }
 
     protected override void RegisterClientStartTransmitMessage(TcpSession<ushort> session)
     {
         session.OnReceive<ClientStartTransmitMessage>((message, tcpSession) =>
         {
-            tcpSession.ExcludeRedirectPacketIds = message.ExcludeRedirectPacketIds;
+            tcpSession.RedirectPacketIds = message.RedirectPacketIds.ToHashSet();
             tcpSession.OnDataReceived += TcpSessionOnOnDataReceived;
             tcpSession.RedirectReceivedData = true;
 
@@ -47,9 +47,9 @@ public class FakeTcpGatewayServer : AbstractGatewayServer<TcpSession<ushort>, Gu
         });
     }
 
-    private void TcpSessionOnOnDataReceived(object? sender, ReceivedDataEventArgs e)
+    private async Task TcpSessionOnOnDataReceived(object? sender, ReceivedDataEventArgs e)
     {
-        DoForwardDataToServer((TcpSession<ushort>)sender!, e.Data);
+        await DoForwardDataToServerAsync((TcpSession<ushort>)sender!, e.Data);
     }
 
     protected override void InvokeOnClientDisconnected(object sender, ClientConnectionChangedEventArgs<TcpSession<ushort>> e)

@@ -1,24 +1,21 @@
 ﻿using Hive.Framework.Codec.Abstractions;
-using Hive.Framework.Shared;
-using ProtoBuf;
-using System;
-using System.Buffers;
-using ProtoBuf.Meta;
-using System.Linq;
+using MemoryPack;
 using Microsoft.Extensions.ObjectPool;
+using System.Buffers;
+using Hive.Framework.Shared;
 
-namespace Hive.Framework.Codec.Protobuf;
+namespace Hive.Common.Codec.MemoryPack;
 
-public class ProtoBufPacketCodec : IPacketCodec<ushort>
+public class MemoryPackPacketCodec : IPacketCodec<ushort>
 {
     private static readonly ObjectPool<ArrayBufferWriter<byte>> WriterPool;
 
-    static ProtoBufPacketCodec()
+    static MemoryPackPacketCodec()
     {
         WriterPool = new DefaultObjectPool<ArrayBufferWriter<byte>>(new BufferWriterPoolPolicy());
     }
 
-    public ProtoBufPacketCodec(
+    public MemoryPackPacketCodec(
         IPacketIdMapper<ushort> packetIdMapper,
         IPacketPrefixResolver[]? prefixResolvers = null)
     {
@@ -48,10 +45,10 @@ public class ProtoBufPacketCodec : IPacketCodec<ushort>
 
         try
         {
-            using var contentMeasure = Serializer.Measure(obj);
+            var objBytes = MemoryPackSerializer.Serialize(obj);
 
-            if (contentMeasure.Length + 4 > ushort.MaxValue)
-                throw new InvalidOperationException($"Message to large [Length - {contentMeasure.Length}]");
+            if (objBytes.Length + 4 > ushort.MaxValue)
+                throw new InvalidOperationException($"Message to large [Length - {objBytes.Length}]");
 
             var packetId = PacketIdMapper.GetPacketId(typeof(T));
 
@@ -59,14 +56,15 @@ public class ProtoBufPacketCodec : IPacketCodec<ushort>
             Span<byte> typeHeader = stackalloc byte[2];
 
             // Packet Length [LENGTH (2) | TYPE (2) | CONTENT]
-            BitConverter.TryWriteBytes(lengthHeader, (ushort)(contentMeasure.Length + 2));
+            BitConverter.TryWriteBytes(lengthHeader, (ushort)(objBytes.Length + 2));
             writer.Write(lengthHeader);
 
             // Packet Id
             BitConverter.TryWriteBytes(typeHeader, packetId);
             writer.Write(typeHeader);
 
-            contentMeasure.Serialize(writer);
+            // Packet Load
+            writer.Write(objBytes);
 
             return writer.WrittenMemory.ToArray();
         }
@@ -107,7 +105,7 @@ public class ProtoBufPacketCodec : IPacketCodec<ushort>
 
         // var packetLength = BitConverter.ToUInt16(packetLengthSpan);
         var packetType = PacketIdMapper.GetPacketType(packetId);
-        var payload = RuntimeTypeModel.Default.Deserialize(packetType, packetData);
+        var payload = MemoryPackSerializer.Deserialize(packetType, packetData);
 
         return new PacketDecodeResult<ushort>(packetPrefixes, packetId, payload);
     }

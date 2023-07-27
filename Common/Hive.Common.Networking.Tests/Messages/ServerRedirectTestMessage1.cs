@@ -8,5 +8,5 @@ namespace Hive.Framework.Networking.Tests.Messages;
 public partial class ServerRedirectTestMessage1
 {
     [ProtoMember(1)]
-    public string Content { get; set; }
+    public string? Content { get; set; }
 }

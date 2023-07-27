@@ -58,9 +58,11 @@ namespace Hive.Framework.Networking.Tcp
             await base.DoConnect();
 
             // 创建新连接
-            _closed = false;
             Socket?.Shutdown(SocketShutdown.Both);
             Socket?.Dispose();
+
+            _closed = false;
+
             Socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             Socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
 
@@ -95,7 +97,6 @@ namespace Hive.Framework.Networking.Tcp
 
             while (sentLen < totalLen)
             {
-                Socket.Blocking = true;
                 var sendThisTime = await Socket.SendAsync(data[sentLen..], SocketFlags.None);
 
                 sentLen += sendThisTime;
@@ -106,9 +107,7 @@ namespace Hive.Framework.Networking.Tcp
         {
             if (Socket == null)
                 throw new InvalidOperationException("Socket Init failed!");
-
-            Socket.Blocking = true;
-
+            
             return await Socket.ReceiveAsync(buffer, SocketFlags.None);
         }
     }

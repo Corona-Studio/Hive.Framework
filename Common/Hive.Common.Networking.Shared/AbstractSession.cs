@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Buffers;
-using System.Linq;
+using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 using System.Threading.Channels;
@@ -9,6 +9,7 @@ using Hive.Framework.Codec.Abstractions;
 using Hive.Framework.Networking.Abstractions;
 using Hive.Framework.Networking.Abstractions.EventArgs;
 using Hive.Framework.Networking.Shared.Helpers;
+using Hive.Framework.Shared;
 
 namespace Hive.Framework.Networking.Shared
 {
@@ -22,7 +23,7 @@ namespace Hive.Framework.Networking.Shared
         protected const int DefaultBufferSize = 40960;
         public const int DefaultSocketBufferSize = 8192 * 4; 
         protected const int PacketHeaderLength = sizeof(ushort); // 包头长度2Byte
-
+        
         protected Channel<ReadOnlyMemory<byte>>? SendChannel;
         protected CancellationTokenSource? CancellationTokenSource;
         protected bool ReceivingLoopRunning;
@@ -32,7 +33,7 @@ namespace Hive.Framework.Networking.Shared
         public IDataDispatcher<TSession> DataDispatcher { get; }
         public IPEndPoint? LocalEndPoint { get; protected set; }
         public IPEndPoint? RemoteEndPoint { get; protected set; }
-        public TId[]? ExcludeRedirectPacketIds { get; set; }
+        public ISet<TId>? RedirectPacketIds { get; set; }
         public bool RedirectReceivedData { get; set; }
 
         public abstract bool ShouldDestroyAfterDisconnected { get; }
@@ -41,7 +42,7 @@ namespace Hive.Framework.Networking.Shared
         public bool Running => !(CancellationTokenSource?.IsCancellationRequested ?? true) && SendingLoopRunning && ReceivingLoopRunning;
         public abstract bool IsConnected { get; }
 
-        public event EventHandler<ReceivedDataEventArgs>? OnDataReceived;
+        public AsyncEventHandler<ReceivedDataEventArgs>? OnDataReceived { get; set; }
 
         protected AbstractSession(IPacketCodec<TId> packetCodec, IDataDispatcher<TSession> dataDispatcher)
         {
@@ -85,7 +86,7 @@ namespace Hive.Framework.Networking.Shared
             SendingLoopRunning = true;
         }
 
-        public async ValueTask Send<T>(T obj)
+        public async ValueTask SendAsync<T>(T obj)
         {
             if (obj == null) throw new ArgumentNullException($"The data trying to send [{nameof(obj)}] is null!");
 
@@ -138,9 +139,9 @@ namespace Hive.Framework.Networking.Shared
             var idMemory = PacketCodec.GetPacketIdMemory(payloadBytes);
             var id = PacketCodec.GetPacketId(idMemory);
 
-            if (RedirectReceivedData && !(ExcludeRedirectPacketIds?.Contains(id) ?? false))
+            if (RedirectReceivedData && (RedirectPacketIds?.Contains(id) ?? false))
             {
-                InvokeDataReceivedEvent(idMemory, payloadBytes);
+                await InvokeDataReceivedEventAsync(idMemory, payloadBytes.ToArray().AsMemory());
 
                 return;
             }
@@ -151,9 +152,9 @@ namespace Hive.Framework.Networking.Shared
             await DispatchPacket(packet.Payload, packetType);
         }
 
-        protected void InvokeDataReceivedEvent(ReadOnlyMemory<byte> id, ReadOnlyMemory<byte> data)
+        protected async Task InvokeDataReceivedEventAsync(ReadOnlyMemory<byte> id, ReadOnlyMemory<byte> data)
         {
-            OnDataReceived?.Invoke(this, new ReceivedDataEventArgs(id, data));
+            await (OnDataReceived?.InvokeAsync(this, new ReceivedDataEventArgs(id, data)) ?? Task.CompletedTask);
         }
 
         /// <summary>

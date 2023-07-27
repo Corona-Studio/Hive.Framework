@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Threading.Tasks;
 using Hive.Framework.Codec.Abstractions;
 using Hive.Framework.Networking.Abstractions;
 using Hive.Framework.Networking.Abstractions.EventArgs;
@@ -87,7 +88,7 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
     protected abstract void RegisterServerRegistrationMessage(TSession session);
     /// <summary>
     /// 客户端数据包传送起始注册方法
-    /// <para>一般情况下，此方法需要在接受到相应的起始数据包后开始转发该客户端会话发送的所有请求，通过调用 <see cref="DoForwardDataToServer"/> 来将数据包转发给对应服务器</para>
+    /// <para>一般情况下，此方法需要在接受到相应的起始数据包后开始转发该客户端会话发送的所有请求，通过调用 <see cref="DoForwardDataToServerAsync"/> 来将数据包转发给对应服务器</para>
     /// </summary>
     /// <param name="session"></param>
     protected abstract void RegisterClientStartTransmitMessage(TSession session);
@@ -118,21 +119,24 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
     /// <param name="session"></param>
     /// <param name="data"></param>
     /// <returns></returns>
-    public virtual void DoForwardDataToServer(TSession session, ReadOnlyMemory<byte> data)
+    protected virtual async ValueTask DoForwardDataToServerAsync(TSession session, ReadOnlyMemory<byte> data)
     {
         var packetIdMemory = PacketCodec.GetPacketIdMemory(data);
         var packetId = PacketCodec.GetPacketId(packetIdMemory);
-
+        
         if (!GetServerSession(packetId, true, out var serverSession)) return;
 
-        // [LENGTH (2) | SESSION_ID | PAYLOAD]
-        var clientSessionIdMemory = Acceptor.ClientManager.GetEncodedSessionId(session);
-        var payload = data[2..];
-        var length = BitConverter.GetBytes((ushort)(clientSessionIdMemory.Length + payload.Length + 2)).AsMemory();
-        var totalLength = length.Length + clientSessionIdMemory.Length + payload.Length;
+        // [LENGTH (2) | PACKET_ID | SESSION_ID | PAYLOAD]
+        var clientSessionIdMemory = Acceptor.ClientManager.GetEncodedSessionPrefix(session);
+        var payload = data[(2 + packetIdMemory.Length)..];
+        var resultLength = packetIdMemory.Length + clientSessionIdMemory.Length + payload.Length;
+        var lengthMemory = BitConverter.GetBytes((ushort)resultLength).AsMemory();
+
+        var repackedData =
+            MemoryHelper.CombineMemory(lengthMemory, packetIdMemory, clientSessionIdMemory, payload);
 
         // 按照顺序发送数据
-        serverSession!.Send(MemoryHelper.CombineMemory(totalLength, length, clientSessionIdMemory, payload));
+        await serverSession!.Send(repackedData);
     }
 
     protected virtual bool GetServerSession(TId packetId, bool useLoadBalancer, out TSession? serverSession)

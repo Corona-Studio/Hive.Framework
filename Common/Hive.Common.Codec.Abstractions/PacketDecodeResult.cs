@@ -1,6 +1,6 @@
 ﻿namespace Hive.Framework.Codec.Abstractions
 {
-    public class PacketDecodeResult<TId> where TId : unmanaged
+    public class PacketDecodeResult<TId> where TId : struct
     {
         public object?[] Prefixes { get; }
         public TId PacketId { get; }
