@@ -33,10 +33,8 @@
     <ProjectReference Include="..\Hive.Common.Networking.Abstractions\Hive.Common.Networking.Abstractions.csproj" />
     <ProjectReference Include="..\Hive.Common.Networking.Kcp\Hive.Common.Networking.Kcp.csproj" />
     <ProjectReference Include="..\Hive.Common.Networking.Quic\Hive.Common.Networking.Quic.csproj" />
-    <ProjectReference Include="..\Hive.Common.Networking.Shared\Hive.Common.Networking.Shared.csproj" />
     <ProjectReference Include="..\Hive.Common.Networking.Tcp\Hive.Common.Networking.Tcp.csproj" />
     <ProjectReference Include="..\Hive.Common.Networking.Udp\Hive.Common.Networking.Udp.csproj" />
-    <ProjectReference Include="..\Hive.Common.Shared\Hive.Common.Shared.csproj" />
   </ItemGroup>
 
   <ItemGroup>
