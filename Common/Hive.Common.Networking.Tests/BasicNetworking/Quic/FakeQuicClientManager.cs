@@ -29,7 +29,7 @@ public class FakeQuicClientManager : AbstractClientManager<Guid, QuicSession<ush
     public int AdderPackageReceiveCount { get; private set; }
     public int BidirectionalPacketAddResult { get; private set; }
 
-    public override ReadOnlyMemory<byte> GetEncodedSessionPrefix(QuicSession<ushort> session)
+    public override ReadOnlyMemory<byte> GetEncodedC2SSessionPrefix(QuicSession<ushort> session)
     {
         return Encoding.ASCII.GetBytes(GetSessionId(session).ToString("N"));
     }
@@ -46,7 +46,7 @@ public class FakeQuicClientManager : AbstractClientManager<Guid, QuicSession<ush
     {
         session.OnReceive<SigninMessage>((message, quicSession) =>
         {
-            SigninMessageVal = message.Id;
+            SigninMessageVal = message.Payload.Id;
             ConnectedClient++;
             InvokeOnClientConnected(quicSession);
         });
@@ -54,13 +54,13 @@ public class FakeQuicClientManager : AbstractClientManager<Guid, QuicSession<ush
         session.OnReceive<CountTestMessage>((message, _) =>
         {
             AdderPackageReceiveCount++;
-            AdderCount += message.Adder;
+            AdderCount += message.Payload.Adder;
         });
 
         session.OnReceive<C2STestPacket>(async (message, quicSession) =>
         {
-            BidirectionalPacketAddResult += message.RandomNumber;
-            await quicSession.SendAsync(new S2CTestPacket { ReversedRandomNumber = -message.RandomNumber });
+            BidirectionalPacketAddResult += message.Payload.RandomNumber;
+            await quicSession.SendAsync(new S2CTestPacket { ReversedRandomNumber = -message.Payload.RandomNumber });
         });
     }
 
@@ -68,7 +68,7 @@ public class FakeQuicClientManager : AbstractClientManager<Guid, QuicSession<ush
     {
         session.OnReceive<SignOutMessage>((message, tcpSession) =>
         {
-            SignOutMessageVal = message.Id;
+            SignOutMessageVal = message.Payload.Id;
             ConnectedClient--;
 
             var sessionId = GetSessionId(tcpSession);

@@ -63,7 +63,7 @@ namespace Hive.Framework.Networking.Udp
         public override bool CanReceive => true;
         public override bool IsConnected => Socket != null;
 
-        protected override async ValueTask DispatchPacket(object? packet, Type? packetType = null)
+        protected override async ValueTask DispatchPacket(IPacketDecodeResult<object>? packet, Type? packetType = null)
         {
             if (packet == null) return;
 

@@ -26,7 +26,7 @@ public class FakeTcpClientManager : AbstractClientManager<Guid, TcpSession<ushor
     public int AdderPackageReceiveCount { get; private set; }
     public int BidirectionalPacketAddResult { get; private set; }
 
-    public override ReadOnlyMemory<byte> GetEncodedSessionPrefix(TcpSession<ushort> session)
+    public override ReadOnlyMemory<byte> GetEncodedC2SSessionPrefix(TcpSession<ushort> session)
     {
         return GetSessionId(session).ToByteArray();
     }
@@ -43,7 +43,7 @@ public class FakeTcpClientManager : AbstractClientManager<Guid, TcpSession<ushor
     {
         session.OnReceive<SigninMessage>((message, tcpSession) =>
         {
-            SigninMessageVal = message.Id;
+            SigninMessageVal = message.Payload.Id;
             ConnectedClient++;
             InvokeOnClientConnected(tcpSession);
         });
@@ -51,13 +51,13 @@ public class FakeTcpClientManager : AbstractClientManager<Guid, TcpSession<ushor
         session.OnReceive<CountTestMessage>((message, _) =>
         {
             AdderPackageReceiveCount++;
-            AdderCount += message.Adder;
+            AdderCount += message.Payload.Adder;
         });
 
         session.OnReceive<C2STestPacket>(async (message, tcpSession) =>
         {
-            BidirectionalPacketAddResult += message.RandomNumber;
-            await tcpSession.SendAsync(new S2CTestPacket { ReversedRandomNumber = -message.RandomNumber });
+            BidirectionalPacketAddResult += message.Payload.RandomNumber;
+            await tcpSession.SendAsync(new S2CTestPacket { ReversedRandomNumber = -message.Payload.RandomNumber });
         });
     }
 
@@ -65,7 +65,7 @@ public class FakeTcpClientManager : AbstractClientManager<Guid, TcpSession<ushor
     {
         session.OnReceive<SignOutMessage>((message, tcpSession) =>
         {
-            SignOutMessageVal = message.Id;
+            SignOutMessageVal = message.Payload.Id;
             ConnectedClient--;
 
             var sessionId = GetSessionId(tcpSession);

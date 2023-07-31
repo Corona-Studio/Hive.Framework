@@ -186,8 +186,8 @@ public abstract class AbstractNetworkingTestBase<TSession, TClient, TAcceptor, T
 
         Client.OnReceive<S2CTestPacket>((message, _) =>
         {
-            Console.WriteLine(message.ReversedRandomNumber);
-            receivedCount += message.ReversedRandomNumber;
+            Console.WriteLine(message.Payload.ReversedRandomNumber);
+            receivedCount += message.Payload.ReversedRandomNumber;
         });
 
         for (var i = 0; i < SendTimes; i++)

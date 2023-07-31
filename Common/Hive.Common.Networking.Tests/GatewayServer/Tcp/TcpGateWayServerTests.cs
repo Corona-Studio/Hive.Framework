@@ -228,7 +228,7 @@ public class TcpGateWayServerTests
 
         _server.OnReceive<ServerRedirectTestMessage1>((message1, _) =>
         {
-            testStrList.Add(message1.Content!);
+            testStrList.Add(message1.Payload.Content!);
         });
 
         await Task.Delay(100);
@@ -254,7 +254,7 @@ public class TcpGateWayServerTests
 
         _server.OnReceive<ServerRedirectTestMessage1>((message1, _) =>
         {
-            testStrList.Add(message1.Content!);
+            testStrList.Add(message1.Payload.Content!);
         });
 
         await Task.Delay(100);

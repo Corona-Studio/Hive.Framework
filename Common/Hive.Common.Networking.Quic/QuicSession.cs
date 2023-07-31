@@ -50,7 +50,7 @@ public sealed class QuicSession<TId> : AbstractSession<TId, QuicSession<TId>> wh
     public override bool CanReceive => _connectionReady;
     public override bool IsConnected => _connectionReady;
 
-    protected override async ValueTask DispatchPacket(object? packet, Type? packetType = null)
+    protected override async ValueTask DispatchPacket(IPacketDecodeResult<object>? packet, Type? packetType = null)
     {
         if (packet == null) return;
 

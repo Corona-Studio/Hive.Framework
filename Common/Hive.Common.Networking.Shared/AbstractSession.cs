@@ -94,7 +94,7 @@ namespace Hive.Framework.Networking.Shared
             await Send(encodedBytes);
         }
 
-        public void OnReceive<T>(Action<T, TSession> callback) // 用于兼容旧的基于Action的回调
+        public void OnReceive<T>(Action<IPacketDecodeResult<T>, TSession> callback) // 用于兼容旧的基于Action的回调
         {
             DataDispatcher.Register(callback);
 
@@ -105,7 +105,7 @@ namespace Hive.Framework.Networking.Shared
             ReceivingLoopRunning = true;
         }
 
-        public void OnReceiveOneTime<T>(Action<T, TSession> callback)
+        public void OnReceiveOneTime<T>(Action<IPacketDecodeResult<T>, TSession> callback)
         {
             DataDispatcher.OneTimeRegister(callback);
 
@@ -132,7 +132,7 @@ namespace Hive.Framework.Networking.Shared
             TaskHelper.ManagedRun(ReceiveLoop, CancellationTokenSource.Token);
         }
 
-        protected abstract ValueTask DispatchPacket(object? packet, Type? packetType = null);
+        protected abstract ValueTask DispatchPacket(IPacketDecodeResult<object>? packet, Type? packetType = null);
 
         protected async ValueTask ProcessPacket(ReadOnlyMemory<byte> payloadBytes)
         {
@@ -149,7 +149,7 @@ namespace Hive.Framework.Networking.Shared
             var packet = PacketCodec.Decode(payloadBytes.Span);
             var packetType = PacketCodec.PacketIdMapper.GetPacketType(id);
 
-            await DispatchPacket(packet.Payload, packetType);
+            await DispatchPacket(packet, packetType);
         }
 
         protected async Task InvokeDataReceivedEventAsync(ReadOnlyMemory<byte> id, ReadOnlyMemory<byte> data)

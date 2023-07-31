@@ -27,7 +27,7 @@ public class FakeKcpClientManager : AbstractClientManager<Guid, KcpSession<ushor
     public int AdderPackageReceiveCount { get; private set; }
     public int BidirectionalPacketAddResult { get; private set; }
 
-    public override ReadOnlyMemory<byte> GetEncodedSessionPrefix(KcpSession<ushort> session)
+    public override ReadOnlyMemory<byte> GetEncodedC2SSessionPrefix(KcpSession<ushort> session)
     {
         return Encoding.ASCII.GetBytes(GetSessionId(session).ToString("N"));
     }
@@ -44,7 +44,7 @@ public class FakeKcpClientManager : AbstractClientManager<Guid, KcpSession<ushor
     {
         session.OnReceive<SigninMessage>((message, kcpSession) =>
         {
-            SigninMessageVal = message.Id;
+            SigninMessageVal = message.Payload.Id;
             ConnectedClient++;
             InvokeOnClientConnected(kcpSession);
         });
@@ -52,13 +52,13 @@ public class FakeKcpClientManager : AbstractClientManager<Guid, KcpSession<ushor
         session.OnReceive<CountTestMessage>((message, _) =>
         {
             AdderPackageReceiveCount++;
-            AdderCount += message.Adder;
+            AdderCount += message.Payload.Adder;
         });
 
         session.OnReceive<C2STestPacket>(async (message, kcpSession) =>
         {
-            BidirectionalPacketAddResult += message.RandomNumber;
-            await kcpSession.SendAsync(new S2CTestPacket { ReversedRandomNumber = -message.RandomNumber });
+            BidirectionalPacketAddResult += message.Payload.RandomNumber;
+            await kcpSession.SendAsync(new S2CTestPacket { ReversedRandomNumber = -message.Payload.RandomNumber });
         });
     }
 
@@ -66,7 +66,7 @@ public class FakeKcpClientManager : AbstractClientManager<Guid, KcpSession<ushor
     {
         session.OnReceive<SignOutMessage>((message, kcpSession) =>
         {
-            SignOutMessageVal = message.Id;
+            SignOutMessageVal = message.Payload.Id;
             ConnectedClient--;
 
             var sessionId = GetSessionId(kcpSession);

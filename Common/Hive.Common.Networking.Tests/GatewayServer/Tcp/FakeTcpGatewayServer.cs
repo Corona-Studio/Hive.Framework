@@ -22,7 +22,7 @@ public class FakeTcpGatewayServer : AbstractGatewayServer<TcpSession<ushort>, Gu
     {
         session.OnReceive<ServerRegistrationMessage>((message, tcpSession) =>
         {
-            foreach (var packetId in message.PackagesToReceive)
+            foreach (var packetId in message.Payload.PackagesToReceive)
             {
                 AddPacketRoute(packetId, tcpSession);
                 RegisteredForwardPacketCount++;
@@ -39,7 +39,7 @@ public class FakeTcpGatewayServer : AbstractGatewayServer<TcpSession<ushort>, Gu
     {
         session.OnReceive<ClientStartTransmitMessage>((message, tcpSession) =>
         {
-            tcpSession.RedirectPacketIds = message.RedirectPacketIds.ToHashSet();
+            tcpSession.RedirectPacketIds = message.Payload.RedirectPacketIds.ToHashSet();
             tcpSession.OnDataReceived += TcpSessionOnOnDataReceived;
             tcpSession.RedirectReceivedData = true;
 

@@ -82,7 +82,7 @@ public class BsonPacketCodec : IPacketCodec<ushort>
         }
     }
 
-    public unsafe PacketDecodeResult<ushort> Decode(ReadOnlySpan<byte> data)
+    public unsafe PacketDecodeResultWithId<ushort> Decode(ReadOnlySpan<byte> data)
     {
         // 负载长度
         // var packetLengthSpan = data[..2];
@@ -114,7 +114,7 @@ public class BsonPacketCodec : IPacketCodec<ushort>
             var packetType = PacketIdMapper.GetPacketType(packetId);
             var payload = BsonSerializer.Deserialize(dataMs, packetType);
             
-            return new PacketDecodeResult<ushort>(packetPrefixes, packetId, payload);
+            return new PacketDecodeResultWithId<ushort>(packetPrefixes, packetId, payload);
         }
     }
 }

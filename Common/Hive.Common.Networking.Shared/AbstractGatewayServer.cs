@@ -127,7 +127,7 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
         if (!GetServerSession(packetId, true, out var serverSession)) return;
 
         // [LENGTH (2) | PACKET_ID | SESSION_ID | PAYLOAD]
-        var clientSessionIdMemory = Acceptor.ClientManager.GetEncodedSessionPrefix(session);
+        var clientSessionIdMemory = Acceptor.ClientManager.GetEncodedC2SSessionPrefix(session);
         var payload = data[(2 + packetIdMemory.Length)..];
         var resultLength = packetIdMemory.Length + clientSessionIdMemory.Length + payload.Length;
         var lengthMemory = BitConverter.GetBytes((ushort)resultLength).AsMemory();

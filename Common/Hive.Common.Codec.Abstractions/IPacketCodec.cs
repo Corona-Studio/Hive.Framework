@@ -18,6 +18,6 @@ namespace Hive.Framework.Codec.Abstractions
 
         ReadOnlyMemory<byte> Encode<T>(T obj);
 
-        PacketDecodeResult<TId> Decode(ReadOnlySpan<byte> data);
+        PacketDecodeResultWithId<TId> Decode(ReadOnlySpan<byte> data);
     }
 }

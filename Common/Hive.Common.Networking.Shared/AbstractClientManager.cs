@@ -30,8 +30,6 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
     public event EventHandler<ClientConnectionChangedEventArgs<TSession>>? OnClientConnected;
     public event EventHandler<ClientConnectionChangedEventArgs<TSession>>? OnClientDisconnected;
 
-    public abstract ReadOnlyMemory<byte> GetEncodedSessionPrefix(TSession session);
-
     public TSessionId? GetSessionId(TSession session)
     {
         return _sessionIdMapper.TryGetValue(session, out var id) ? id : default;
@@ -89,6 +87,8 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
     {
         _clientConnectionHolderCancellationTokenSource.Cancel();
     }
+    
+    public abstract ReadOnlyMemory<byte> GetEncodedC2SSessionPrefix(TSession session);
 
     protected abstract void RegisterHeartBeatMessage(TSession session);
     protected abstract void RegisterSigninMessage(TSession session);

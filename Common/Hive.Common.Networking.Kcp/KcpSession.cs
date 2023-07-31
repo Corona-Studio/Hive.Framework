@@ -85,7 +85,7 @@ namespace Hive.Framework.Networking.Kcp
             return kcp;
         }
 
-        protected override async ValueTask DispatchPacket(object? packet, Type? packetType = null)
+        protected override async ValueTask DispatchPacket(IPacketDecodeResult<object>? packet, Type? packetType = null)
         {
             if (packet == null) return;
 

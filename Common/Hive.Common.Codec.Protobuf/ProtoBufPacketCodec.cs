@@ -81,7 +81,7 @@ public class ProtoBufPacketCodec : IPacketCodec<ushort>
         }
     }
 
-    public PacketDecodeResult<ushort> Decode(ReadOnlySpan<byte> data)
+    public PacketDecodeResultWithId<ushort> Decode(ReadOnlySpan<byte> data)
     {
         // 负载长度
         // var packetLengthSpan = data[..2];
@@ -109,6 +109,6 @@ public class ProtoBufPacketCodec : IPacketCodec<ushort>
         var packetType = PacketIdMapper.GetPacketType(packetId);
         var payload = RuntimeTypeModel.Default.Deserialize(packetType, packetData);
 
-        return new PacketDecodeResult<ushort>(packetPrefixes, packetId, payload);
+        return new PacketDecodeResultWithId<ushort>(packetPrefixes, packetId, payload);
     }
 }
