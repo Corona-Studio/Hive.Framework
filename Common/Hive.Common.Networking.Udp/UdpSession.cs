@@ -95,21 +95,22 @@ namespace Hive.Framework.Networking.Udp
             return default;
         }
 
-        public override ValueTask SendOnce(ReadOnlyMemory<byte> data)
+        public override async ValueTask SendOnce(ReadOnlyMemory<byte> data)
         {
             if (Socket == null)
                 throw new InvalidOperationException("Socket Init failed!");
 
+            var dataArray = data.ToArray();
             var totalLen = data.Length;
             var sentLen = 0;
 
             while (sentLen < totalLen)
             {
-                var sendThisTime = Socket.SendTo(data[sentLen..].ToArray(), RemoteEndPoint!);
+                var segment = new ArraySegment<byte>(dataArray, sentLen, totalLen - sentLen);
+                var sendThisTime = await Socket.SendToAsync(segment, SocketFlags.None, RemoteEndPoint!);
+
                 sentLen += sendThisTime;
             }
-
-            return default;
         }
 
         private async Task NonPassiveModeRawReceiveLoop()

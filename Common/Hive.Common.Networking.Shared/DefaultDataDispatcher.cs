@@ -40,6 +40,8 @@ namespace Hive.Framework.Networking.Shared
                 });
         }
 
+        #region Register Functions
+
         public void Register<T>(Action<IPacketDecodeResult<T>, TSender> callback)
         {
             _registeredDataFlow.AddOrUpdate(
@@ -127,6 +129,100 @@ namespace Hive.Framework.Networking.Shared
                 }
                 catch (Exception) { }
         }
+
+        #endregion
+
+        #region Register Functions (Async)
+
+        public void Register<T>(Func<IPacketDecodeResult<T>, TSender, ValueTask> callback)
+        {
+            _registeredDataFlow.AddOrUpdate(
+                typeof(T),
+                new GuaranteedDeliveryBroadcastBlock<(IPacketDecodeResult<object>, TSender)>(tuple => tuple, new DataflowBlockOptions
+                {
+                    EnsureOrdered = true
+                }),
+                (_, block) => block);
+
+            var broadcastBlock = _registeredDataFlow[typeof(T)];
+
+            var transformBlock = new TransformBlock<(IPacketDecodeResult<object>, TSender), (IPacketDecodeResult<T>, TSender)>(raw =>
+            {
+                var (rawData, sender) = raw;
+                return (new PacketDecodeResult<T>(rawData.Prefixes, (T)rawData.Payload), sender);
+            });
+
+            var actionBlock = new ActionBlock<(IPacketDecodeResult<T>, TSender)>(async data =>
+            {
+                await callback(data.Item1, data.Item2);
+            });
+
+            var options = new DataflowLinkOptions
+            {
+                Append = true,
+                PropagateCompletion = true
+            };
+
+            var link1 = transformBlock.LinkTo(actionBlock, options);
+            var link2 = broadcastBlock.LinkTo(transformBlock, options);
+
+            AddCallbackLog(callback, link1, link2);
+            AddTypedCallbackLog(typeof(T), link1, link2);
+        }
+
+        public void OneTimeRegister<T>(Func<IPacketDecodeResult<T>, TSender, ValueTask> callback)
+        {
+            _registeredDataFlow.AddOrUpdate(
+                typeof(T),
+                new GuaranteedDeliveryBroadcastBlock<(IPacketDecodeResult<object>, TSender)>(tuple => tuple, new DataflowBlockOptions
+                {
+                    EnsureOrdered = true
+                }),
+                (_, block) => block);
+
+            var broadcastBlock = _registeredDataFlow[typeof(T)];
+
+            var writeOnceBlock = new WriteOnceBlock<(IPacketDecodeResult<object>, TSender)>(tuple => tuple);
+
+            var transformBlock = new TransformBlock<(IPacketDecodeResult<object>, TSender), (IPacketDecodeResult<T>, TSender)>(raw =>
+            {
+                var (rawData, sender) = raw;
+                return (new PacketDecodeResult<T>(rawData.Prefixes, (T)rawData.Payload), sender);
+            });
+
+            var actionBlock = new ActionBlock<(IPacketDecodeResult<T>, TSender)>(async data =>
+            {
+                await callback(data.Item1, data.Item2);
+                Unregister(callback);
+            });
+
+            var options = new DataflowLinkOptions
+            {
+                Append = true,
+                PropagateCompletion = true
+            };
+
+            var link1 = writeOnceBlock.LinkTo(transformBlock, options);
+            var link2 = transformBlock.LinkTo(actionBlock, options);
+            var link3 = broadcastBlock.LinkTo(writeOnceBlock, options);
+
+            AddCallbackLog(callback, link1, link2, link3);
+            AddTypedCallbackLog(typeof(T), link1, link2, link3);
+        }
+
+        public void Unregister<T>(Func<IPacketDecodeResult<T>, TSender, ValueTask> callback)
+        {
+            if (!_registeredLinks.TryRemove(callback, out var links)) return;
+
+            foreach (var disposable in links)
+                try
+                {
+                    disposable.Dispose();
+                }
+                catch (Exception) { }
+        }
+
+        #endregion
 
         public void UnregisterAll<T>()
         {

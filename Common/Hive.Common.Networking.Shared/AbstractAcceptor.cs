@@ -14,7 +14,9 @@ namespace Hive.Framework.Networking.Shared;
 /// <typeparam name="TSession">连接会话类型 例如在 TCP 实现下，其类型为 TcpSession{TId}</typeparam>
 /// <typeparam name="TId">封包 ID 类型（通常为 ushort）</typeparam>
 /// <typeparam name="TSessionId">会话 Id 的类型，用于客户端管理器</typeparam>
-public abstract class AbstractAcceptor<TClient, TSession, TId, TSessionId> : IAcceptor<TSession, TClient, TSessionId>, IHasCodec<TId> where TSession : ISession<TSession> where TId : unmanaged
+public abstract class AbstractAcceptor<TClient, TSession, TId, TSessionId> : IAcceptor<TSession, TClient, TSessionId>, IHasCodec<TId> where TSession : ISession<TSession>
+    where TId : unmanaged
+    where TSessionId : unmanaged
 {
     public IPEndPoint EndPoint { get; }
     public IPacketCodec<TId> PacketCodec { get; }

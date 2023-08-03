@@ -6,7 +6,7 @@ namespace Hive.Framework.Codec.Abstractions
     /// 封包 类型 / ID 映射器
     /// </summary>
     /// <typeparam name="TId">数据包 ID 类型（通常为 ushort）</typeparam>
-    public interface IPacketIdMapper<TId> where TId : struct
+    public interface IPacketIdMapper<TId> where TId : unmanaged
     {
         ITypeHashFunction<TId> TypeHashFunction { get; }
 

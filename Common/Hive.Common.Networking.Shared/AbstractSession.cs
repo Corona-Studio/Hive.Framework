@@ -18,7 +18,9 @@ namespace Hive.Framework.Networking.Shared
     /// </summary>
     /// <typeparam name="TId">封包 ID 类型（通常为 ushort）</typeparam>
     /// <typeparam name="TSession">连接会话类型 例如在 TCP 实现下，其类型为 TcpSession{TId}</typeparam>
-    public abstract class AbstractSession<TId, TSession> : ISession<TSession>, ISender<TId>, ICanRedirectPacket<TId>, IHasCodec<TId> where TSession : ISession<TSession> where TId : unmanaged
+    public abstract class AbstractSession<TId, TSession> : ISession<TSession>, ISender<TId>, ICanRedirectPacket<TId>, IHasCodec<TId>
+        where TSession : ISession<TSession>
+        where TId : unmanaged
     {
         protected const int DefaultBufferSize = 40960;
         public const int DefaultSocketBufferSize = 8192 * 4; 
@@ -94,7 +96,18 @@ namespace Hive.Framework.Networking.Shared
             await Send(encodedBytes);
         }
 
-        public void OnReceive<T>(Action<IPacketDecodeResult<T>, TSession> callback) // 用于兼容旧的基于Action的回调
+        public void OnReceive<T>(Action<IPacketDecodeResult<T>, TSession> callback)
+        {
+            DataDispatcher.Register(callback);
+
+            if (ReceivingLoopRunning) return;
+
+            BeginReceive();
+
+            ReceivingLoopRunning = true;
+        }
+
+        public void OnReceive<T>(Func<IPacketDecodeResult<T>, TSession, ValueTask> callback)
         {
             DataDispatcher.Register(callback);
 
@@ -106,6 +119,17 @@ namespace Hive.Framework.Networking.Shared
         }
 
         public void OnReceiveOneTime<T>(Action<IPacketDecodeResult<T>, TSession> callback)
+        {
+            DataDispatcher.OneTimeRegister(callback);
+
+            if (ReceivingLoopRunning) return;
+
+            BeginReceive();
+
+            ReceivingLoopRunning = true;
+        }
+
+        public void OnReceiveOneTime<T>(Func<IPacketDecodeResult<T>, TSession, ValueTask> callback)
         {
             DataDispatcher.OneTimeRegister(callback);
 

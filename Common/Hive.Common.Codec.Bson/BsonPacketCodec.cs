@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using Microsoft.Extensions.ObjectPool;
 using MongoDB.Bson;
+using MongoDB.Bson.IO;
 using MongoDB.Bson.Serialization;
 
 namespace Hive.Framework.Codec.Bson;
@@ -59,7 +60,7 @@ public class BsonPacketCodec : IPacketCodec<ushort>
             Span<byte> lengthHeader = stackalloc byte[2];
             Span<byte> typeHeader = stackalloc byte[2];
 
-            // Packet Length [LENGTH (2) | TYPE (2) | CONTENT]
+            // [LENGTH (2) | TYPE (2) | CONTENT]
             BitConverter.TryWriteBytes(lengthHeader, (ushort)(dataSpan.Length + 2));
             writer.Write(lengthHeader);
 
@@ -94,6 +95,7 @@ public class BsonPacketCodec : IPacketCodec<ushort>
         // 封包前缀
         var payloadStartIndex = 4;
         var packetPrefixes = Array.Empty<object?>();
+
         if (PrefixResolvers?.Any() ?? false)
         {
             packetPrefixes = new object[PrefixResolvers.Length];
@@ -104,7 +106,7 @@ public class BsonPacketCodec : IPacketCodec<ushort>
         }
         
         // 封包数据段
-        var packetData = data[(payloadStartIndex + 1)..];
+        var packetData = data[payloadStartIndex..];
 
         fixed (byte* bp = &packetData.GetPinnableReference())
         {

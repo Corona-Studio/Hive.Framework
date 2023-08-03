@@ -13,6 +13,11 @@ namespace Hive.Framework.Networking.Abstractions
         void Register<T>(Action<IPacketDecodeResult<T>, TSession> callback); 
         void OneTimeRegister<T>(Action<IPacketDecodeResult<T>, TSession> callback);
         void Unregister<T>(Action<IPacketDecodeResult<T>, TSession> callback);
+
+        void Register<T>(Func<IPacketDecodeResult<T>, TSession, ValueTask> callback);
+        void OneTimeRegister<T>(Func<IPacketDecodeResult<T>, TSession, ValueTask> callback);
+        void Unregister<T>(Func<IPacketDecodeResult<T>, TSession, ValueTask> callback);
+
         void UnregisterAll<T>();
         void UnregisterAll();
         ValueTask DispatchAsync(TSession sender, IPacketDecodeResult<object> data, Type? dataType = null);

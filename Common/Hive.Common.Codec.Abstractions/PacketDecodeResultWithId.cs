@@ -6,7 +6,7 @@
         TPayload Payload { get; }
     }
 
-    public readonly struct PacketDecodeResultWithId<TId> : IPacketDecodeResult<object> where TId : struct
+    public readonly struct PacketDecodeResultWithId<TId> : IPacketDecodeResult<object> where TId : unmanaged
     {
         public object?[] Prefixes { get; }
         public object Payload { get; }

@@ -14,7 +14,10 @@ namespace Hive.Framework.Networking.Shared;
 /// <typeparam name="TSession"></typeparam>
 /// <typeparam name="TSessionId"></typeparam>
 /// <typeparam name="TId"></typeparam>
-public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewayServer<TSession, TSessionId, TId> where TSession : ISession<TSession> where TId : unmanaged
+public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewayServer<TSession, TSessionId, TId>
+    where TSession : ISession<TSession>
+    where TSessionId : unmanaged
+    where TId : unmanaged
 {
     protected readonly ConcurrentDictionary<TId, ILoadBalancer<TSession>> PacketRouteTable = new ();
 
@@ -86,6 +89,15 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
     /// </summary>
     /// <param name="session"></param>
     protected abstract void RegisterServerRegistrationMessage(TSession session);
+
+    /// <summary>
+    /// 服务器回复数据包注册方法
+    /// <para>一般情况下，此方法需要注册相应的数据包来帮助网关服务器向正确的客户端传输数据。</para>
+    /// <para>服务端回复数据包需实现 <see cref="IServerReplyPacket{TId}"/>，其中包括目标客户端 ID 以及数据包负载。 </para>
+    /// </summary>
+    /// <param name="session"></param>
+    protected abstract void RegisterServerReplyMessage(TSession session);
+
     /// <summary>
     /// 客户端数据包传送起始注册方法
     /// <para>一般情况下，此方法需要在接受到相应的起始数据包后开始转发该客户端会话发送的所有请求，通过调用 <see cref="DoForwardDataToServerAsync"/> 来将数据包转发给对应服务器</para>
@@ -137,6 +149,14 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
 
         // 按照顺序发送数据
         await serverSession!.Send(repackedData);
+    }
+
+    protected virtual async ValueTask DoForwardDataToClientAsync(IServerReplyPacket<TSessionId> packet)
+    {
+        if (!Acceptor.ClientManager.TryGetSession(packet.SendTo, out var session))
+            return;
+
+        await session!.Send(packet.InnerPayload);
     }
 
     protected virtual bool GetServerSession(TId packetId, bool useLoadBalancer, out TSession? serverSession)

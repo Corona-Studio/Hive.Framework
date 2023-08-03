@@ -4,7 +4,9 @@ using Hive.Framework.Networking.Abstractions.EventArgs;
 
 namespace Hive.Framework.Networking.Abstractions;
 
-public interface IClientManager<TSessionId, TSession> where TSession : ISession<TSession>
+public interface IClientManager<TSessionId, TSession>
+    where TSession : ISession<TSession>
+    where TSessionId : unmanaged
 {
     /// <summary>
     /// 根据会话获取编码后的 C2S（Client -> Server） 前缀
@@ -19,7 +21,7 @@ public interface IClientManager<TSessionId, TSession> where TSession : ISession<
     /// </summary>
     /// <param name="session"></param>
     /// <returns></returns>
-    TSessionId? GetSessionId(TSession session);
+    TSessionId GetSessionId(TSession session);
 
     /// <summary>
     /// 添加一个会话
@@ -51,6 +53,14 @@ public interface IClientManager<TSessionId, TSession> where TSession : ISession<
     /// <param name="session"></param>
     /// <returns></returns>
     bool TryGetSession(IPEndPoint remoteEndPoint, out TSession? session);
+
+    /// <summary>
+    /// 使用客户端 ID 获取会话
+    /// </summary>
+    /// <param name="sessionId"></param>
+    /// <param name="session"></param>
+    /// <returns></returns>
+    bool TryGetSession(TSessionId sessionId, out TSession? session);
 
     event EventHandler<ClientConnectionChangedEventArgs<TSession>>? OnClientConnected;
     event EventHandler<ClientConnectionChangedEventArgs<TSession>>? OnClientDisconnected;

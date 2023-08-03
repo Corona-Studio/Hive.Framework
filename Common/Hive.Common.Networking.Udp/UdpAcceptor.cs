@@ -11,7 +11,9 @@ using System.Buffers;
 
 namespace Hive.Framework.Networking.Udp
 {
-    public sealed class UdpAcceptor<TId, TSessionId> : AbstractAcceptor<Socket, UdpSession<TId>, TId, TSessionId> where TId : unmanaged
+    public sealed class UdpAcceptor<TId, TSessionId> : AbstractAcceptor<Socket, UdpSession<TId>, TId, TSessionId>
+        where TId : unmanaged
+        where TSessionId : unmanaged
     {
         public UdpAcceptor(
             IPEndPoint endPoint,

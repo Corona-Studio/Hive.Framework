@@ -13,7 +13,9 @@ namespace Hive.Framework.Networking.Quic;
 #pragma warning disable CA1416 
 
 [RequiresPreviewFeatures]
-public sealed class QuicAcceptor<TId, TSessionId> : AbstractAcceptor<QuicConnection, QuicSession<TId>, TId, TSessionId> where TId : unmanaged
+public sealed class QuicAcceptor<TId, TSessionId> : AbstractAcceptor<QuicConnection, QuicSession<TId>, TId, TSessionId>
+    where TId : unmanaged
+    where TSessionId : unmanaged
 {
     public QuicAcceptor(
         IPEndPoint endPoint,
@@ -46,7 +48,7 @@ public sealed class QuicAcceptor<TId, TSessionId> : AbstractAcceptor<QuicConnect
     {
         var listenerOptions = new QuicListenerOptions
         {
-            ApplicationProtocols = new List<SslApplicationProtocol> { SslApplicationProtocol.Http2 },
+            ApplicationProtocols = new List<SslApplicationProtocol> { SslApplicationProtocol.Http3 },
             ListenEndPoint = EndPoint,
             ConnectionOptionsCallback = (_, _, _) => ValueTask.FromResult(new QuicServerConnectionOptions
             {
@@ -56,8 +58,7 @@ public sealed class QuicAcceptor<TId, TSessionId> : AbstractAcceptor<QuicConnect
                 {
                     ApplicationProtocols = new List<SslApplicationProtocol> { SslApplicationProtocol.Http3 },
                     ServerCertificate = ServerCertificate
-                },
-                IdleTimeout = TimeSpan.FromMinutes(5)
+                }
             })
         };
 

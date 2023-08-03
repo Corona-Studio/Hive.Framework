@@ -25,8 +25,17 @@ public class FakeTcpGatewayServer : AbstractGatewayServer<TcpSession<ushort>, Gu
             foreach (var packetId in message.Payload.PackagesToReceive)
             {
                 AddPacketRoute(packetId, tcpSession);
+                RegisterServerReplyMessage(tcpSession);
                 RegisteredForwardPacketCount++;
             }
+        });
+    }
+
+    protected override void RegisterServerReplyMessage(TcpSession<ushort> session)
+    {
+        session.OnReceive<DefaultServerReplyPacket>(async (message, _) =>
+        {
+            await DoForwardDataToClientAsync(message.Payload);
         });
     }
 

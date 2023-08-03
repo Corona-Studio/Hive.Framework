@@ -13,7 +13,8 @@ using System.Threading;
 
 namespace Hive.Framework.Networking.Kcp
 {
-    public sealed class KcpSession<TId> : AbstractSession<TId, KcpSession<TId>> where TId : unmanaged
+    public sealed class KcpSession<TId> : AbstractSession<TId, KcpSession<TId>>
+        where TId : unmanaged
     {
         public KcpSession(
             Socket socket,
@@ -263,7 +264,7 @@ namespace Hive.Framework.Networking.Kcp
             while (sentLen < sendData.Length)
             {
                 var sendThisTime = await Socket.SendToAsync(
-                    new ArraySegment<byte>(sendData[sentLen..]),
+                    new ArraySegment<byte>(sendData, sentLen, sendData.Length - sentLen),
                     SocketFlags.None,
                     RemoteEndPoint!);
 

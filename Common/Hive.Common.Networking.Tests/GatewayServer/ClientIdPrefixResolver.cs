@@ -1,15 +1,13 @@
-﻿using Hive.Framework.Codec.Abstractions;
+﻿using Hive.Framework.Networking.Shared;
 
 namespace Hive.Framework.Networking.Tests.GatewayServer;
 
-public class ClientIdPrefixResolver : IPacketPrefixResolver
+public class ClientIdPrefixResolver : AbstractPrefixResolver
 {
-    public object Resolve(ReadOnlySpan<byte> data, ref int index)
+    public override object Resolve(ReadOnlySpan<byte> data, ref int index)
     {
-        var packetIdSpan = data[index..(index + 16)];
+        var packetIdSpan = GetAndIncrementIndex(data, 16, ref index);
         var sessionId = new Guid(packetIdSpan);
-
-        index += 16;
 
         return sessionId;
     }

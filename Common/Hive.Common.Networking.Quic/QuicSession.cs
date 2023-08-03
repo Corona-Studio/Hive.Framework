@@ -11,7 +11,8 @@ namespace Hive.Framework.Networking.Quic;
 #pragma warning disable CA1416 
 
 [RequiresPreviewFeatures]
-public sealed class QuicSession<TId> : AbstractSession<TId, QuicSession<TId>> where TId : unmanaged
+public sealed class QuicSession<TId> : AbstractSession<TId, QuicSession<TId>>
+    where TId : unmanaged
 {
     public QuicSession(QuicConnection connection, QuicStream stream, IPacketCodec<TId> packetCodec, IDataDispatcher<QuicSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
     {
@@ -69,10 +70,9 @@ public sealed class QuicSession<TId> : AbstractSession<TId, QuicSession<TId>> wh
             DefaultCloseErrorCode = 0,
             ClientAuthenticationOptions = new SslClientAuthenticationOptions
             {
-                ApplicationProtocols = new List<SslApplicationProtocol> { SslApplicationProtocol.Http2 },
+                ApplicationProtocols = new List<SslApplicationProtocol> { SslApplicationProtocol.Http3 },
                 RemoteCertificateValidationCallback = (_, _, _, _) => true
-            },
-            IdleTimeout = TimeSpan.FromMinutes(5)
+            }
         };
 
         QuicConnection = await QuicConnection.ConnectAsync(clientConnectionOptions);

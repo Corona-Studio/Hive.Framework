@@ -10,7 +10,9 @@ using Hive.Framework.Networking.Shared.Helpers;
 
 namespace Hive.Framework.Networking.Tcp
 {
-    public sealed class TcpAcceptor<TId, TSessionId> : AbstractAcceptor<Socket, TcpSession<TId>, TId, TSessionId> where TId : unmanaged
+    public sealed class TcpAcceptor<TId, TSessionId> : AbstractAcceptor<Socket, TcpSession<TId>, TId, TSessionId>
+        where TId : unmanaged
+        where TSessionId : unmanaged
     {
         public TcpAcceptor(
             IPEndPoint endPoint,

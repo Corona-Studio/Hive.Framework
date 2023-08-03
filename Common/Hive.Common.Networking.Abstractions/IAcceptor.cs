@@ -6,7 +6,9 @@ using System.Threading.Tasks;
 namespace Hive.Framework.Networking.Abstractions;
 
 
-public interface IAcceptorImpl<TSession, TSessionId> : IDisposable where TSession : ISession<TSession>
+public interface IAcceptorImpl<TSession, TSessionId> : IDisposable
+    where TSession : ISession<TSession>
+    where TSessionId : unmanaged
 {
     IPEndPoint EndPoint { get; }
     Func<IDataDispatcher<TSession>> DataDispatcherProvider { get; }
@@ -22,7 +24,9 @@ public interface IAcceptorImpl<TSession, TSessionId> : IDisposable where TSessio
 /// <typeparam name="TSession">分包发送者，通常为对应的 Session</typeparam>
 /// <typeparam name="TClient">客户端传输层实现 例如在 TCP 实现下，传输层为 Socket</typeparam>
 /// <typeparam name="TSessionId">会话 Id 的类型，用于客户端管理器</typeparam>
-public interface IAcceptor<TSession, in TClient, TSessionId> : IAcceptorImpl<TSession, TSessionId>, IDisposable where TSession : ISession<TSession>
+public interface IAcceptor<TSession, in TClient, TSessionId> : IAcceptorImpl<TSession, TSessionId>
+    where TSession : ISession<TSession>
+    where TSessionId : unmanaged
 {
     ValueTask DoAcceptClient(TClient client, CancellationToken cancellationToken);
 }

@@ -91,6 +91,7 @@ public class MemoryPackPacketCodec : IPacketCodec<ushort>
         // 封包前缀
         var payloadStartIndex = 4;
         var packetPrefixes = Array.Empty<object?>();
+
         if (PrefixResolvers?.Any() ?? false)
         {
             packetPrefixes = new object[PrefixResolvers.Length];
