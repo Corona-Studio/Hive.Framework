@@ -9,7 +9,7 @@ public abstract class AbstractPrefixResolver : IPacketPrefixResolver
     {
         var result = data[index..(index + length)];
 
-        index += length + 1;
+        index += length;
 
         return result;
     }

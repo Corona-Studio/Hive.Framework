@@ -71,7 +71,7 @@ namespace Hive.Framework.Networking.Shared
             DoConnect();
         }
 
-        public virtual async ValueTask Send(ReadOnlyMemory<byte> data)
+        public virtual async ValueTask SendAsync(ReadOnlyMemory<byte> data)
         {
             if (CancellationTokenSource == null)
                 throw new ArgumentNullException(nameof(CancellationTokenSource));
@@ -88,12 +88,12 @@ namespace Hive.Framework.Networking.Shared
             SendingLoopRunning = true;
         }
 
-        public async ValueTask SendAsync<T>(T obj)
+        public async ValueTask SendAsync<T>(T obj, PacketFlags flags)
         {
             if (obj == null) throw new ArgumentNullException($"The data trying to send [{nameof(obj)}] is null!");
 
-            var encodedBytes = PacketCodec.Encode(obj);
-            await Send(encodedBytes);
+            var encodedBytes = PacketCodec.Encode(obj, flags);
+            await SendAsync(encodedBytes);
         }
 
         public void OnReceive<T>(Action<IPacketDecodeResult<T>, TSession> callback)
@@ -161,12 +161,15 @@ namespace Hive.Framework.Networking.Shared
         protected async ValueTask ProcessPacket(ReadOnlyMemory<byte> payloadBytes)
         {
             var idMemory = PacketCodec.GetPacketIdMemory(payloadBytes);
+            var packetFlags = PacketCodec.GetPacketFlags(payloadBytes);
             var id = PacketCodec.GetPacketId(idMemory);
 
-            if (RedirectReceivedData && (RedirectPacketIds?.Contains(id) ?? false))
+            if (RedirectReceivedData &&
+                (RedirectPacketIds?.Contains(id) ?? false) &&
+                !packetFlags.HasFlag(PacketFlags.ServerReply))
             {
                 await InvokeDataReceivedEventAsync(idMemory, payloadBytes.ToArray().AsMemory());
-
+                
                 return;
             }
 

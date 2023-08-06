@@ -4,6 +4,7 @@ using Hive.Framework.Networking.Quic;
 using Hive.Framework.Networking.Shared;
 using Hive.Framework.Networking.Tests.Messages;
 using Hive.Framework.Networking.Tests.Messages.BidirectionalPacket;
+using Hive.Framework.Shared;
 
 namespace Hive.Framework.Networking.Tests.BasicNetworking.Quic;
 
@@ -60,7 +61,7 @@ public class FakeQuicClientManager : AbstractClientManager<Guid, QuicSession<ush
         session.OnReceive<C2STestPacket>(async (message, quicSession) =>
         {
             BidirectionalPacketAddResult += message.Payload.RandomNumber;
-            await quicSession.SendAsync(new S2CTestPacket { ReversedRandomNumber = -message.Payload.RandomNumber });
+            await quicSession.SendAsync(new S2CTestPacket { ReversedRandomNumber = -message.Payload.RandomNumber }, PacketFlags.None);
         });
     }
 

@@ -4,6 +4,7 @@ using Hive.Framework.Networking.Shared;
 using Hive.Framework.Networking.Shared.Helpers;
 using Hive.Framework.Networking.Tests.Messages;
 using Hive.Framework.Networking.Tests.Messages.BidirectionalPacket;
+using Hive.Framework.Shared;
 
 namespace Hive.Framework.Networking.Tests.BasicNetworking;
 
@@ -45,7 +46,7 @@ public abstract class AbstractNetworkingTestBase<TSession, TClient, TAcceptor, T
                     continue;
                 }
 
-                await Client.SendAsync(new HeartBeatMessage());
+                await Client.SendAsync(new HeartBeatMessage(), PacketFlags.None);
                 await Task.Delay(TimeSpan.FromSeconds(10));
             }
         });
@@ -77,7 +78,7 @@ public abstract class AbstractNetworkingTestBase<TSession, TClient, TAcceptor, T
 
         await SpinWaitAsync.SpinUntil(() => Client.CanSend);
 
-        await Client.SendAsync(new SigninMessage { Id = 114514 });
+        await Client.SendAsync(new SigninMessage { Id = 114514 }, PacketFlags.None);
 
         await Task.Delay(100);
 
@@ -117,7 +118,7 @@ public abstract class AbstractNetworkingTestBase<TSession, TClient, TAcceptor, T
         {
             realResult += i;
 
-            await Client.SendAsync(new CountTestMessage { Adder = i });
+            await Client.SendAsync(new CountTestMessage { Adder = i }, PacketFlags.None);
             await Task.Delay(10);
         }
 
@@ -146,7 +147,7 @@ public abstract class AbstractNetworkingTestBase<TSession, TClient, TAcceptor, T
             await Task.Delay(500);
         }
 
-        await Client.SendAsync(new ReconnectMessage());
+        await Client.SendAsync(new ReconnectMessage(), PacketFlags.None);
 
         await Task.Delay(500);
 
@@ -163,7 +164,7 @@ public abstract class AbstractNetworkingTestBase<TSession, TClient, TAcceptor, T
 
         for (var i = 0; i < SendTimes; i++)
         {
-            await Client.SendAsync(new CountTestMessage { Adder = -i });
+            await Client.SendAsync(new CountTestMessage { Adder = -i }, PacketFlags.None);
             await Task.Delay(10);
         }
 
@@ -192,7 +193,7 @@ public abstract class AbstractNetworkingTestBase<TSession, TClient, TAcceptor, T
 
         for (var i = 0; i < SendTimes; i++)
         {
-            await Client.SendAsync(new C2STestPacket { RandomNumber = i });
+            await Client.SendAsync(new C2STestPacket { RandomNumber = i }, PacketFlags.None);
             await Task.Delay(10);
         }
 
@@ -207,7 +208,7 @@ public abstract class AbstractNetworkingTestBase<TSession, TClient, TAcceptor, T
     {
         Assert.That(ClientManager.ConnectedClient, Is.EqualTo(1));
 
-        await Client.SendAsync(new SignOutMessage { Id = 1919870 });
+        await Client.SendAsync(new SignOutMessage { Id = 1919870 }, PacketFlags.None);
 
         await Task.Delay(3000);
 

@@ -18,7 +18,12 @@ namespace Hive.Framework.Networking.Abstractions
         
         ValueTask DoConnect();
         ValueTask DoDisconnect();
-        ValueTask Send(ReadOnlyMemory<byte> data);
+        /// <summary>
+        /// 将原始数据流加入发送队列
+        /// </summary>
+        /// <param name="data"></param>
+        /// <returns></returns>
+        ValueTask SendAsync(ReadOnlyMemory<byte> data);
         ValueTask SendOnce(ReadOnlyMemory<byte> data);
         ValueTask<int> ReceiveOnce(Memory<byte> buffer);
 

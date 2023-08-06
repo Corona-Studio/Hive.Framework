@@ -45,7 +45,7 @@ public class TcpGateWayServerTests
                     continue;
                 }
 
-                await _server.SendAsync(new HeartBeatMessage());
+                await _server.SendAsync(new HeartBeatMessage(), PacketFlags.None);
                 
                 await Task.Delay(TimeSpan.FromSeconds(5));
             }
@@ -64,8 +64,8 @@ public class TcpGateWayServerTests
                     continue;
                 }
                 
-                await _client1.SendAsync(new HeartBeatMessage());
-                await _client2.SendAsync(new HeartBeatMessage());
+                await _client1.SendAsync(new HeartBeatMessage(), PacketFlags.None);
+                await _client2.SendAsync(new HeartBeatMessage(), PacketFlags.None);
 
                 await Task.Delay(TimeSpan.FromSeconds(5));
             }
@@ -139,7 +139,7 @@ public class TcpGateWayServerTests
     [Order(1)]
     public async Task ServerRegistrationTest()
     {
-        await _server.SendAsync(new SigninMessage());
+        await _server.SendAsync(new SigninMessage(), PacketFlags.None);
 
         await Task.Delay(100);
 
@@ -150,7 +150,7 @@ public class TcpGateWayServerTests
         await _server.SendAsync(new ServerRegistrationMessage
         {
             PackagesToReceive = _redirectIds
-        });
+        }, PacketFlags.None);
 
         await Task.Delay(500);
 
@@ -165,8 +165,11 @@ public class TcpGateWayServerTests
     [Order(2)]
     public async Task ClientSigninTest()
     {
-        await _client1.SendAsync(new SigninMessage());
-        await _client2.SendAsync(new SigninMessage());
+        SpinWait.SpinUntil(() => _client1.CanSend);
+        SpinWait.SpinUntil(() => _client2.CanSend);
+
+        await _client1.SendAsync(new SigninMessage(), PacketFlags.None);
+        await _client2.SendAsync(new SigninMessage(), PacketFlags.None);
 
         await Task.Delay(100);
 
@@ -211,12 +214,12 @@ public class TcpGateWayServerTests
         await _client1.SendAsync(new ClientStartTransmitMessage
         {
             RedirectPacketIds = _redirectIds
-        });
+        }, PacketFlags.None);
 
         await _client2.SendAsync(new ClientStartTransmitMessage
         {
             RedirectPacketIds = _redirectIds
-        });
+        }, PacketFlags.None);
 
         await Task.Delay(TimeSpan.FromSeconds(5));
 
@@ -240,8 +243,8 @@ public class TcpGateWayServerTests
 
         await Task.Delay(100);
 
-        await _client1.SendAsync(new ServerRedirectTestMessage1 { Content = "pp" });
-        await _client2.SendAsync(new ServerRedirectTestMessage1 { Content = "123" });
+        await _client1.SendAsync(new ServerRedirectTestMessage1 { Content = "pp" }, PacketFlags.None);
+        await _client2.SendAsync(new ServerRedirectTestMessage1 { Content = "123" }, PacketFlags.None);
 
         await Task.Delay(TimeSpan.FromSeconds(2));
 
@@ -271,7 +274,7 @@ public class TcpGateWayServerTests
         {
             var client = Random.Shared.Next(2) == 1 ? _client1 : _client2;
 
-            await client.SendAsync(new ServerRedirectTestMessage1{Content = guid});
+            await client.SendAsync(new ServerRedirectTestMessage1{Content = guid}, PacketFlags.None);
             await Task.Delay(10);
         }
 
@@ -286,12 +289,6 @@ public class TcpGateWayServerTests
     [Order(7)]
     public async Task ClientMessageReceiveTest()
     {
-        var client1LocalCounter = 0;
-        var client2LocalCounter = 0;
-
-        var client1Counter = 0L;
-        var client2Counter = 0L;
-
         const int packetSendCount = 100;
         var packetReceived = 0;
 
@@ -299,28 +296,44 @@ public class TcpGateWayServerTests
         {
             packetReceived++;
 
-            Console.WriteLine($"[{packetReceived}] <{(Guid)message.Prefixes[0]!}>");
+            var innerPayload = 
+                session.PacketCodec.Encode(
+                    new ServerRedirectTestMessage2 { Value = message.Payload.Value },
+                    PacketFlags.ServerReply);
 
             await session.SendAsync(
                 new DefaultServerReplyPacket
                 {
                     SendTo = (Guid)message.Prefixes[0]!,
-                    InnerPayload = session.PacketCodec.Encode(new ServerRedirectTestMessage2
-                        { Value = message.Payload.Value })
-                });
+                    InnerPayload = innerPayload
+                }, PacketFlags.None);
         });
+
+        var client1Counter = 0L;
+        var client2Counter = 0L;
+
+        var client1ReceiveCounter = 0;
+        var client2ReceiveCounter = 0;
 
         _client1.OnReceive<ServerRedirectTestMessage2>((message, _) =>
         {
+            Interlocked.Increment(ref client1ReceiveCounter);
             Interlocked.Add(ref client1Counter, message.Payload.Value);
         });
 
         _client2.OnReceive<ServerRedirectTestMessage2>((message, _) =>
         {
+            Interlocked.Increment(ref client2ReceiveCounter);
             Interlocked.Add(ref client2Counter, message.Payload.Value);
         });
 
         await Task.Delay(100);
+
+        var client1LocalCounter = 0;
+        var client2LocalCounter = 0;
+
+        var client1SendCounter = 0;
+        var client2SendCounter = 0;
 
         for (var i = 0; i < packetSendCount; i++)
         {
@@ -329,14 +342,20 @@ public class TcpGateWayServerTests
             var client = flag ? _client1 : _client2;
 
             if (flag)
+            {
                 client1LocalCounter += rnd;
+                client1SendCounter++;
+            }
             else
+            {
                 client2LocalCounter += rnd;
+                client2SendCounter++;
+            }
 
             await client.SendAsync(new ServerRedirectTestMessage2
             {
                 Value = rnd
-            });
+            }, PacketFlags.None);
 
             await Task.Delay(10);
         }
@@ -344,6 +363,14 @@ public class TcpGateWayServerTests
         await Task.Delay(TimeSpan.FromSeconds(2));
 
         Assert.That(packetReceived, Is.EqualTo(packetSendCount));
+
+        await Task.Delay(TimeSpan.FromSeconds(5));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(client1ReceiveCounter, Is.EqualTo(client1SendCounter));
+            Assert.That(client2ReceiveCounter, Is.EqualTo(client2SendCounter));
+        });
 
         await Task.Delay(TimeSpan.FromSeconds(15));
 

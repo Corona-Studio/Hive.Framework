@@ -34,7 +34,7 @@ public class ProtoBufPacketCodec : IPacketCodec<ushort>
         if (payload.IsEmpty)
             throw new InvalidOperationException($"{nameof(payload)} has length of 0!");
 
-        return payload.Slice(2, 2);
+        return payload.Slice(6, 2);
     }
 
     public ushort GetPacketId(ReadOnlyMemory<byte> idMemory)
@@ -42,7 +42,23 @@ public class ProtoBufPacketCodec : IPacketCodec<ushort>
         return BitConverter.ToUInt16(idMemory.Span);
     }
 
-    public ReadOnlyMemory<byte> Encode<T>(T obj)
+    public ReadOnlyMemory<byte> GetPacketFlagsMemory(ReadOnlyMemory<byte> payload)
+    {
+        if (payload.IsEmpty)
+            throw new InvalidOperationException($"{nameof(payload)} has length of 0!");
+
+        return payload.Slice(2, 4);
+    }
+
+    public PacketFlags GetPacketFlags(ReadOnlyMemory<byte> data)
+    {
+        var flagsMemory = data.Slice(2, 4);
+        var flags = BitConverter.ToUInt32(flagsMemory.Span);
+
+        return (PacketFlags)flags;
+    }
+
+    public ReadOnlyMemory<byte> Encode<T>(T obj, PacketFlags flags)
     {
         var writer = WriterPool.Get();
 
@@ -56,11 +72,16 @@ public class ProtoBufPacketCodec : IPacketCodec<ushort>
             var packetId = PacketIdMapper.GetPacketId(typeof(T));
 
             Span<byte> lengthHeader = stackalloc byte[2];
+            Span<byte> flagsHeader = stackalloc byte[4];
             Span<byte> typeHeader = stackalloc byte[2];
 
-            // Packet Length [LENGTH (2) | TYPE (2) | CONTENT]
-            BitConverter.TryWriteBytes(lengthHeader, (ushort)(contentMeasure.Length + 2));
+            // [LENGTH (2) | PACKET_FLAGS (4) | TYPE (2) | CONTENT]
+            BitConverter.TryWriteBytes(lengthHeader, (ushort)(contentMeasure.Length + 4 + 2));
             writer.Write(lengthHeader);
+
+            // Packet Flags
+            BitConverter.TryWriteBytes(flagsHeader, (uint)flags);
+            writer.Write(flagsHeader);
 
             // Packet Id
             BitConverter.TryWriteBytes(typeHeader, packetId);
@@ -86,12 +107,17 @@ public class ProtoBufPacketCodec : IPacketCodec<ushort>
         // 负载长度
         // var packetLengthSpan = data[..2];
 
+        // 封包标志
+        var packetFlagsSpan = data.Slice(2, 4);
+        var flagsUint = BitConverter.ToUInt32(packetFlagsSpan);
+        var flags = (PacketFlags)flagsUint;
+
         // 封包类型
-        var packetIdSpan = data.Slice(2, 2);
+        var packetIdSpan = data.Slice(6, 2);
         var packetId = BitConverter.ToUInt16(packetIdSpan);
 
         // 封包前缀
-        var payloadStartIndex = 4;
+        var payloadStartIndex = 8;
         var packetPrefixes = Array.Empty<object?>();
 
         if (PrefixResolvers?.Any() ?? false)
@@ -110,6 +136,6 @@ public class ProtoBufPacketCodec : IPacketCodec<ushort>
         var packetType = PacketIdMapper.GetPacketType(packetId);
         var payload = RuntimeTypeModel.Default.Deserialize(packetType, packetData);
 
-        return new PacketDecodeResultWithId<ushort>(packetPrefixes, packetId, payload);
+        return new PacketDecodeResultWithId<ushort>(packetPrefixes, flags, packetId, payload);
     }
 }

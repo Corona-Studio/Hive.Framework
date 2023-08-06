@@ -1,4 +1,5 @@
 ﻿using System;
+using Hive.Framework.Shared;
 
 namespace Hive.Framework.Codec.Abstractions
 {
@@ -12,11 +13,13 @@ namespace Hive.Framework.Codec.Abstractions
 
         IPacketIdMapper<TId> PacketIdMapper { get; }
 
+        ReadOnlyMemory<byte> GetPacketIdMemory(ReadOnlyMemory<byte> payload);
         TId GetPacketId(ReadOnlyMemory<byte> idMemory);
 
-        ReadOnlyMemory<byte> GetPacketIdMemory(ReadOnlyMemory<byte> payload);
+        ReadOnlyMemory<byte> GetPacketFlagsMemory(ReadOnlyMemory<byte> payload);
+        PacketFlags GetPacketFlags(ReadOnlyMemory<byte> data);
 
-        ReadOnlyMemory<byte> Encode<T>(T obj);
+        ReadOnlyMemory<byte> Encode<T>(T obj, PacketFlags flags);
 
         PacketDecodeResultWithId<TId> Decode(ReadOnlySpan<byte> data);
     }

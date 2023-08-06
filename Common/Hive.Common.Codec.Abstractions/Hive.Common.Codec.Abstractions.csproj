@@ -6,4 +6,8 @@
     <RootNamespace>Hive.Framework.Codec.Abstractions</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Hive.Common.Shared\Hive.Common.Shared.csproj" />
+  </ItemGroup>
+
 </Project>

@@ -2,6 +2,7 @@
 using Hive.Framework.Networking.Shared;
 using Hive.Framework.Networking.Tests.Messages;
 using Hive.Framework.Networking.Tests.Messages.BidirectionalPacket;
+using Hive.Framework.Shared;
 using System.Text;
 
 namespace Hive.Framework.Networking.Tests.BasicNetworking.Kcp;
@@ -58,7 +59,7 @@ public class FakeKcpClientManager : AbstractClientManager<Guid, KcpSession<ushor
         session.OnReceive<C2STestPacket>(async (message, kcpSession) =>
         {
             BidirectionalPacketAddResult += message.Payload.RandomNumber;
-            await kcpSession.SendAsync(new S2CTestPacket { ReversedRandomNumber = -message.Payload.RandomNumber });
+            await kcpSession.SendAsync(new S2CTestPacket { ReversedRandomNumber = -message.Payload.RandomNumber }, PacketFlags.None);
         });
     }
 

@@ -138,17 +138,23 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
         
         if (!GetServerSession(packetId, true, out var serverSession)) return;
 
-        // [LENGTH (2) | PACKET_ID | SESSION_ID | PAYLOAD]
+        // [LENGTH (2) | PACKET_FLAGS (4) | PACKET_ID | SESSION_ID | PAYLOAD]
         var clientSessionIdMemory = Acceptor.ClientManager.GetEncodedC2SSessionPrefix(session);
-        var payload = data[(2 + packetIdMemory.Length)..];
-        var resultLength = packetIdMemory.Length + clientSessionIdMemory.Length + payload.Length;
+        var packetFlagsMemory = PacketCodec.GetPacketFlagsMemory(data);
+        var payload = data[(2 + 4 + packetIdMemory.Length)..];
+        var resultLength = packetFlagsMemory.Length + packetIdMemory.Length + clientSessionIdMemory.Length + payload.Length;
         var lengthMemory = BitConverter.GetBytes((ushort)resultLength).AsMemory();
 
         var repackedData =
-            MemoryHelper.CombineMemory(lengthMemory, packetIdMemory, clientSessionIdMemory, payload);
+            MemoryHelper.CombineMemory(
+                lengthMemory,
+                packetFlagsMemory,
+                packetIdMemory,
+                clientSessionIdMemory,
+                payload);
 
         // 按照顺序发送数据
-        await serverSession!.Send(repackedData);
+        await serverSession!.SendAsync(repackedData);
     }
 
     protected virtual async ValueTask DoForwardDataToClientAsync(IServerReplyPacket<TSessionId> packet)
@@ -156,7 +162,7 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
         if (!Acceptor.ClientManager.TryGetSession(packet.SendTo, out var session))
             return;
 
-        await session!.Send(packet.InnerPayload);
+        await session!.SendAsync(packet.InnerPayload);
     }
 
     protected virtual bool GetServerSession(TId packetId, bool useLoadBalancer, out TSession? serverSession)

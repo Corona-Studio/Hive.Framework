@@ -1,6 +1,4 @@
-﻿using System.Collections;
-using System.Net.NetworkInformation;
-using System.Net;
+﻿using System.Net.NetworkInformation;
 using System;
 using System.Collections.Generic;
 using System.Linq;

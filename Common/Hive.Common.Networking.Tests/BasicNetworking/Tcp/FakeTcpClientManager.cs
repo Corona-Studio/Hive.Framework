@@ -2,6 +2,7 @@
 using Hive.Framework.Networking.Tcp;
 using Hive.Framework.Networking.Tests.Messages;
 using Hive.Framework.Networking.Tests.Messages.BidirectionalPacket;
+using Hive.Framework.Shared;
 
 namespace Hive.Framework.Networking.Tests.BasicNetworking.Tcp;
 
@@ -57,7 +58,7 @@ public class FakeTcpClientManager : AbstractClientManager<Guid, TcpSession<ushor
         session.OnReceive<C2STestPacket>(async (message, tcpSession) =>
         {
             BidirectionalPacketAddResult += message.Payload.RandomNumber;
-            await tcpSession.SendAsync(new S2CTestPacket { ReversedRandomNumber = -message.Payload.RandomNumber });
+            await tcpSession.SendAsync(new S2CTestPacket { ReversedRandomNumber = -message.Payload.RandomNumber }, PacketFlags.None);
         });
     }
 

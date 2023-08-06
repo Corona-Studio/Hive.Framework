@@ -194,7 +194,7 @@ namespace Hive.Framework.Networking.Kcp
             }
         }
 
-        public override async ValueTask Send(ReadOnlyMemory<byte> data)
+        public override async ValueTask SendAsync(ReadOnlyMemory<byte> data)
         {
             if (CancellationTokenSource == null)
                 throw new ArgumentNullException(nameof(CancellationTokenSource));

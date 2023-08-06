@@ -4,6 +4,7 @@ using Hive.Framework.Networking.Abstractions.EventArgs;
 using Hive.Framework.Networking.Shared;
 using Hive.Framework.Networking.Tcp;
 using Hive.Framework.Networking.Tests.Messages;
+using Hive.Framework.Shared;
 
 namespace Hive.Framework.Networking.Tests.GatewayServer.Tcp;
 
@@ -41,7 +42,7 @@ public class FakeTcpGatewayServer : AbstractGatewayServer<TcpSession<ushort>, Gu
 
     protected override async void NotifyClientCanStartTransmitMessage(TcpSession<ushort> session)
     {
-        await session.SendAsync(new ClientCanTransmitMessage());
+        await session.SendAsync(new ClientCanTransmitMessage(), PacketFlags.None);
     }
 
     protected override void RegisterClientStartTransmitMessage(TcpSession<ushort> session)

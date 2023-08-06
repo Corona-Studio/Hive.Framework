@@ -57,7 +57,7 @@ namespace Hive.Framework.Networking.Shared
             var transformBlock = new TransformBlock<(IPacketDecodeResult<object>, TSender), (IPacketDecodeResult<T>, TSender)>(raw =>
             {
                 var (rawData, sender) = raw;
-                return (new PacketDecodeResult<T>(rawData.Prefixes, (T)rawData.Payload), sender);
+                return (new PacketDecodeResult<T>(rawData.Prefixes, rawData.Flags, (T)rawData.Payload), sender);
             });
 
             var actionBlock = new ActionBlock<(IPacketDecodeResult<T>, TSender)>(data =>
@@ -95,7 +95,7 @@ namespace Hive.Framework.Networking.Shared
             var transformBlock = new TransformBlock<(IPacketDecodeResult<object>, TSender), (IPacketDecodeResult<T>, TSender)>(raw =>
             {
                 var (rawData, sender) = raw;
-                return (new PacketDecodeResult<T>(rawData.Prefixes, (T)rawData.Payload), sender);
+                return (new PacketDecodeResult<T>(rawData.Prefixes, rawData.Flags, (T)rawData.Payload), sender);
             });
 
             var actionBlock = new ActionBlock<(IPacketDecodeResult<T>, TSender)>(data =>
@@ -149,7 +149,7 @@ namespace Hive.Framework.Networking.Shared
             var transformBlock = new TransformBlock<(IPacketDecodeResult<object>, TSender), (IPacketDecodeResult<T>, TSender)>(raw =>
             {
                 var (rawData, sender) = raw;
-                return (new PacketDecodeResult<T>(rawData.Prefixes, (T)rawData.Payload), sender);
+                return (new PacketDecodeResult<T>(rawData.Prefixes, rawData.Flags, (T)rawData.Payload), sender);
             });
 
             var actionBlock = new ActionBlock<(IPacketDecodeResult<T>, TSender)>(async data =>
@@ -187,7 +187,7 @@ namespace Hive.Framework.Networking.Shared
             var transformBlock = new TransformBlock<(IPacketDecodeResult<object>, TSender), (IPacketDecodeResult<T>, TSender)>(raw =>
             {
                 var (rawData, sender) = raw;
-                return (new PacketDecodeResult<T>(rawData.Prefixes, (T)rawData.Payload), sender);
+                return (new PacketDecodeResult<T>(rawData.Prefixes, rawData.Flags, (T)rawData.Payload), sender);
             });
 
             var actionBlock = new ActionBlock<(IPacketDecodeResult<T>, TSender)>(async data =>

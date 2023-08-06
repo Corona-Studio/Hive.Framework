@@ -3,6 +3,7 @@ using Hive.Framework.Networking.Tests.Messages;
 using Hive.Framework.Networking.Udp;
 using System.Text;
 using Hive.Framework.Networking.Tests.Messages.BidirectionalPacket;
+using Hive.Framework.Shared;
 
 namespace Hive.Framework.Networking.Tests.BasicNetworking.Udp;
 
@@ -58,7 +59,7 @@ public class FakeUdpClientManager : AbstractClientManager<Guid, UdpSession<ushor
         session.OnReceive<C2STestPacket>(async (message, udpSession) =>
         {
             BidirectionalPacketAddResult += message.Payload.RandomNumber;
-            await udpSession.SendAsync(new S2CTestPacket { ReversedRandomNumber = -message.Payload.RandomNumber });
+            await udpSession.SendAsync(new S2CTestPacket { ReversedRandomNumber = -message.Payload.RandomNumber }, PacketFlags.None);
         });
     }
 

@@ -12,18 +12,21 @@ public static class SessionExtensions
     public static async ValueTask SendWithPrefix<TPayload, TSender, TId>(
         this ISession<TSender> session,
         IPacketCodec<TId> codec,
+        PacketFlags flags,
         TPayload payload,
         Action<IBufferWriter<byte>> prefixWriteAction)
         where TSender : ISession<TSender>
         where TId : unmanaged
     {
-        var encodedPayload = codec.Encode(payload);
+        var encodedPayload = codec.Encode(payload, flags);
         var writer = new ArrayBufferWriter<byte>();
 
+        var packetFlagsMemory = codec.GetPacketFlagsMemory(encodedPayload);
         var packetIdMemory = codec.GetPacketIdMemory(encodedPayload);
-        var actualPayloadMemory = encodedPayload[(2 + packetIdMemory.Length)..];
+        var actualPayloadMemory = encodedPayload[(2 + packetFlagsMemory.Length + packetIdMemory.Length)..];
 
-        // [LENGTH (2) | PACKET_ID | SESSION_ID | PAYLOAD]
+        // [LENGTH (2) | PACKET_FLAGS (4) | PACKET_ID | SESSION_ID | PAYLOAD]
+        writer.Write(packetFlagsMemory.Span);
         writer.Write(packetIdMemory.Span);
         prefixWriteAction(writer);
         writer.Write(actualPayloadMemory.Span);
@@ -31,6 +34,6 @@ public static class SessionExtensions
         var resultLength = BitConverter.GetBytes((ushort)writer.WrittenCount);
         var resultPacket = MemoryHelper.CombineMemory(resultLength, writer.WrittenMemory);
 
-        await session.Send(resultPacket);
+        await session.SendAsync(resultPacket);
     }
 }
