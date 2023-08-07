@@ -4,14 +4,22 @@
 
 ## 项目简介
 
-|  项目名 |    说明   |
-|:------:|:--------:|
-|Hive.Framework.Shared|共用库，用于存放通用的方法和对象实现|
-|Hive.Framework.Codec.Abstractions|编解码器规范抽象，使用该库开发自定义的编解码器|
-|Hive.Framework.Codec.Protobuf|基于 ProtoBuf 的官方解码器实现，提供开箱即用的体验|
-|Hive.Framework.Networking.Abstractions|网络库规范抽象，使用该库开发自定义的网络实现|
-|Hive.Framework.Networking.Shared|网络库共享项目，用于存放网络库的默认抽象和共用方法，使用该库开发自定义的网络实现|
-|Hive.Framework.Networking.Tcp|基于 TCP 的官方网络库实现，提供开箱即用的体验|
-|Hive.Framework.Networking.Udp|基于 UDP 的官方网络库实现，提供开箱即用的体验|
-|Hive.Framework.Networking.Quic|基于 QUIC 的官方网络库实现，提供开箱即用的体验|
-|Hive.Framework.Networking.Kcp|基于 KCP 的官方网络库实现，提供开箱即用的体验|
++ BenchmarksAndTests
+  - Hive.Benchmark: Hive 库性能测试项目
+  - Hive.Networking.Tests: 网络库单元测试项目
++ Codecs
+  - Hive.Framework.Codec.Abstractions: 编解码器规范抽象，使用该库开发自定义的编解码器
+  - Hive.Common.Codec.Bson: 基于 Bson 的官方解码器实现
+  - Hive.Common.Codec.MemoryPack: 基于 MemoryPack 的官方解码器实现
+  - Hive.Framework.Codec.Protobuf: 基于 ProtoBuf 的官方解码器实现
+  - Hive.Common.Codec.Shared: 编解码器共用资源
++ Common
+  - Hive.Common.ECS: Hive 官方的基于 ECS 规范实现的服务框架
+  - Hive.Common.Shared: 共用库，用于存放通用的方法和对象实现
++ Networking
+  - Hive.Framework.Networking.Abstractions: 网络库规范抽象，使用该库开发自定义的网络实现
+  - Hive.Framework.Networking.Kcp: 基于 KCP 的官方网络库实现
+  - Hive.Framework.Networking.Quic: 基于 QUIC 的官方网络库实现
+  - Hive.Framework.Networking.Shared: 网络库共享项目，用于存放网络库的默认抽象和共用方法，使用该库开发自定义的网络实现
+  - Hive.Framework.Networking.Tcp: 基于 TCP 的官方网络库实现
+  - Hive.Framework.Networking.Udp: 基于 UDP 的官方网络库实现
