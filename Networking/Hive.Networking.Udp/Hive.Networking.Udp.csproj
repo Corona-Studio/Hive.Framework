@@ -11,7 +11,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Hive.Common.Networking.Shared\Hive.Common.Networking.Shared.csproj" />
+    <ProjectReference Include="..\Hive.Networking.Abstractions\Hive.Networking.Abstractions.csproj" />
+    <ProjectReference Include="..\Hive.Networking.Shared\Hive.Networking.Shared.csproj" />
   </ItemGroup>
 
 </Project>

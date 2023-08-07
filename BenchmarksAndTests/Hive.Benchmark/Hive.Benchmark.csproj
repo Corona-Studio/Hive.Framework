@@ -12,7 +12,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Hive.Common.ECS\Hive.Common.ECS.csproj" />
+      <ProjectReference Include="..\..\Common\Hive.Common.ECS\Hive.Common.ECS.csproj" />
     </ItemGroup>
 
 </Project>

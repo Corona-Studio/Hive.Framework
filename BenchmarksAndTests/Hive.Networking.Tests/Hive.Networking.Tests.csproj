@@ -25,22 +25,21 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Hive.Common.Codec.Bson\Hive.Common.Codec.Bson.csproj" />
-    <ProjectReference Include="..\Hive.Common.Codec.MemoryPack\Hive.Common.Codec.MemoryPack.csproj" />
-    <ProjectReference Include="..\Hive.Common.Codec.Protobuf\Hive.Common.Codec.Protobuf.csproj" />
-    <ProjectReference Include="..\Hive.Common.Codec.Shared\Hive.Common.Codec.Shared.csproj" />
-    <ProjectReference Include="..\Hive.Common.ECS\Hive.Common.ECS.csproj" />
-    <ProjectReference Include="..\Hive.Common.Networking.Abstractions\Hive.Common.Networking.Abstractions.csproj" />
-    <ProjectReference Include="..\Hive.Common.Networking.Kcp\Hive.Common.Networking.Kcp.csproj" />
-    <ProjectReference Include="..\Hive.Common.Networking.Quic\Hive.Common.Networking.Quic.csproj" />
-    <ProjectReference Include="..\Hive.Common.Networking.Tcp\Hive.Common.Networking.Tcp.csproj" />
-    <ProjectReference Include="..\Hive.Common.Networking.Udp\Hive.Common.Networking.Udp.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Folder Include="ECS" />
     <Folder Include="BasicNetworking\Kcp\" />
     <Folder Include="Messages\BidirectionalPacket\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Codecs\Hive.Codec.Bson\Hive.Codec.Bson.csproj" />
+    <ProjectReference Include="..\..\Codecs\Hive.Codec.MemoryPack\Hive.Codec.MemoryPack.csproj" />
+    <ProjectReference Include="..\..\Codecs\Hive.Codec.Protobuf\Hive.Codec.Protobuf.csproj" />
+    <ProjectReference Include="..\..\Codecs\Hive.Codec.Shared\Hive.Codec.Shared.csproj" />
+    <ProjectReference Include="..\..\Common\Hive.Common.ECS\Hive.Common.ECS.csproj" />
+    <ProjectReference Include="..\..\Networking\Hive.Networking.Kcp\Hive.Networking.Kcp.csproj" />
+    <ProjectReference Include="..\..\Networking\Hive.Networking.Quic\Hive.Networking.Quic.csproj" />
+    <ProjectReference Include="..\..\Networking\Hive.Networking.Tcp\Hive.Networking.Tcp.csproj" />
+    <ProjectReference Include="..\..\Networking\Hive.Networking.Udp\Hive.Networking.Udp.csproj" />
   </ItemGroup>
 
 </Project>

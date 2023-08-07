@@ -4,11 +4,14 @@
     <TargetFramework>net7.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <RootNamespace>Hive.Framework.Networking.Quic</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Hive.Common.Networking.Shared\Hive.Common.Networking.Shared.csproj" />
+    <PackageReference Include="MemoryPack" Version="1.9.16" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Hive.Codec.Abstractions\Hive.Codec.Abstractions.csproj" />
   </ItemGroup>
 
 </Project>

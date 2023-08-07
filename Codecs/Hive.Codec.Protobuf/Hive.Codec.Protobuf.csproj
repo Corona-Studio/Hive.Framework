@@ -11,8 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Hive.Common.Codec.Abstractions\Hive.Common.Codec.Abstractions.csproj" />
-    <ProjectReference Include="..\Hive.Common.Shared\Hive.Common.Shared.csproj" />
+    <ProjectReference Include="..\Hive.Codec.Abstractions\Hive.Codec.Abstractions.csproj" />
   </ItemGroup>
 
 </Project>

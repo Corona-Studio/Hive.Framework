@@ -8,8 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Hive.Common.Codec.Abstractions\Hive.Common.Codec.Abstractions.csproj" />
-    <ProjectReference Include="..\Hive.Common.Shared\Hive.Common.Shared.csproj" />
+    <ProjectReference Include="..\..\Codecs\Hive.Codec.Abstractions\Hive.Codec.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Common\Hive.Common.Shared\Hive.Common.Shared.csproj" />
   </ItemGroup>
 
 </Project>
