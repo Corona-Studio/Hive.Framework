@@ -1,9 +1,11 @@
-﻿using System.Net;
+﻿using System.Buffers;
+using System.Net;
 using Hive.Common.Codec.Shared;
 using Hive.Framework.Codec.Abstractions;
 using Hive.Framework.Codec.Protobuf;
 using Hive.Framework.Networking.Abstractions;
 using Hive.Framework.Networking.Shared;
+using Hive.Framework.Networking.Shared.Helpers;
 using Hive.Framework.Networking.Shared.LoadBalancers;
 using Hive.Framework.Networking.Tcp;
 using Hive.Framework.Networking.Tests.BasicNetworking;
@@ -11,6 +13,7 @@ using Hive.Framework.Networking.Tests.BasicNetworking.Tcp;
 using Hive.Framework.Networking.Tests.Messages;
 using Hive.Framework.Shared;
 using Hive.Framework.Shared.Collections;
+using Hive.Framework.Shared.Helpers;
 
 namespace Hive.Framework.Networking.Tests.GatewayServer.Tcp;
 
@@ -91,8 +94,6 @@ public class TcpGateWayServerTests
         _packetIdMapper.Register<ClientCanTransmitMessage>();
         _packetIdMapper.Register<ServerRedirectTestMessage1>();
         _packetIdMapper.Register<ServerRedirectTestMessage2>();
-        _packetIdMapper.Register<ServerReplyTestMessage1>();
-        _packetIdMapper.Register<DefaultServerReplyPacket>();
 
         _clientPacketCodec = new ProtoBufPacketCodec(_packetIdMapper);
         _serverPacketCodec = new ProtoBufPacketCodec(_packetIdMapper, new IPacketPrefixResolver[]
@@ -265,7 +266,11 @@ public class TcpGateWayServerTests
 
         _server.OnReceive<ServerRedirectTestMessage1>((message1, _) =>
         {
-            testStrList.Add(message1.Payload.Content!);
+            var str = message1.Payload.Content!;
+
+            if (str is "123" or "pp") return;
+
+            testStrList.Add(str);
         });
 
         await Task.Delay(100);
@@ -296,17 +301,14 @@ public class TcpGateWayServerTests
         {
             packetReceived++;
 
-            var innerPayload = 
-                session.PacketCodec.Encode(
-                    new ServerRedirectTestMessage2 { Value = message.Payload.Value },
-                    PacketFlags.ServerReply);
-
-            await session.SendAsync(
-                new DefaultServerReplyPacket
+            await session.SendWithPrefix(
+                _serverPacketCodec,
+                PacketFlags.S2CPacket,
+                new ServerRedirectTestMessage2 { Value = message.Payload.Value },
+                writer =>
                 {
-                    SendTo = (Guid)message.Prefixes[0]!,
-                    InnerPayload = innerPayload
-                }, PacketFlags.None);
+                    writer.WriteGuid((Guid)message.Prefixes[0]!);
+                });
         });
 
         var client1Counter = 0L;
@@ -338,7 +340,7 @@ public class TcpGateWayServerTests
         for (var i = 0; i < packetSendCount; i++)
         {
             var flag = Random.Shared.Next(0, 2) == 1;
-            var rnd = Random.Shared.Next();
+            var rnd = Random.Shared.Next(-100, 100);
             var client = flag ? _client1 : _client2;
 
             if (flag)

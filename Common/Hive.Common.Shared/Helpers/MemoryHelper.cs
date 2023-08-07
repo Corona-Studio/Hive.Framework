@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Buffers;
 
-namespace Hive.Framework.Shared
+namespace Hive.Framework.Shared.Helpers
 {
     public static class MemoryHelper
     {

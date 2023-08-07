@@ -21,43 +21,43 @@ public class FakeTcpGatewayServer : AbstractGatewayServer<TcpSession<ushort>, Gu
 
     protected override void RegisterServerRegistrationMessage(TcpSession<ushort> session)
     {
-        session.OnReceive<ServerRegistrationMessage>((message, tcpSession) =>
+        session.OnReceive<ServerRegistrationMessage>(async (message, tcpSession) =>
         {
+            tcpSession.OnDataReceived += TcpServerSessionOnOnDataReceived;
+
             foreach (var packetId in message.Payload.PackagesToReceive)
             {
                 AddPacketRoute(packetId, tcpSession);
-                RegisterServerReplyMessage(tcpSession);
                 RegisteredForwardPacketCount++;
             }
+
+            await NotifyClientCanStartTransmitMessage(tcpSession);
         });
     }
 
-    protected override void RegisterServerReplyMessage(TcpSession<ushort> session)
-    {
-        session.OnReceive<DefaultServerReplyPacket>(async (message, _) =>
-        {
-            await DoForwardDataToClientAsync(message.Payload);
-        });
-    }
-
-    protected override async void NotifyClientCanStartTransmitMessage(TcpSession<ushort> session)
+    protected override async ValueTask NotifyClientCanStartTransmitMessage(TcpSession<ushort> session)
     {
         await session.SendAsync(new ClientCanTransmitMessage(), PacketFlags.None);
     }
 
     protected override void RegisterClientStartTransmitMessage(TcpSession<ushort> session)
     {
-        session.OnReceive<ClientStartTransmitMessage>((message, tcpSession) =>
+        session.OnReceive<ClientStartTransmitMessage>(async (message, tcpSession) =>
         {
             tcpSession.RedirectPacketIds = message.Payload.RedirectPacketIds.ToHashSet();
-            tcpSession.OnDataReceived += TcpSessionOnOnDataReceived;
+            tcpSession.OnDataReceived += TcpClientSessionOnOnDataReceived;
             tcpSession.RedirectReceivedData = true;
 
-            NotifyClientCanStartTransmitMessage(session);
+            await NotifyClientCanStartTransmitMessage(tcpSession);
         });
     }
 
-    private async Task TcpSessionOnOnDataReceived(object? sender, ReceivedDataEventArgs e)
+    private async Task TcpServerSessionOnOnDataReceived(object? sender, ReceivedDataEventArgs e)
+    {
+        await DoForwardDataToClientAsync(e.Data);
+    }
+
+    private async Task TcpClientSessionOnOnDataReceived(object? sender, ReceivedDataEventArgs e)
     {
         await DoForwardDataToServerAsync((TcpSession<ushort>)sender!, e.Data);
     }

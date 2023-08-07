@@ -1,10 +1,22 @@
-﻿namespace Hive.Framework.Shared
+﻿using System;
+
+namespace Hive.Framework.Shared
 {
+    [Flags]
     public enum PacketFlags : uint
     {
         None = 0,
+
+        /// <summary>
+        /// 指示封包在分发时应广播给所有会话
+        /// </summary>
         Broadcast = 1 << 0,
-        ServerReply = 1 << 1,
+
+        /// <summary>
+        /// 指示封包已经经过最终处理，这种类型的数据包将不再被允许被重新转发、拆分和重打包
+        /// </summary>
+        Finalized = 1 << 1,
+
         RESERVED_1 = 1 << 2,
         RESERVED_2 = 1 << 3,
         RESERVED_3 = 1 << 4,
@@ -14,8 +26,16 @@
         RESERVED_7 = 1 << 8,
         RESERVED_8 = 1 << 9,
         RESERVED_9 = 1 << 10,
-        RESERVED_10 = 1 << 11,
-        RESERVED_11 = 1 << 12,
+
+        /// <summary>
+        /// 指示封包的发送方向为 C（Client） -> S（Server），该封包应严格遵循发送方向
+        /// </summary>
+        C2SPacket = 1 << 11,
+        /// <summary>
+        /// 指示封包的发送方向为 S（Server） -> C（Client），该封包应严格遵循发送方向
+        /// </summary>
+        S2CPacket = 1 << 12,
+
         RESERVED_12 = 1 << 13,
         RESERVED_13 = 1 << 14,
         RESERVED_14 = 1 << 15,

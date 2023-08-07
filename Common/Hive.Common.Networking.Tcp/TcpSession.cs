@@ -47,7 +47,7 @@ namespace Hive.Framework.Networking.Tcp
         protected override async ValueTask DispatchPacket(IPacketDecodeResult<object>? packet, Type? packetType = null)
         {
             if (packet == null) return;
-
+            
             await DataDispatcher.DispatchAsync(this, packet, packetType);
         }
 

@@ -54,7 +54,7 @@ public class BsonPacketCodec : IPacketCodec<ushort>
 
     public PacketFlags GetPacketFlags(ReadOnlyMemory<byte> data)
     {
-        var flagsMemory = data.Slice(6, 4);
+        var flagsMemory = data.Slice(2, 4);
         var flags = BitConverter.ToUInt32(flagsMemory.Span);
 
         return (PacketFlags) flags;

@@ -5,6 +5,7 @@ using Hive.Framework.Codec.Abstractions;
 using Hive.Framework.Networking.Abstractions;
 using Hive.Framework.Networking.Abstractions.EventArgs;
 using Hive.Framework.Shared;
+using Hive.Framework.Shared.Helpers;
 
 namespace Hive.Framework.Networking.Shared;
 
@@ -79,7 +80,7 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
     /// <para>客户端只应该在接受到该方法发送的消息后才开始进行数据传输，否则可能会导致前半部分数据丢失</para>
     /// </summary>
     /// <param name="session"></param>
-    protected abstract void NotifyClientCanStartTransmitMessage(TSession session);
+    protected abstract ValueTask NotifyClientCanStartTransmitMessage(TSession session);
 
     /// <summary>
     /// 服务器注册方法
@@ -89,14 +90,6 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
     /// </summary>
     /// <param name="session"></param>
     protected abstract void RegisterServerRegistrationMessage(TSession session);
-
-    /// <summary>
-    /// 服务器回复数据包注册方法
-    /// <para>一般情况下，此方法需要注册相应的数据包来帮助网关服务器向正确的客户端传输数据。</para>
-    /// <para>服务端回复数据包需实现 <see cref="IServerReplyPacket{TId}"/>，其中包括目标客户端 ID 以及数据包负载。 </para>
-    /// </summary>
-    /// <param name="session"></param>
-    protected abstract void RegisterServerReplyMessage(TSession session);
 
     /// <summary>
     /// 客户端数据包传送起始注册方法
@@ -127,6 +120,7 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
     /// <summary>
     /// 客户端数据转发方法
     /// <para>一般情况下，此方法会拆解客户端数据包，并向其追加客户端会话 ID 等信息，并将数据包转发给相应服务器</para>
+    /// <para>注意：在调用该转发方法时，应始终保持 [封包 ID] 的下一位为 [客户端会话 ID]，并且服务端也应该从 [客户端会话 ID] 部分开始解析自定义包头</para>
     /// </summary>
     /// <param name="session"></param>
     /// <param name="data"></param>
@@ -157,12 +151,41 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
         await serverSession!.SendAsync(repackedData);
     }
 
-    protected virtual async ValueTask DoForwardDataToClientAsync(IServerReplyPacket<TSessionId> packet)
+    /// <summary>
+    /// 服务端数据转发方法
+    /// <para>一般情况下，此方法会拆解服务端数据包，并解析其中包含的客户端会话 ID 等信息，并将数据包转发给相应客户端</para>
+    /// <para>注意：在调用该转发方法时，应始终保持 [封包 ID] 的下一位为 [客户端会话 ID]，并且服务端也应该从 [客户端会话 ID] 部分开始解析自定义包头</para>
+    /// </summary>
+    /// <param name="session"></param>
+    /// <param name="data"></param>
+    /// <returns></returns>
+    protected virtual async ValueTask DoForwardDataToClientAsync(ReadOnlyMemory<byte> data)
     {
-        if (!Acceptor.ClientManager.TryGetSession(packet.SendTo, out var session))
+        var packetIdMemory = PacketCodec.GetPacketIdMemory(data);
+        var packetFlags = PacketCodec.GetPacketFlags(data);
+
+        if (!packetFlags.HasFlag(PacketFlags.S2CPacket)) return;
+
+        var sessionId = Acceptor.ClientManager.ResolveSessionPrefix(data);
+
+        if (!Acceptor.ClientManager.TryGetSession(sessionId, out var session))
             return;
 
-        await session!.SendAsync(packet.InnerPayload);
+        var newFlag = packetFlags | PacketFlags.Finalized;
+        var packetFlagsMemory = BitConverter.GetBytes((uint) newFlag);
+        var payload = data[(2 + 4 + packetIdMemory.Length + Acceptor.ClientManager.SessionIdSize)..];
+        var resultLength = packetFlagsMemory.Length + packetIdMemory.Length + payload.Length;
+        var lengthMemory = BitConverter.GetBytes((ushort)resultLength).AsMemory();
+
+        // [LENGTH (2) | PACKET_FLAGS (4) | PACKET_ID | SESSION_ID | PAYLOAD]
+        var repackedData =
+            MemoryHelper.CombineMemory(
+                lengthMemory,
+                packetFlagsMemory,
+                packetIdMemory,
+                payload);
+
+        await session!.SendAsync(repackedData);
     }
 
     protected virtual bool GetServerSession(TId packetId, bool useLoadBalancer, out TSession? serverSession)

@@ -8,6 +8,8 @@ public interface IClientManager<TSessionId, TSession>
     where TSession : ISession<TSession>
     where TSessionId : unmanaged
 {
+    int SessionIdSize { get; }
+
     /// <summary>
     /// 根据会话获取编码后的 C2S（Client -> Server） 前缀
     /// <para>这个方法通常被用于在网关服务器向具体服务器转发时注入的额外信息</para>
@@ -15,6 +17,13 @@ public interface IClientManager<TSessionId, TSession>
     /// <param name="session"></param>
     /// <returns>编码后的会话前缀</returns>
     ReadOnlyMemory<byte> GetEncodedC2SSessionPrefix(TSession session);
+
+    /// <summary>
+    /// 从完整的封包中提取并解析会话 ID
+    /// </summary>
+    /// <param name="payload"></param>
+    /// <returns></returns>
+    TSessionId ResolveSessionPrefix(ReadOnlyMemory<byte> payload);
 
     /// <summary>
     /// 根据会话获取会话 ID

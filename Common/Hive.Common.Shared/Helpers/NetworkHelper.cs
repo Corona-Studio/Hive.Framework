@@ -3,11 +3,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Hive.Framework.Shared
+namespace Hive.Framework.Shared.Helpers
 {
     public static class NetworkHelper
     {
-        private static readonly Random Random = new Random((int)DateTime.Now.Ticks);
+        private static readonly Random Random = new ((int)DateTime.Now.Ticks);
 
         /// <summary>        
         /// 获取操作系统已用的端口号        

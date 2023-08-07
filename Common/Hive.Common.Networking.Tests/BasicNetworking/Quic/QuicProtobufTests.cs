@@ -2,7 +2,7 @@
 using Hive.Framework.Codec.Protobuf;
 using Hive.Framework.Networking.Quic;
 using Hive.Framework.Networking.Shared;
-using Hive.Framework.Shared;
+using Hive.Framework.Shared.Helpers;
 using System.Net;
 using System.Runtime.Versioning;
 

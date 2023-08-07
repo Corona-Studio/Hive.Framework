@@ -164,9 +164,10 @@ namespace Hive.Framework.Networking.Shared
             var packetFlags = PacketCodec.GetPacketFlags(payloadBytes);
             var id = PacketCodec.GetPacketId(idMemory);
 
-            if (RedirectReceivedData &&
-                (RedirectPacketIds?.Contains(id) ?? false) &&
-                !packetFlags.HasFlag(PacketFlags.ServerReply))
+            var isPacketFinalized = packetFlags.HasFlag(PacketFlags.Finalized);
+            var shouldRedirect = RedirectReceivedData && (RedirectPacketIds?.Contains(id) ?? false);
+
+            if ((shouldRedirect || packetFlags.HasFlag(PacketFlags.S2CPacket)) && !isPacketFinalized)
             {
                 await InvokeDataReceivedEventAsync(idMemory, payloadBytes.ToArray().AsMemory());
                 

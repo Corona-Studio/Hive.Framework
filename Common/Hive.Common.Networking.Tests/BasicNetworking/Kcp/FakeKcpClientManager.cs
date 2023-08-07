@@ -3,7 +3,6 @@ using Hive.Framework.Networking.Shared;
 using Hive.Framework.Networking.Tests.Messages;
 using Hive.Framework.Networking.Tests.Messages.BidirectionalPacket;
 using Hive.Framework.Shared;
-using System.Text;
 
 namespace Hive.Framework.Networking.Tests.BasicNetworking.Kcp;
 
@@ -18,7 +17,9 @@ public class FakeKcpClientManager : AbstractClientManager<Guid, KcpSession<ushor
             UpdateHeartBeatReceiveTime(sessionId);
         });
     }
-    
+
+    public override int SessionIdSize => 16;
+
     public int ConnectedClient { get; private set; }
     public int SigninMessageVal { get; private set; }
     public int SignOutMessageVal { get; private set; }
@@ -30,7 +31,16 @@ public class FakeKcpClientManager : AbstractClientManager<Guid, KcpSession<ushor
 
     public override ReadOnlyMemory<byte> GetEncodedC2SSessionPrefix(KcpSession<ushort> session)
     {
-        return Encoding.ASCII.GetBytes(GetSessionId(session).ToString("N"));
+        return GetSessionId(session).ToByteArray();
+    }
+
+    public override Guid ResolveSessionPrefix(ReadOnlyMemory<byte> payload)
+    {
+        // [LENGTH (2) | PACKET_FLAGS (4) | PACKET_ID | SESSION_ID | PAYLOAD]
+        const int startIndex = 2 + 4 + sizeof(ushort);
+        var sessionIdMemory = payload.Slice(startIndex, 16);
+
+        return new Guid(sessionIdMemory.Span);
     }
 
     protected override void InvokeOnClientDisconnected(Guid sessionId, KcpSession<ushort> session, bool isClientRequest)

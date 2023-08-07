@@ -29,6 +29,8 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
 
     private bool _isClientLinkHolderRunning;
 
+    public abstract int SessionIdSize { get; }
+
     public event EventHandler<ClientConnectionChangedEventArgs<TSession>>? OnClientConnected;
     public event EventHandler<ClientConnectionChangedEventArgs<TSession>>? OnClientDisconnected;
 
@@ -91,6 +93,7 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
     }
     
     public abstract ReadOnlyMemory<byte> GetEncodedC2SSessionPrefix(TSession session);
+    public abstract TSessionId ResolveSessionPrefix(ReadOnlyMemory<byte> payload);
 
     protected abstract void RegisterHeartBeatMessage(TSession session);
     protected abstract void RegisterSigninMessage(TSession session);

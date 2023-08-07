@@ -1,5 +1,6 @@
 ﻿using System.Runtime.Versioning;
 using System.Text;
+using Hive.Framework.Networking.Kcp;
 using Hive.Framework.Networking.Quic;
 using Hive.Framework.Networking.Shared;
 using Hive.Framework.Networking.Tests.Messages;
@@ -21,6 +22,8 @@ public class FakeQuicClientManager : AbstractClientManager<Guid, QuicSession<ush
         });
     }
 
+    public override int SessionIdSize => 16;
+
     public int ConnectedClient { get; private set; }
     public int SigninMessageVal { get; private set; }
     public int SignOutMessageVal { get; private set; }
@@ -32,7 +35,16 @@ public class FakeQuicClientManager : AbstractClientManager<Guid, QuicSession<ush
 
     public override ReadOnlyMemory<byte> GetEncodedC2SSessionPrefix(QuicSession<ushort> session)
     {
-        return Encoding.ASCII.GetBytes(GetSessionId(session).ToString("N"));
+        return GetSessionId(session).ToByteArray();
+    }
+
+    public override Guid ResolveSessionPrefix(ReadOnlyMemory<byte> payload)
+    {
+        // [LENGTH (2) | PACKET_FLAGS (4) | PACKET_ID | SESSION_ID | PAYLOAD]
+        const int startIndex = 2 + 4 + sizeof(ushort);
+        var sessionIdMemory = payload.Slice(startIndex, 16);
+
+        return new Guid(sessionIdMemory.Span);
     }
 
     protected override void InvokeOnClientDisconnected(Guid sessionId, QuicSession<ushort> session, bool isClientRequest)

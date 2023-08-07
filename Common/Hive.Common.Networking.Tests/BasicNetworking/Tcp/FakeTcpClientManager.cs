@@ -18,6 +18,8 @@ public class FakeTcpClientManager : AbstractClientManager<Guid, TcpSession<ushor
         });
     }
 
+    public override int SessionIdSize => 16;
+
     public int ConnectedClient { get; private set; }
     public int SigninMessageVal { get; private set; }
     public int SignOutMessageVal { get; private set; }
@@ -30,6 +32,15 @@ public class FakeTcpClientManager : AbstractClientManager<Guid, TcpSession<ushor
     public override ReadOnlyMemory<byte> GetEncodedC2SSessionPrefix(TcpSession<ushort> session)
     {
         return GetSessionId(session).ToByteArray();
+    }
+
+    public override Guid ResolveSessionPrefix(ReadOnlyMemory<byte> payload)
+    {
+        // [LENGTH (2) | PACKET_FLAGS (4) | PACKET_ID | SESSION_ID | PAYLOAD]
+        const int startIndex = 2 + 4 + sizeof(ushort);
+        var sessionIdMemory = payload.Slice(startIndex, 16);
+
+        return new Guid(sessionIdMemory.Span);
     }
 
     protected override void InvokeOnClientDisconnected(Guid sessionId, TcpSession<ushort> session, bool isClientRequest)

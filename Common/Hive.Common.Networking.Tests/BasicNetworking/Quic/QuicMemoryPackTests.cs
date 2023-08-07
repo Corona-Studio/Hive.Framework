@@ -1,10 +1,10 @@
 ﻿using Hive.Framework.Networking.Quic;
 using Hive.Framework.Networking.Shared;
-using Hive.Framework.Shared;
 using System.Net;
 using System.Runtime.Versioning;
 using Hive.Common.Codec.MemoryPack;
 using Hive.Common.Codec.Shared;
+using Hive.Framework.Shared.Helpers;
 
 namespace Hive.Framework.Networking.Tests.BasicNetworking.Quic;
 

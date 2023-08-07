@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Hive.Framework.Codec.Abstractions;
 using Hive.Framework.Networking.Abstractions;
 using Hive.Framework.Shared;
+using Hive.Framework.Shared.Helpers;
 
 namespace Hive.Framework.Networking.Shared.Helpers;
 
