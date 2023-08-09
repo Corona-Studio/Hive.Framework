@@ -1,20 +1,13 @@
 ﻿using Hive.Framework.Codec.Abstractions;
 using MemoryPack;
-using Microsoft.Extensions.ObjectPool;
 using System.Buffers;
 using Hive.Framework.Shared;
+using Hive.Framework.Shared.Helpers;
 
 namespace Hive.Common.Codec.MemoryPack;
 
 public class MemoryPackPacketCodec : IPacketCodec<ushort>
 {
-    private static readonly ObjectPool<ArrayBufferWriter<byte>> WriterPool;
-
-    static MemoryPackPacketCodec()
-    {
-        WriterPool = new DefaultObjectPool<ArrayBufferWriter<byte>>(new BufferWriterPoolPolicy());
-    }
-
     public MemoryPackPacketCodec(
         IPacketIdMapper<ushort> packetIdMapper,
         IPacketPrefixResolver[]? prefixResolvers = null)
@@ -55,49 +48,37 @@ public class MemoryPackPacketCodec : IPacketCodec<ushort>
         return (PacketFlags)flags;
     }
 
-    public ReadOnlyMemory<byte> Encode<T>(T obj, PacketFlags flags)
+    public SerializedPacketMemory Encode<T>(T obj, PacketFlags flags)
     {
-        var writer = WriterPool.Get();
+        var dataSpan = MemoryPackSerializer.Serialize(obj).AsSpan();
 
-        try
-        {
-            var objBytes = MemoryPackSerializer.Serialize(obj);
+        if (dataSpan.Length + 8 > ushort.MaxValue)
+            throw new InvalidOperationException($"Message too large [Length - {dataSpan.Length}]");
 
-            if (objBytes.Length + 4 > ushort.MaxValue)
-                throw new InvalidOperationException($"Message to large [Length - {objBytes.Length}]");
+        var packetId = PacketIdMapper.GetPacketId(typeof(T));
 
-            var packetId = PacketIdMapper.GetPacketId(typeof(T));
+        // [LENGTH (2) | PACKET_FLAGS (4) | TYPE (2) | CONTENT]
+        var index = 0;
+        var result = MemoryPool<byte>.Shared.Rent(2 + 4 + 2 + dataSpan.Length);
 
-            Span<byte> lengthHeader = stackalloc byte[2];
-            Span<byte> flagsHeader = stackalloc byte[4];
-            Span<byte> typeHeader = stackalloc byte[2];
+        BitConverter.TryWriteBytes(
+            result.Memory.Span.SliceAndIncrement(ref index, sizeof(ushort)),
+            (ushort)(dataSpan.Length + 4 + 2));
 
-            // [LENGTH (2) | PACKET_FLAGS (4) | TYPE (2) | CONTENT]
-            BitConverter.TryWriteBytes(lengthHeader, (ushort)(objBytes.Length + 4 + 2));
-            writer.Write(lengthHeader);
+        // Packet Flags
+        BitConverter.TryWriteBytes(
+            result.Memory.Span.SliceAndIncrement(ref index, sizeof(uint)),
+            (uint)flags);
 
-            // Packet Flags
-            BitConverter.TryWriteBytes(flagsHeader, (uint)flags);
-            writer.Write(flagsHeader);
+        // Packet Id
+        BitConverter.TryWriteBytes(
+            result.Memory.Span.SliceAndIncrement(ref index, sizeof(ushort)),
+            packetId);
 
-            // Packet Id
-            BitConverter.TryWriteBytes(typeHeader, packetId);
-            writer.Write(typeHeader);
+        // Packet Payload
+        dataSpan.CopyTo(result.Memory.Span.SliceAndIncrement(ref index, dataSpan.Length));
 
-            // Packet Load
-            writer.Write(objBytes);
-
-            return writer.WrittenMemory.ToArray();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex);
-            throw;
-        }
-        finally
-        {
-            WriterPool.Return(writer);
-        }
+        return new SerializedPacketMemory(index, result);
     }
 
     public PacketDecodeResultWithId<ushort> Decode(ReadOnlySpan<byte> data)
@@ -118,7 +99,7 @@ public class MemoryPackPacketCodec : IPacketCodec<ushort>
         var payloadStartIndex = 8;
         var packetPrefixes = Array.Empty<object?>();
 
-        if (PrefixResolvers?.Any() ?? false)
+        if (flags.HasFlag(PacketFlags.HasCustomPacketPrefix) && (PrefixResolvers?.Any() ?? false))
         {
             packetPrefixes = new object[PrefixResolvers.Length];
             for (var i = 0; i < PrefixResolvers.Length; i++)

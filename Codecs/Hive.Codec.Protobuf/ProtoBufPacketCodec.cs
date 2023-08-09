@@ -5,19 +5,12 @@ using System;
 using System.Buffers;
 using ProtoBuf.Meta;
 using System.Linq;
-using Microsoft.Extensions.ObjectPool;
+using Hive.Framework.Shared.Helpers;
 
 namespace Hive.Framework.Codec.Protobuf;
 
 public class ProtoBufPacketCodec : IPacketCodec<ushort>
 {
-    private static readonly ObjectPool<ArrayBufferWriter<byte>> WriterPool;
-
-    static ProtoBufPacketCodec()
-    {
-        WriterPool = new DefaultObjectPool<ArrayBufferWriter<byte>>(new BufferWriterPoolPolicy());
-    }
-
     public ProtoBufPacketCodec(
         IPacketIdMapper<ushort> packetIdMapper,
         IPacketPrefixResolver[]? prefixResolvers = null)
@@ -58,48 +51,40 @@ public class ProtoBufPacketCodec : IPacketCodec<ushort>
         return (PacketFlags)flags;
     }
 
-    public ReadOnlyMemory<byte> Encode<T>(T obj, PacketFlags flags)
+    public SerializedPacketMemory Encode<T>(T obj, PacketFlags flags)
     {
-        var writer = WriterPool.Get();
+        using var contentMeasure = Serializer.Measure(obj);
 
-        try
-        {
-            using var contentMeasure = Serializer.Measure(obj);
+        if (contentMeasure.Length + 8 > ushort.MaxValue || contentMeasure.Length > int.MaxValue)
+            throw new InvalidOperationException($"Message too large [Length - {contentMeasure.Length}]");
 
-            if (contentMeasure.Length + 4 > ushort.MaxValue)
-                throw new InvalidOperationException($"Message to large [Length - {contentMeasure.Length}]");
+        var packetId = PacketIdMapper.GetPacketId(typeof(T));
 
-            var packetId = PacketIdMapper.GetPacketId(typeof(T));
+        // [LENGTH (2) | PACKET_FLAGS (4) | TYPE (2) | CONTENT]
+        var index = 0;
+        var result = MemoryPool<byte>.Shared.Rent(2 + 4 + 2 + (int)contentMeasure.Length);
 
-            Span<byte> lengthHeader = stackalloc byte[2];
-            Span<byte> flagsHeader = stackalloc byte[4];
-            Span<byte> typeHeader = stackalloc byte[2];
+        BitConverter.TryWriteBytes(
+            result.Memory.Span.SliceAndIncrement(ref index, sizeof(ushort)),
+            (ushort)(contentMeasure.Length + 4 + 2));
 
-            // [LENGTH (2) | PACKET_FLAGS (4) | TYPE (2) | CONTENT]
-            BitConverter.TryWriteBytes(lengthHeader, (ushort)(contentMeasure.Length + 4 + 2));
-            writer.Write(lengthHeader);
+        // Packet Flags
+        BitConverter.TryWriteBytes(
+            result.Memory.Span.SliceAndIncrement(ref index, sizeof(uint)),
+            (uint)flags);
 
-            // Packet Flags
-            BitConverter.TryWriteBytes(flagsHeader, (uint)flags);
-            writer.Write(flagsHeader);
+        // Packet Id
+        BitConverter.TryWriteBytes(
+            result.Memory.Span.SliceAndIncrement(ref index, sizeof(ushort)),
+            packetId);
 
-            // Packet Id
-            BitConverter.TryWriteBytes(typeHeader, packetId);
-            writer.Write(typeHeader);
+        // Packet Payload
+        var payloadMemory = result.Memory.SliceAndIncrement(ref index, (int) contentMeasure.Length);
+        var writer = new FakeMemoryBufferWriter<byte>(payloadMemory);
 
-            contentMeasure.Serialize(writer);
+        contentMeasure.Serialize(writer);
 
-            return writer.WrittenMemory.ToArray();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex);
-            throw;
-        }
-        finally
-        {
-            WriterPool.Return(writer);
-        }
+        return new SerializedPacketMemory(index, result);
     }
 
     public PacketDecodeResultWithId<ushort> Decode(ReadOnlySpan<byte> data)
@@ -120,7 +105,7 @@ public class ProtoBufPacketCodec : IPacketCodec<ushort>
         var payloadStartIndex = 8;
         var packetPrefixes = Array.Empty<object?>();
 
-        if (PrefixResolvers?.Any() ?? false)
+        if (flags.HasFlag(PacketFlags.HasCustomPacketPrefix) && (PrefixResolvers?.Any() ?? false))
         {
             packetPrefixes = new object[PrefixResolvers.Length];
             for (var i = 0; i < PrefixResolvers.Length; i++)

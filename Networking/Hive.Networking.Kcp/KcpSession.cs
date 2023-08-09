@@ -10,6 +10,7 @@ using System.Buffers;
 using System.Diagnostics;
 using Hive.Framework.Networking.Shared.Helpers;
 using System.Threading;
+using Hive.Framework.Shared;
 
 namespace Hive.Framework.Networking.Kcp
 {
@@ -194,7 +195,7 @@ namespace Hive.Framework.Networking.Kcp
             }
         }
 
-        public override async ValueTask SendAsync(ReadOnlyMemory<byte> data)
+        public override async ValueTask SendAsync(SerializedPacketMemory data)
         {
             if (CancellationTokenSource == null)
                 throw new ArgumentNullException(nameof(CancellationTokenSource));
@@ -204,17 +205,22 @@ namespace Hive.Framework.Networking.Kcp
             if(Kcp == null)
                 throw new ArgumentNullException(nameof(Kcp));
 
-            var sentLen = 0;
-            while (sentLen < data.Length)
+            using (data)
             {
-                var sendThisTime = Kcp.Send(data.Span[sentLen..]);
+                var sentLen = 0;
+                var sendData = data.MemoryOwner.Memory[..data.Length];
 
-                if (sendThisTime < 0)
-                    throw new InvalidOperationException("KCP 返回了小于零的发送长度，可能为 KcpCore 的内部错误！");
+                while (sentLen < sendData.Length)
+                {
+                    var sendThisTime = Kcp.Send(sendData.Span[sentLen..]);
 
-                sentLen += sendThisTime;
+                    if (sendThisTime < 0)
+                        throw new InvalidOperationException("KCP 返回了小于零的发送长度，可能为 KcpCore 的内部错误！");
 
-                await Task.Delay(1);
+                    sentLen += sendThisTime;
+
+                    await Task.Delay(1);
+                }
             }
 
             if (SendingLoopRunning) return;
@@ -231,11 +237,19 @@ namespace Hive.Framework.Networking.Kcp
                 while (!(CancellationTokenSource?.IsCancellationRequested ?? true))
                 {
                     if (!IsConnected || !CanSend) SpinWait.SpinUntil(() => IsConnected && CanSend);
-                    
+
                     await SendOnce(ReadOnlyMemory<byte>.Empty);
                 }
             }
-            catch (Exception)
+            catch (TaskCanceledException)
+            {
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                throw;
+            }
+            finally
             {
                 SendingLoopRunning = false;
             }

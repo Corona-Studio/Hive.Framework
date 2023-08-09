@@ -19,12 +19,16 @@ public static class SessionExtensions
         where TSender : ISession<TSender>
         where TId : unmanaged
     {
-        var encodedPayload = codec.Encode(payload, flags);
+        flags |= PacketFlags.HasCustomPacketPrefix;
+
+        using var encodedPayload = codec.Encode(payload, flags);
         var writer = new ArrayBufferWriter<byte>();
 
-        var packetFlagsMemory = codec.GetPacketFlagsMemory(encodedPayload);
-        var packetIdMemory = codec.GetPacketIdMemory(encodedPayload);
-        var actualPayloadMemory = encodedPayload[(2 + packetFlagsMemory.Length + packetIdMemory.Length)..];
+        var packetFlagsMemory = codec.GetPacketFlagsMemory(encodedPayload.MemoryOwner.Memory);
+        var packetIdMemory = codec.GetPacketIdMemory(encodedPayload.MemoryOwner.Memory);
+
+        var payloadStartIndex = 2 + packetFlagsMemory.Length + packetIdMemory.Length;
+        var actualPayloadMemory = encodedPayload.MemoryOwner.Memory[payloadStartIndex..encodedPayload.Length];
 
         // [LENGTH (2) | PACKET_FLAGS (4) | PACKET_ID | SESSION_ID | PAYLOAD]
         writer.Write(packetFlagsMemory.Span);

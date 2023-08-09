@@ -134,7 +134,12 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
 
         // [LENGTH (2) | PACKET_FLAGS (4) | PACKET_ID | SESSION_ID | PAYLOAD]
         var clientSessionIdMemory = Acceptor.ClientManager.GetEncodedC2SSessionPrefix(session);
-        var packetFlagsMemory = PacketCodec.GetPacketFlagsMemory(data);
+
+        var currentPacketFlagsMemory = PacketCodec.GetPacketFlagsMemory(data);
+        var currentPacketFlags = (PacketFlags)BitConverter.ToUInt32(currentPacketFlagsMemory.Span);
+        var newPacketFlags = currentPacketFlags | PacketFlags.HasCustomPacketPrefix;
+        var packetFlagsMemory = BitConverter.GetBytes((uint)newPacketFlags).AsMemory();
+
         var payload = data[(2 + 4 + packetIdMemory.Length)..];
         var resultLength = packetFlagsMemory.Length + packetIdMemory.Length + clientSessionIdMemory.Length + payload.Length;
         var lengthMemory = BitConverter.GetBytes((ushort)resultLength).AsMemory();

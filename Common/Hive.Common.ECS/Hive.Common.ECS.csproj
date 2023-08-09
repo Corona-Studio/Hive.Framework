@@ -8,13 +8,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Reference Include="Unity.Mathematics">
-        <HintPath>..\Hive.Common.Shared\Unity.Mathematics.dll</HintPath>
-      </Reference>
-    </ItemGroup>
-
-    <ItemGroup>
       <ProjectReference Include="..\Hive.Common.Shared\Hive.Common.Shared.csproj" />
+      <ProjectReference Include="..\Unity.Mathematics\src\Unity.Mathematics\Unity.Mathematics.csproj" />
     </ItemGroup>
 
     <ItemGroup>

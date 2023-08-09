@@ -1,5 +1,4 @@
-﻿using System.Buffers;
-using System.Net;
+﻿using System.Net;
 using Hive.Common.Codec.Shared;
 using Hive.Framework.Codec.Abstractions;
 using Hive.Framework.Codec.Protobuf;
@@ -244,13 +243,13 @@ public class TcpGateWayServerTests
 
         await Task.Delay(100);
 
-        await _client1.SendAsync(new ServerRedirectTestMessage1 { Content = "pp" }, PacketFlags.None);
-        await _client2.SendAsync(new ServerRedirectTestMessage1 { Content = "123" }, PacketFlags.None);
+        await _client1.SendAsync(new ServerRedirectTestMessage1 { Content = "pp" }, PacketFlags.C2SPacket);
+        await _client2.SendAsync(new ServerRedirectTestMessage1 { Content = "123" }, PacketFlags.C2SPacket);
 
         await Task.Delay(TimeSpan.FromSeconds(2));
-
+        
         lock (_receiveDictionary)
-            Assert.That(_receiveDictionary.Values, Is.SubsetOf(new[] { "pp", "123" }));
+            Assert.That(_receiveDictionary.Values, Is.SupersetOf(new[] { "pp", "123" }));
 
         _server.DataDispatcher.UnregisterAll<ServerRedirectTestMessage1>();
     }
@@ -285,7 +284,7 @@ public class TcpGateWayServerTests
 
         await Task.Delay(TimeSpan.FromSeconds(2));
 
-        Assert.That(testStrList, Is.SubsetOf(listOfGuid));
+        Assert.That(testStrList, Is.SupersetOf(listOfGuid));
 
         _server.DataDispatcher.UnregisterAll<ServerRedirectTestMessage1>();
     }

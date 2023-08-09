@@ -44,7 +44,12 @@ namespace Hive.Framework.Shared
         RESERVED_17 = 1 << 18,
         RESERVED_18 = 1 << 19,
         RESERVED_19 = 1 << 20,
-        RESERVED_20 = 1 << 21,
+
+        /// <summary>
+        /// 指示该数据包使用自定义的封包前缀
+        /// </summary>
+        HasCustomPacketPrefix = 1 << 21,
+
         RESERVED_21 = 1 << 22,
         RESERVED_22 = 1 << 23,
         RESERVED_23 = 1 << 24,

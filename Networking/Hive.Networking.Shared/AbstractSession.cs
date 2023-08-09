@@ -26,7 +26,7 @@ namespace Hive.Framework.Networking.Shared
         public const int DefaultSocketBufferSize = 8192 * 4; 
         protected const int PacketHeaderLength = sizeof(ushort); // 包头长度2Byte
         
-        protected Channel<ReadOnlyMemory<byte>>? SendChannel;
+        protected Channel<SerializedPacketMemory>? SendChannel;
         protected CancellationTokenSource? CancellationTokenSource;
         protected bool ReceivingLoopRunning;
         protected bool SendingLoopRunning;
@@ -49,7 +49,7 @@ namespace Hive.Framework.Networking.Shared
         protected AbstractSession(IPacketCodec<TId> packetCodec, IDataDispatcher<TSession> dataDispatcher)
         {
             ResetCancellationToken(new CancellationTokenSource());
-            ResetSendChannel(Channel.CreateBounded<ReadOnlyMemory<byte>>(new BoundedChannelOptions(1024)
+            ResetSendChannel(Channel.CreateBounded<SerializedPacketMemory>(new BoundedChannelOptions(1024)
             {
                 SingleReader = true,
                 SingleWriter = true,
@@ -71,7 +71,7 @@ namespace Hive.Framework.Networking.Shared
             DoConnect();
         }
 
-        public virtual async ValueTask SendAsync(ReadOnlyMemory<byte> data)
+        public virtual async ValueTask SendAsync(SerializedPacketMemory data)
         {
             if (CancellationTokenSource == null)
                 throw new ArgumentNullException(nameof(CancellationTokenSource));
@@ -203,11 +203,19 @@ namespace Hive.Framework.Networking.Shared
                     if (SendChannel == null) throw new InvalidOperationException(nameof(SendChannel));
                     if (!await SendChannel.Reader.WaitToReadAsync(CancellationTokenSource.Token)) break;
 
-                    var slice = await SendChannel.Reader.ReadAsync(CancellationTokenSource.Token);
-                    await SendOnce(slice);
+                    using var slice = await SendChannel.Reader.ReadAsync(CancellationTokenSource.Token);
+                    await SendOnce(slice.MemoryOwner.Memory[..slice.Length]);
                 }
             }
-            catch (Exception)
+            catch (TaskCanceledException)
+            {
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                throw;
+            }
+            finally
             {
                 SendingLoopRunning = false;
             }
@@ -287,6 +295,9 @@ namespace Hive.Framework.Networking.Shared
                     offset = 0;
                 }
             }
+            catch (TaskCanceledException)
+            {
+            }
             catch (Exception ex)
             {
                 Console.WriteLine(ex);
@@ -302,7 +313,7 @@ namespace Hive.Framework.Networking.Shared
         public virtual ValueTask DoConnect()
         {
             ResetCancellationToken(new CancellationTokenSource());
-            ResetSendChannel(Channel.CreateBounded<ReadOnlyMemory<byte>>(new BoundedChannelOptions(1024)
+            ResetSendChannel(Channel.CreateBounded<SerializedPacketMemory>(new BoundedChannelOptions(1024)
             {
                 SingleReader = true,
                 SingleWriter = true,
@@ -327,7 +338,7 @@ namespace Hive.Framework.Networking.Shared
             CancellationTokenSource = cancellationToken;
         }
 
-        protected void ResetSendChannel(Channel<ReadOnlyMemory<byte>>? channel = null)
+        protected void ResetSendChannel(Channel<SerializedPacketMemory>? channel = null)
         {
             SendChannel?.Writer?.TryComplete();
             SendChannel = channel;

@@ -4,7 +4,6 @@ using Hive.Framework.ECS.Attributes.System;
 using Hive.Framework.ECS.Component;
 using Hive.Framework.ECS.Compositor;
 using Hive.Framework.ECS.Entity;
-using Hive.Framework.ECS.System;
 using Hive.Framework.ECS.System.Phases;
 using Yitter.IdGenerator;
 
@@ -103,7 +102,7 @@ public class ECSBenchmark
         core.EntityManager.UpdateBfsEnumerateList();
     }
 
-    [Benchmark()]
+    [Benchmark]
     public void ExecuteFixedUpdate()
     {
         core.FixedUpdate();
