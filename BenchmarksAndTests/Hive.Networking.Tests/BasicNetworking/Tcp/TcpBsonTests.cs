@@ -1,9 +1,9 @@
-﻿using Hive.Common.Codec.Shared;
-using Hive.Framework.Codec.Bson;
+﻿using Hive.Framework.Codec.Bson;
 using Hive.Framework.Networking.Shared;
 using Hive.Framework.Networking.Tcp;
 using Hive.Framework.Shared.Helpers;
 using System.Net;
+using Hive.Codec.Shared;
 
 namespace Hive.Framework.Networking.Tests.BasicNetworking.Tcp;
 

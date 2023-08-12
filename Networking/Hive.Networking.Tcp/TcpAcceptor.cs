@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Hive.Framework.Codec.Abstractions;
 using Hive.Framework.Networking.Abstractions;
 using Hive.Framework.Networking.Shared;
+using Hive.Framework.Networking.Shared.Attributes;
 using Hive.Framework.Networking.Shared.Helpers;
 
 namespace Hive.Framework.Networking.Tcp
@@ -49,6 +50,7 @@ namespace Hive.Framework.Networking.Tcp
             ServerSocket.Dispose();
         }
 
+        [IgnoreSocketException(SocketError.OperationAborted)]
         private async Task StartAcceptClient()
         {
             while (!CancellationTokenSource.IsCancellationRequested)

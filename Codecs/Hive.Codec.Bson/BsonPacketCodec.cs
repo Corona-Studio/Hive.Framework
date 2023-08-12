@@ -96,12 +96,13 @@ public class BsonPacketCodec : IPacketCodec<ushort>
         var flagsUint = BitConverter.ToUInt32(packetFlagsSpan);
         var flags = (PacketFlags)flagsUint;
 
-        // 封包类型
-        var packetIdSpan = data.Slice(6, 2);
-        var packetId = BitConverter.ToUInt16(packetIdSpan);
+        if (!flags.HasFlag(PacketFlags.HasCustomPacketPrefix) &&
+            flags.HasFlag(PacketFlags.NoPayload))
+            return new PacketDecodeResultWithId<ushort>(flags, 0);
 
         // 封包前缀
-        var payloadStartIndex = 8;
+        var hasPayload = !flags.HasFlag(PacketFlags.NoPayload);
+        var payloadStartIndex = hasPayload ? 8 : 6;
         var packetPrefixes = Array.Empty<object?>();
 
         if (flags.HasFlag(PacketFlags.HasCustomPacketPrefix) && (PrefixResolvers?.Any() ?? false))
@@ -112,7 +113,15 @@ public class BsonPacketCodec : IPacketCodec<ushort>
                 packetPrefixes[i] = PrefixResolvers[i].Resolve(data, ref payloadStartIndex);
             }
         }
-        
+
+        if (!hasPayload)
+            return new PacketDecodeResultWithId<ushort>(packetPrefixes, flags, 0);
+
+        // 封包类型
+        // 因为封包类型字段可能不存在，因此我们要在读取封包前缀后再解析封包 ID
+        var packetIdSpan = data.Slice(6, 2);
+        var packetId = BitConverter.ToUInt16(packetIdSpan);
+
         // 封包数据段
         var packetData = data[payloadStartIndex..];
 

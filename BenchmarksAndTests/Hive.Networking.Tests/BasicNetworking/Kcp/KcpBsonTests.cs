@@ -2,7 +2,7 @@
 using Hive.Framework.Networking.Kcp;
 using Hive.Framework.Networking.Shared;
 using System.Net;
-using Hive.Common.Codec.Shared;
+using Hive.Codec.Shared;
 using Hive.Framework.Shared.Helpers;
 
 namespace Hive.Framework.Networking.Tests.BasicNetworking.Kcp;

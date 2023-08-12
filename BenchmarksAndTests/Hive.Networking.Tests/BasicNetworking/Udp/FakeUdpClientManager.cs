@@ -1,9 +1,9 @@
 ﻿using Hive.Framework.Networking.Shared;
 using Hive.Framework.Networking.Tests.Messages;
 using Hive.Framework.Networking.Udp;
-using System.Text;
 using Hive.Framework.Networking.Tests.Messages.BidirectionalPacket;
 using Hive.Framework.Shared;
+using Hive.Framework.Networking.Abstractions;
 
 namespace Hive.Framework.Networking.Tests.BasicNetworking.Udp;
 
@@ -29,6 +29,7 @@ public class FakeUdpClientManager : AbstractClientManager<Guid, UdpSession<ushor
     public int AdderCount { get; private set; }
     public int AdderPackageReceiveCount { get; private set; }
     public int BidirectionalPacketAddResult { get; private set; }
+    public PacketFlags NoPayloadPacketFlags { get; private set; }
 
     public override ReadOnlyMemory<byte> GetEncodedC2SSessionPrefix(UdpSession<ushort> session)
     {
@@ -71,6 +72,11 @@ public class FakeUdpClientManager : AbstractClientManager<Guid, UdpSession<ushor
         {
             BidirectionalPacketAddResult += message.Payload.RandomNumber;
             await udpSession.SendAsync(new S2CTestPacket { ReversedRandomNumber = -message.Payload.RandomNumber }, PacketFlags.None);
+        });
+
+        session.OnReceive<INoPayloadPacketPlaceHolder>((result, _) =>
+        {
+            NoPayloadPacketFlags |= result.Flags;
         });
     }
 

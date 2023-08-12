@@ -71,6 +71,5 @@ public interface IClientManager<TSessionId, TSession>
     /// <returns></returns>
     bool TryGetSession(TSessionId sessionId, out TSession? session);
 
-    event EventHandler<ClientConnectionChangedEventArgs<TSession>>? OnClientConnected;
-    event EventHandler<ClientConnectionChangedEventArgs<TSession>>? OnClientDisconnected;
+    event EventHandler<ClientConnectionChangedEventArgs<TSession>>? OnClientConnectionStateChanged;
 }

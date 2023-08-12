@@ -2,19 +2,34 @@
 
 namespace Hive.Framework.Codec.Abstractions
 {
-    public interface IPacketDecodeResult<out TPayload>
+    public readonly struct PacketDecodeResultWithId<TId> : IPacketDecodeResult<object>
+        where TId : unmanaged
     {
-        object?[] Prefixes { get; }
-        PacketFlags Flags { get; }
-        TPayload Payload { get; }
-    }
-
-    public readonly struct PacketDecodeResultWithId<TId> : IPacketDecodeResult<object> where TId : unmanaged
-    {
-        public object?[] Prefixes { get; }
+        public object?[]? Prefixes { get; }
         public PacketFlags Flags { get; }
-        public object Payload { get; }
+        public object? Payload { get; }
         public TId PacketId { get; }
+
+        public PacketDecodeResultWithId(
+            PacketFlags flags,
+            TId packetId)
+        {
+            Prefixes = null;
+            Flags = flags;
+            PacketId = packetId;
+            Payload = null;
+        }
+
+        public PacketDecodeResultWithId(
+            object?[] prefixes,
+            PacketFlags flags,
+            TId packetId)
+        {
+            Prefixes = prefixes;
+            Flags = flags;
+            PacketId = packetId;
+            Payload = null;
+        }
 
         public PacketDecodeResultWithId(
             object?[] prefixes,
@@ -31,12 +46,12 @@ namespace Hive.Framework.Codec.Abstractions
 
     public readonly struct PacketDecodeResult<TPayload> : IPacketDecodeResult<TPayload>
     {
-        public object?[] Prefixes { get; }
+        public object?[]? Prefixes { get; }
         public PacketFlags Flags { get; }
         public TPayload Payload { get; }
 
         public PacketDecodeResult(
-            object?[] prefixes,
+            object?[]? prefixes,
             PacketFlags flags,
             TPayload payload)
         {

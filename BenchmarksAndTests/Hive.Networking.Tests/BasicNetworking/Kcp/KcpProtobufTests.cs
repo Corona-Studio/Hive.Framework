@@ -1,9 +1,9 @@
-﻿using Hive.Common.Codec.Shared;
-using Hive.Framework.Codec.Protobuf;
+﻿using Hive.Framework.Codec.Protobuf;
 using Hive.Framework.Networking.Kcp;
 using Hive.Framework.Networking.Shared;
 using Hive.Framework.Shared.Helpers;
 using System.Net;
+using Hive.Codec.Shared;
 
 namespace Hive.Framework.Networking.Tests.BasicNetworking.Kcp;
 

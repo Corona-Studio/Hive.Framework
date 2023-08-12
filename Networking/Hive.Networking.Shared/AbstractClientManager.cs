@@ -31,8 +31,7 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
 
     public abstract int SessionIdSize { get; }
 
-    public event EventHandler<ClientConnectionChangedEventArgs<TSession>>? OnClientConnected;
-    public event EventHandler<ClientConnectionChangedEventArgs<TSession>>? OnClientDisconnected;
+    public event EventHandler<ClientConnectionChangedEventArgs<TSession>>? OnClientConnectionStateChanged;
 
     public TSessionId GetSessionId(TSession session)
     {
@@ -226,7 +225,7 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
         _sessionIdMapper.TryAdd(session, newId);
         _endPointSessionMapper.TryAdd(session.RemoteEndPoint, session);
 
-        OnClientConnected?.Invoke(this, new ClientConnectionChangedEventArgs<TSession>(session, ClientConnectionStatus.Connected));
+        OnClientConnectionStateChanged?.Invoke(this, new ClientConnectionChangedEventArgs<TSession>(session, ClientConnectionStatus.Connected));
     }
 
     /// <summary>
@@ -252,7 +251,7 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
             session.DoDisconnect();
         }
 
-        OnClientDisconnected?.Invoke(this, new ClientConnectionChangedEventArgs<TSession>(session, ClientConnectionStatus.Disconnected));
+        OnClientConnectionStateChanged?.Invoke(this, new ClientConnectionChangedEventArgs<TSession>(session, ClientConnectionStatus.Disconnected));
     }
 
     /// <summary>
@@ -276,6 +275,7 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
         }
 
         UpdateSession(sessionId, session);
+        OnClientConnectionStateChanged?.Invoke(this, new ClientConnectionChangedEventArgs<TSession>(session, ClientConnectionStatus.Reconnected));
     }
 
 

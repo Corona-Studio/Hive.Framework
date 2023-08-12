@@ -1,4 +1,5 @@
-﻿using Hive.Framework.Networking.Kcp;
+﻿using Hive.Framework.Networking.Abstractions;
+using Hive.Framework.Networking.Kcp;
 using Hive.Framework.Networking.Shared;
 using Hive.Framework.Networking.Tests.Messages;
 using Hive.Framework.Networking.Tests.Messages.BidirectionalPacket;
@@ -28,6 +29,7 @@ public class FakeKcpClientManager : AbstractClientManager<Guid, KcpSession<ushor
     public int AdderCount { get; private set; }
     public int AdderPackageReceiveCount { get; private set; }
     public int BidirectionalPacketAddResult { get; private set; }
+    public PacketFlags NoPayloadPacketFlags { get; private set; }
 
     public override ReadOnlyMemory<byte> GetEncodedC2SSessionPrefix(KcpSession<ushort> session)
     {
@@ -70,6 +72,11 @@ public class FakeKcpClientManager : AbstractClientManager<Guid, KcpSession<ushor
         {
             BidirectionalPacketAddResult += message.Payload.RandomNumber;
             await kcpSession.SendAsync(new S2CTestPacket { ReversedRandomNumber = -message.Payload.RandomNumber }, PacketFlags.None);
+        });
+
+        session.OnReceive<INoPayloadPacketPlaceHolder>((result, _) =>
+        {
+            NoPayloadPacketFlags |= result.Flags;
         });
     }
 

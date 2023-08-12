@@ -61,8 +61,4 @@ public class FakeTcpGatewayServer : AbstractGatewayServer<TcpSession<ushort>, Gu
     {
         await DoForwardDataToServerAsync((TcpSession<ushort>)sender!, e.Data);
     }
-
-    protected override void InvokeOnClientDisconnected(object sender, ClientConnectionChangedEventArgs<TcpSession<ushort>> e)
-    {
-    }
 }

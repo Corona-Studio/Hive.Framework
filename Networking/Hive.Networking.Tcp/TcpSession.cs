@@ -44,10 +44,8 @@ namespace Hive.Framework.Networking.Tcp
         public override bool CanReceive => _connectionReady;
         public override bool IsConnected => Socket is { Connected: true } && _connectionReady;
 
-        protected override async ValueTask DispatchPacket(IPacketDecodeResult<object>? packet, Type? packetType = null)
+        protected override async ValueTask DispatchPacket(PacketDecodeResult<object?> packet, Type? packetType = null)
         {
-            if (packet == null) return;
-            
             await DataDispatcher.DispatchAsync(this, packet, packetType);
         }
 

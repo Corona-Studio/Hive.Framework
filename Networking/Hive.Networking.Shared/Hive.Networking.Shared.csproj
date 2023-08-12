@@ -10,6 +10,7 @@
   <ItemGroup>
     <Folder Include="Helpers\" />
     <Folder Include="LoadBalancers\" />
+    <Folder Include="Attributes\" />
   </ItemGroup>
 
   <ItemGroup>
@@ -18,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\Codecs\Hive.Codec.Shared\Hive.Codec.Shared.csproj" />
     <ProjectReference Include="..\Hive.Networking.Abstractions\Hive.Networking.Abstractions.csproj" />
   </ItemGroup>
 

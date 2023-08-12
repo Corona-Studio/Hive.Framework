@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Hive.Framework.Codec.Abstractions;
 
-namespace Hive.Common.Codec.Shared.TypeHashFunctions
+namespace Hive.Codec.Shared.TypeHashFunctions
 {
     public class UShortTypeHashFunction : ITypeHashFunction<ushort>
     {

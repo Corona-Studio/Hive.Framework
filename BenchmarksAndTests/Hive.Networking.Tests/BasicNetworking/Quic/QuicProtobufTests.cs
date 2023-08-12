@@ -1,10 +1,10 @@
-﻿using Hive.Common.Codec.Shared;
-using Hive.Framework.Codec.Protobuf;
+﻿using Hive.Framework.Codec.Protobuf;
 using Hive.Framework.Networking.Quic;
 using Hive.Framework.Networking.Shared;
 using Hive.Framework.Shared.Helpers;
 using System.Net;
 using System.Runtime.Versioning;
+using Hive.Codec.Shared;
 
 namespace Hive.Framework.Networking.Tests.BasicNetworking.Quic;
 

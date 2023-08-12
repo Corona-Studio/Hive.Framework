@@ -48,8 +48,7 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
         Acceptor = acceptor;
         LoadBalancerGetter = loadBalancerGetter;
 
-        acceptor.ClientManager.OnClientConnected += InvokeOnClientConnected;
-        acceptor.ClientManager.OnClientDisconnected += InvokeOnClientDisconnected;
+        acceptor.ClientManager.OnClientConnectionStateChanged += ClientManagerOnOnClientConnectionStateChanged;
     }
 
     public virtual void StartServer()
@@ -104,7 +103,7 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
     /// </summary>
     /// <param name="sender"></param>
     /// <param name="e"></param>
-    protected virtual void InvokeOnClientConnected(object sender, ClientConnectionChangedEventArgs<TSession> e)
+    protected virtual void InvokeOnClientConnected(ClientConnectionChangedEventArgs<TSession> e)
     {
         RegisterServerRegistrationMessage(e.Session);
         RegisterClientStartTransmitMessage(e.Session);
@@ -112,10 +111,44 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
 
     /// <summary>
     /// 客户端连接断开触发事件
+    /// <para>默认情况下，如果重连的会话是服务器会话，则该方法会遍历<see cref="PacketRouteTable"/> 来将其标记为不再可用。</para>
     /// </summary>
     /// <param name="sender"></param>
     /// <param name="e"></param>
-    protected abstract void InvokeOnClientDisconnected(object sender, ClientConnectionChangedEventArgs<TSession> e);
+    protected virtual void InvokeOnClientDisconnected(ClientConnectionChangedEventArgs<TSession> e)
+    {
+        foreach (var (_, loadBalancer) in PacketRouteTable)
+            loadBalancer.UpdateSessionAvailability(e.Session, false);
+    }
+
+    /// <summary>
+    /// 客户端重连触发事件
+    /// <para>默认情况下，如果重连的会话是服务器会话，则该方法会遍历<see cref="PacketRouteTable"/> 来重新恢复他的可用性。</para>
+    /// </summary>
+    /// <param name="e"></param>
+    protected virtual void InvokeOnClientReconnected(ClientConnectionChangedEventArgs<TSession> e)
+    {
+        foreach (var (_, loadBalancer) in PacketRouteTable)
+            loadBalancer.UpdateSessionAvailability(e.Session, true);
+    }
+
+    private void ClientManagerOnOnClientConnectionStateChanged(object sender, ClientConnectionChangedEventArgs<TSession> e)
+    {
+        switch (e.Status)
+        {
+            case ClientConnectionStatus.Connected:
+                InvokeOnClientConnected(e);
+                break;
+            case ClientConnectionStatus.Disconnected:
+                InvokeOnClientDisconnected(e);
+                break;
+            case ClientConnectionStatus.Reconnected:
+                InvokeOnClientReconnected(e);
+                break;
+            default:
+                throw new InvalidOperationException($"Unknown client connection status: {e.Status}");
+        }
+    }
 
     /// <summary>
     /// 客户端数据转发方法

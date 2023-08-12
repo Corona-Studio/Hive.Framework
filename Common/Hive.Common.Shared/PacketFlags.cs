@@ -17,7 +17,11 @@ namespace Hive.Framework.Shared
         /// </summary>
         Finalized = 1 << 1,
 
-        RESERVED_1 = 1 << 2,
+        /// <summary>
+        /// 表示传输方要求终止连接
+        /// </summary>
+        RequestedShutdown = 1 << 2,
+
         RESERVED_2 = 1 << 3,
         RESERVED_3 = 1 << 4,
         RESERVED_4 = 1 << 5,
@@ -50,7 +54,11 @@ namespace Hive.Framework.Shared
         /// </summary>
         HasCustomPacketPrefix = 1 << 21,
 
-        RESERVED_21 = 1 << 22,
+        /// <summary>
+        /// 指示该数据包不包含有效载荷，由于封包不包含有效载荷，因此封包头部的 PacketID 也将被删除
+        /// </summary>
+        NoPayload = 1 << 22,
+
         RESERVED_22 = 1 << 23,
         RESERVED_23 = 1 << 24,
         RESERVED_24 = 1 << 25,

@@ -10,7 +10,7 @@ namespace Hive.Framework.Networking.Shared
 {
     public class DefaultDataDispatcher<TSender> : IDataDispatcher<TSender> where TSender : ISession<TSender>
     {
-        private readonly ConcurrentDictionary<Type, GuaranteedDeliveryBroadcastBlock<(IPacketDecodeResult<object>, TSender)>> _registeredDataFlow = new ();
+        private readonly ConcurrentDictionary<Type, GuaranteedDeliveryBroadcastBlock<(PacketDecodeResult<object>, TSender)>> _registeredDataFlow = new ();
         private readonly ConcurrentDictionary<object, List<IDisposable>> _registeredLinks = new ();
         private readonly ConcurrentDictionary<Type, List<IDisposable>> _typedRegisteredLinks = new();
 
@@ -42,11 +42,11 @@ namespace Hive.Framework.Networking.Shared
 
         #region Register Functions
 
-        public void Register<T>(Action<IPacketDecodeResult<T>, TSender> callback)
+        public void Register<T>(Action<PacketDecodeResult<T>, TSender> callback)
         {
             _registeredDataFlow.AddOrUpdate(
                 typeof(T),
-                new GuaranteedDeliveryBroadcastBlock<(IPacketDecodeResult<object>, TSender)>(tuple => tuple, new DataflowBlockOptions
+                new GuaranteedDeliveryBroadcastBlock<(PacketDecodeResult<object>, TSender)>(tuple => tuple, new DataflowBlockOptions
                 {
                     EnsureOrdered = true
                 }),
@@ -54,13 +54,13 @@ namespace Hive.Framework.Networking.Shared
 
             var broadcastBlock = _registeredDataFlow[typeof(T)];
 
-            var transformBlock = new TransformBlock<(IPacketDecodeResult<object>, TSender), (IPacketDecodeResult<T>, TSender)>(raw =>
+            var transformBlock = new TransformBlock<(PacketDecodeResult<object>, TSender), (PacketDecodeResult<T>, TSender)>(raw =>
             {
                 var (rawData, sender) = raw;
                 return (new PacketDecodeResult<T>(rawData.Prefixes, rawData.Flags, (T)rawData.Payload), sender);
             });
 
-            var actionBlock = new ActionBlock<(IPacketDecodeResult<T>, TSender)>(data =>
+            var actionBlock = new ActionBlock<(PacketDecodeResult<T>, TSender)>(data =>
             {
                 callback(data.Item1, data.Item2);
             });
@@ -78,11 +78,11 @@ namespace Hive.Framework.Networking.Shared
             AddTypedCallbackLog(typeof(T), link1, link2);
         }
 
-        public void OneTimeRegister<T>(Action<IPacketDecodeResult<T>, TSender> callback)
+        public void OneTimeRegister<T>(Action<PacketDecodeResult<T>, TSender> callback)
         {
             _registeredDataFlow.AddOrUpdate(
                 typeof(T),
-                new GuaranteedDeliveryBroadcastBlock<(IPacketDecodeResult<object>, TSender)>(tuple => tuple, new DataflowBlockOptions
+                new GuaranteedDeliveryBroadcastBlock<(PacketDecodeResult<object>, TSender)>(tuple => tuple, new DataflowBlockOptions
                 {
                     EnsureOrdered = true
                 }),
@@ -90,15 +90,15 @@ namespace Hive.Framework.Networking.Shared
 
             var broadcastBlock = _registeredDataFlow[typeof(T)];
 
-            var writeOnceBlock = new WriteOnceBlock<(IPacketDecodeResult<object>, TSender)>(tuple => tuple);
+            var writeOnceBlock = new WriteOnceBlock<(PacketDecodeResult<object>, TSender)>(tuple => tuple);
 
-            var transformBlock = new TransformBlock<(IPacketDecodeResult<object>, TSender), (IPacketDecodeResult<T>, TSender)>(raw =>
+            var transformBlock = new TransformBlock<(PacketDecodeResult<object>, TSender), (PacketDecodeResult<T>, TSender)>(raw =>
             {
                 var (rawData, sender) = raw;
                 return (new PacketDecodeResult<T>(rawData.Prefixes, rawData.Flags, (T)rawData.Payload), sender);
             });
 
-            var actionBlock = new ActionBlock<(IPacketDecodeResult<T>, TSender)>(data =>
+            var actionBlock = new ActionBlock<(PacketDecodeResult<T>, TSender)>(data =>
             {
                 callback(data.Item1, data.Item2);
                 Unregister(callback);
@@ -118,7 +118,7 @@ namespace Hive.Framework.Networking.Shared
             AddTypedCallbackLog(typeof(T), link1, link2, link3);
         }
 
-        public void Unregister<T>(Action<IPacketDecodeResult<T>, TSender> callback)
+        public void Unregister<T>(Action<PacketDecodeResult<T>, TSender> callback)
         {
             if (!_registeredLinks.TryRemove(callback, out var links)) return;
 
@@ -134,11 +134,11 @@ namespace Hive.Framework.Networking.Shared
 
         #region Register Functions (Async)
 
-        public void Register<T>(Func<IPacketDecodeResult<T>, TSender, ValueTask> callback)
+        public void Register<T>(Func<PacketDecodeResult<T>, TSender, ValueTask> callback)
         {
             _registeredDataFlow.AddOrUpdate(
                 typeof(T),
-                new GuaranteedDeliveryBroadcastBlock<(IPacketDecodeResult<object>, TSender)>(tuple => tuple, new DataflowBlockOptions
+                new GuaranteedDeliveryBroadcastBlock<(PacketDecodeResult<object>, TSender)>(tuple => tuple, new DataflowBlockOptions
                 {
                     EnsureOrdered = true
                 }),
@@ -146,13 +146,13 @@ namespace Hive.Framework.Networking.Shared
 
             var broadcastBlock = _registeredDataFlow[typeof(T)];
 
-            var transformBlock = new TransformBlock<(IPacketDecodeResult<object>, TSender), (IPacketDecodeResult<T>, TSender)>(raw =>
+            var transformBlock = new TransformBlock<(PacketDecodeResult<object>, TSender), (PacketDecodeResult<T>, TSender)>(raw =>
             {
                 var (rawData, sender) = raw;
                 return (new PacketDecodeResult<T>(rawData.Prefixes, rawData.Flags, (T)rawData.Payload), sender);
             });
 
-            var actionBlock = new ActionBlock<(IPacketDecodeResult<T>, TSender)>(async data =>
+            var actionBlock = new ActionBlock<(PacketDecodeResult<T>, TSender)>(async data =>
             {
                 await callback(data.Item1, data.Item2);
             });
@@ -170,11 +170,11 @@ namespace Hive.Framework.Networking.Shared
             AddTypedCallbackLog(typeof(T), link1, link2);
         }
 
-        public void OneTimeRegister<T>(Func<IPacketDecodeResult<T>, TSender, ValueTask> callback)
+        public void OneTimeRegister<T>(Func<PacketDecodeResult<T>, TSender, ValueTask> callback)
         {
             _registeredDataFlow.AddOrUpdate(
                 typeof(T),
-                new GuaranteedDeliveryBroadcastBlock<(IPacketDecodeResult<object>, TSender)>(tuple => tuple, new DataflowBlockOptions
+                new GuaranteedDeliveryBroadcastBlock<(PacketDecodeResult<object>, TSender)>(tuple => tuple, new DataflowBlockOptions
                 {
                     EnsureOrdered = true
                 }),
@@ -182,15 +182,15 @@ namespace Hive.Framework.Networking.Shared
 
             var broadcastBlock = _registeredDataFlow[typeof(T)];
 
-            var writeOnceBlock = new WriteOnceBlock<(IPacketDecodeResult<object>, TSender)>(tuple => tuple);
+            var writeOnceBlock = new WriteOnceBlock<(PacketDecodeResult<object>, TSender)>(tuple => tuple);
 
-            var transformBlock = new TransformBlock<(IPacketDecodeResult<object>, TSender), (IPacketDecodeResult<T>, TSender)>(raw =>
+            var transformBlock = new TransformBlock<(PacketDecodeResult<object>, TSender), (PacketDecodeResult<T>, TSender)>(raw =>
             {
                 var (rawData, sender) = raw;
                 return (new PacketDecodeResult<T>(rawData.Prefixes, rawData.Flags, (T)rawData.Payload), sender);
             });
 
-            var actionBlock = new ActionBlock<(IPacketDecodeResult<T>, TSender)>(async data =>
+            var actionBlock = new ActionBlock<(PacketDecodeResult<T>, TSender)>(async data =>
             {
                 await callback(data.Item1, data.Item2);
                 Unregister(callback);
@@ -210,7 +210,7 @@ namespace Hive.Framework.Networking.Shared
             AddTypedCallbackLog(typeof(T), link1, link2, link3);
         }
 
-        public void Unregister<T>(Func<IPacketDecodeResult<T>, TSender, ValueTask> callback)
+        public void Unregister<T>(Func<PacketDecodeResult<T>, TSender, ValueTask> callback)
         {
             if (!_registeredLinks.TryRemove(callback, out var links)) return;
 
@@ -254,11 +254,23 @@ namespace Hive.Framework.Networking.Shared
             _typedRegisteredLinks.Clear();
         }
 
-        public async ValueTask DispatchAsync(TSender sender, IPacketDecodeResult<object> data, Type? dataType = null)
+        public async ValueTask DispatchAsync(TSender sender, PacketDecodeResult<object?> data, Type? dataType = null)
         {
-            if (!_registeredDataFlow.TryGetValue(dataType ?? data.GetType(), out var block)) return;
+            PacketDecodeResult<object> result;
 
-            await block.SendAsync((data, sender));
+            if (data.Payload == null)
+            {
+                dataType = typeof(INoPayloadPacketPlaceHolder);
+                result = new PacketDecodeResult<object>(data.Prefixes, data.Flags, NoPayloadPacketPlaceHolder.Empty);
+            }
+            else
+            {
+                result = new PacketDecodeResult<object>(data.Prefixes, data.Flags, data.Payload!);
+            }
+
+            if (!_registeredDataFlow.TryGetValue(dataType ?? data.Payload!.GetType(), out var block)) return;
+
+            await block.SendAsync((result, sender));
         }
     }
 }

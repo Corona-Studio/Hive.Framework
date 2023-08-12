@@ -18,6 +18,7 @@ public interface INetworkingTestProperties
     public int AdderCount { get; }
     public int AdderPackageReceiveCount { get; }
     public int BidirectionalPacketAddResult { get; }
+    public PacketFlags NoPayloadPacketFlags { get; }
 }
 
 public abstract class AbstractNetworkingTestBase<TSession, TClient, TAcceptor, TClientManager> 
@@ -133,6 +134,29 @@ public abstract class AbstractNetworkingTestBase<TSession, TClient, TAcceptor, T
 
     [Test]
     [Order(4)]
+    public async Task NoPayloadPacketReceiveTest()
+    {
+        await Task.Delay(1000);
+
+        for (var i = -1; i <= 30; i++)
+        {
+            var flag = i == -1 ? 0 : (1 << i);
+
+            await Client.SendWithoutPayload(
+                Client.PacketCodec,
+                (PacketFlags)flag);
+        }
+
+        await Task.Delay(3000);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That((uint)ClientManager.NoPayloadPacketFlags, Is.EqualTo(int.MaxValue));
+        });
+    }
+
+    [Test]
+    [Order(5)]
     public async Task ReconnectTest()
     {
         ShouldSendHeartBeat = false;
@@ -157,7 +181,7 @@ public abstract class AbstractNetworkingTestBase<TSession, TClient, TAcceptor, T
     }
 
     [Test]
-    [Order(5)]
+    [Order(6)]
     public async Task ReconnectedMessageReceiveTest()
     {
         await Task.Delay(1000);
@@ -178,7 +202,7 @@ public abstract class AbstractNetworkingTestBase<TSession, TClient, TAcceptor, T
     }
 
     [Test]
-    [Order(6)]
+    [Order(7)]
     public async Task BidirectionalPacketSendReceiveTest()
     {
         await Task.Delay(1000);
@@ -203,7 +227,7 @@ public abstract class AbstractNetworkingTestBase<TSession, TClient, TAcceptor, T
     }
 
     [Test]
-    [Order(7)]
+    [Order(8)]
     public async Task SignOutTest()
     {
         Assert.That(ClientManager.ConnectedClient, Is.EqualTo(1));

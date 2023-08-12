@@ -1,5 +1,5 @@
 ﻿using System.Net;
-using Hive.Common.Codec.Shared;
+using Hive.Codec.Shared;
 using Hive.Framework.Codec.Abstractions;
 using Hive.Framework.Codec.Protobuf;
 using Hive.Framework.Networking.Abstractions;

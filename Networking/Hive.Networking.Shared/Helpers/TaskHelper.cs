@@ -4,6 +4,9 @@ using System.Threading.Tasks;
 using System.Threading;
 using System;
 using System.Collections.Concurrent;
+using System.Linq;
+using System.Reflection;
+using Hive.Framework.Networking.Shared.Attributes;
 
 namespace Hive.Framework.Networking.Shared.Helpers;
 
@@ -17,7 +20,7 @@ public static class TaskHelper
     private static readonly ConcurrentDictionary<Task, CancellationToken> AllTasks = new();
     private static readonly ConcurrentDictionary<CancellationToken, List<Task>> CancelTokenToTask = new();
 
-    public static void ManagedRun(Task task, CancellationToken ct)
+    private static void ManagedRun(Task task, CancellationToken ct, IEnumerable<AbstractIgnoreExceptionAttribute>? exceptionsToIgnore)
     {
         // 无法抛出异常
         AllTasks.AddOrUpdate(task, ct, (_, _) => ct);
@@ -32,13 +35,16 @@ public static class TaskHelper
                 return list;
             });
 
-        task.CatchException();
+        task.CatchException(exceptionsToIgnore);
     }
 
     public static void ManagedRun(Func<Task?> function, CancellationToken ct)
     {
         var task = Task.Run(function, ct);
-        ManagedRun(task, ct);
+        ManagedRun(
+            task,
+            ct,
+            function.GetMethodInfo().GetCustomAttributes<AbstractIgnoreExceptionAttribute>());
     }
 
     public static void ManagedRun(Action function, CancellationToken ct)
@@ -57,7 +63,7 @@ public static class TaskHelper
                 return list;
             });
 
-        task.CatchException();
+        task.CatchException(function.GetMethodInfo().GetCustomAttributes<AbstractIgnoreExceptionAttribute>().ToArray());
     }
 
     public static async Task CancelAfterAndWaitAllTaskAsync(this CancellationTokenSource cts, TimeSpan timeSpan)
@@ -131,7 +137,7 @@ public static class TaskHelper
         {
             while (!ct.IsCancellationRequested && !condition()) await Task.Delay(interval, ct);
         }
-        catch (TaskCanceledException e)
+        catch (TaskCanceledException)
         {
             // Log.Verbose(e, "A Task.WaitUtil task has canceled");
         }
@@ -143,7 +149,7 @@ public static class TaskHelper
         {
             while (!ct.IsCancellationRequested && condition()) await Task.Delay(interval, ct);
         }
-        catch (TaskCanceledException e)
+        catch (TaskCanceledException)
         {
             // Log.Verbose(e, "A Task.WaitWhile task has canceled");
         }
@@ -153,15 +159,27 @@ public static class TaskHelper
     ///     await一个task，可以抛出其中的异常
     /// </summary>
     /// <param name="task"></param>
-    public static async void CatchException(this Task task)
+    /// <param name="exceptionsToIgnore"></param>
+    public static async void CatchException(
+        this Task task,
+        IEnumerable<AbstractIgnoreExceptionAttribute>? exceptionsToIgnore)
     {
         try
         {
             await task;
         }
+        catch (TaskCanceledException)
+        {
+            Console.WriteLine("Task canceled");
+        }
         catch (Exception e)
         {
             Console.WriteLine(e);
+
+            if (exceptionsToIgnore?.Any(a => a.IsMatch(e)) ?? false)
+                return;
+
+            throw;
         }
     }
 }

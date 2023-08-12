@@ -8,6 +8,7 @@ using System;
 using System.Threading.Channels;
 using Hive.Framework.Networking.Shared.Helpers;
 using System.Buffers;
+using Hive.Framework.Networking.Shared.Attributes;
 
 namespace Hive.Framework.Networking.Udp
 {
@@ -63,10 +64,8 @@ namespace Hive.Framework.Networking.Udp
         public override bool CanReceive => true;
         public override bool IsConnected => Socket != null;
 
-        protected override async ValueTask DispatchPacket(IPacketDecodeResult<object>? packet, Type? packetType = null)
+        protected override async ValueTask DispatchPacket(PacketDecodeResult<object?> packet, Type? packetType = null)
         {
-            if (packet == null) return;
-
             await DataDispatcher.DispatchAsync(this, packet, packetType);
         }
 
@@ -113,6 +112,7 @@ namespace Hive.Framework.Networking.Udp
             }
         }
 
+        [IgnoreException(typeof(ObjectDisposedException))]
         private async Task NonPassiveModeRawReceiveLoop()
         {
             if (Socket == null)

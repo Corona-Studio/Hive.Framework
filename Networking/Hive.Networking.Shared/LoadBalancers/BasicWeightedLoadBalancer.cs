@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using Hive.Framework.Networking.Abstractions;
@@ -7,49 +8,85 @@ namespace Hive.Framework.Networking.Shared.LoadBalancers;
 
 public class BasicWeightedLoadBalancer<TSession> : ILoadBalancer<TSession> where TSession : ISession<TSession>
 {
+    private readonly ConcurrentDictionary<TSession, bool> _sessionAvailabilityDic = new();
     private readonly Dictionary<TSession, ushort> _sessions = new ();
     private readonly Random _random = new();
 
-    public void AddSession(TSession session)
+    public int Available
     {
-        _sessions.Add(session, 0);
+        get
+        {
+            lock (_sessions)
+                return _sessions.Count;
+        }
+    }
+
+    public void AddSession(TSession sessionInfo)
+    {
+        lock (_sessions)
+        {
+            if (_sessions.ContainsKey(sessionInfo))
+            {
+                _sessionAvailabilityDic[sessionInfo] = true;
+                return;
+            }
+
+            _sessions.Add(sessionInfo, 0);
+            _sessionAvailabilityDic[sessionInfo] = true;
+        }
     }
 
     public bool RemoveSession(TSession session)
     {
-        var removed = _sessions.Remove(session, out var weight);
+        lock (_sessions)
+        {
+            var removed = _sessions.Remove(session, out _);
 
-        return removed;
+            return removed;
+        }
     }
 
     public bool UpdateWeight(TSession session, ushort weight)
     {
-        if(!_sessions.ContainsKey(session)) return false;
+        lock (_sessions)
+        {
+            if (!_sessions.ContainsKey(session)) return false;
 
-        _sessions[session] = weight;
+            _sessions[session] = weight;
 
-        return true;
+            return true;
+        }
     }
 
-    public TSession GetOne()
+    public bool UpdateSessionAvailability(TSession sessionInfo, bool available)
     {
-        var randomWeight = _random.Next(0, _sessions.Sum(p => p.Value));
+        return _sessionAvailabilityDic.TryGetValue(sessionInfo, out var oldAvailability) &&
+               _sessionAvailabilityDic.TryUpdate(sessionInfo, available, oldAvailability);
+    }
 
-        foreach (var (session, weight) in _sessions)
+    public TSession? GetOne()
+    {
+        lock (_sessions)
         {
-            if (randomWeight < weight)
+            var randomWeight = _random.Next(0, _sessions.Sum(p => p.Value));
+
+            foreach (var (session, weight) in _sessions)
             {
-                return session;
+                if (randomWeight < weight && _sessionAvailabilityDic[session])
+                {
+                    return session;
+                }
+
+                randomWeight -= weight;
             }
 
-            randomWeight -= weight;
+            return _sessions.FirstOrDefault(p => _sessionAvailabilityDic[p.Key]).Key;
         }
-
-        return _sessions.First().Key;
     }
 
     public IReadOnlyList<TSession> GetRawList()
     {
-        return _sessions.Select(p => p.Key).ToList().AsReadOnly();
+        lock (_sessions)
+            return _sessions.Select(p => p.Key).ToList().AsReadOnly();
     }
 }

@@ -2,9 +2,9 @@
 using Hive.Framework.Shared.Collections;
 using System;
 using System.Data;
-using Hive.Common.Codec.Shared.TypeHashFunctions;
+using Hive.Codec.Shared.TypeHashFunctions;
 
-namespace Hive.Common.Codec.Shared
+namespace Hive.Codec.Shared
 {
     public class DefaultPacketIdMapper : IPacketIdMapper<ushort>
     {

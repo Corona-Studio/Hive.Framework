@@ -10,6 +10,7 @@ using System.Buffers;
 using System.Diagnostics;
 using Hive.Framework.Networking.Shared.Helpers;
 using System.Threading;
+using Hive.Framework.Networking.Shared.Attributes;
 using Hive.Framework.Shared;
 
 namespace Hive.Framework.Networking.Kcp
@@ -87,10 +88,8 @@ namespace Hive.Framework.Networking.Kcp
             return kcp;
         }
 
-        protected override async ValueTask DispatchPacket(IPacketDecodeResult<object>? packet, Type? packetType = null)
+        protected override async ValueTask DispatchPacket(PacketDecodeResult<object?> packet, Type? packetType = null)
         {
-            if (packet == null) return;
-
             await DataDispatcher.DispatchAsync(this, packet, packetType);
         }
 
@@ -182,6 +181,7 @@ namespace Hive.Framework.Networking.Kcp
             return default;
         }
 
+        [IgnoreException(typeof(ObjectDisposedException))]
         private async Task UpdateLoop()
         {
             if (Kcp == null)
@@ -234,7 +234,7 @@ namespace Hive.Framework.Networking.Kcp
         {
             try
             {
-                while (!(CancellationTokenSource?.IsCancellationRequested ?? true))
+                while (!(CancellationTokenSource?.IsCancellationRequested ?? true) || _closed)
                 {
                     if (!IsConnected || !CanSend) SpinWait.SpinUntil(() => IsConnected && CanSend);
 
@@ -288,6 +288,7 @@ namespace Hive.Framework.Networking.Kcp
             _sendBuffer.Clear();
         }
 
+        [IgnoreException(typeof(ObjectDisposedException))]
         private async Task NonPassiveModeRawReceiveLoop()
         {
             if (Kcp == null)
@@ -299,7 +300,7 @@ namespace Hive.Framework.Networking.Kcp
             if (_passiveMode)
                 throw new InvalidOperationException("该方法仅支持在非被动模式下启用！");
 
-            while (!(CancellationTokenSource?.IsCancellationRequested ?? true))
+            while (!(CancellationTokenSource?.IsCancellationRequested ?? true) || _closed)
             {
                 if (Socket.Available <= 0)
                 {

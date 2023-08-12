@@ -2,12 +2,15 @@
 using System.Buffers;
 using System.Collections.Generic;
 using System.Net;
+using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using Hive.Codec.Shared.Helpers;
 using Hive.Framework.Codec.Abstractions;
 using Hive.Framework.Networking.Abstractions;
 using Hive.Framework.Networking.Abstractions.EventArgs;
+using Hive.Framework.Networking.Shared.Attributes;
 using Hive.Framework.Networking.Shared.Helpers;
 using Hive.Framework.Shared;
 
@@ -96,7 +99,7 @@ namespace Hive.Framework.Networking.Shared
             await SendAsync(encodedBytes);
         }
 
-        public void OnReceive<T>(Action<IPacketDecodeResult<T>, TSession> callback)
+        public void OnReceive<T>(Action<PacketDecodeResult<T>, TSession> callback)
         {
             DataDispatcher.Register(callback);
 
@@ -107,7 +110,7 @@ namespace Hive.Framework.Networking.Shared
             ReceivingLoopRunning = true;
         }
 
-        public void OnReceive<T>(Func<IPacketDecodeResult<T>, TSession, ValueTask> callback)
+        public void OnReceive<T>(Func<PacketDecodeResult<T>, TSession, ValueTask> callback)
         {
             DataDispatcher.Register(callback);
 
@@ -118,7 +121,7 @@ namespace Hive.Framework.Networking.Shared
             ReceivingLoopRunning = true;
         }
 
-        public void OnReceiveOneTime<T>(Action<IPacketDecodeResult<T>, TSession> callback)
+        public void OnReceiveOneTime<T>(Action<PacketDecodeResult<T>, TSession> callback)
         {
             DataDispatcher.OneTimeRegister(callback);
 
@@ -129,7 +132,7 @@ namespace Hive.Framework.Networking.Shared
             ReceivingLoopRunning = true;
         }
 
-        public void OnReceiveOneTime<T>(Func<IPacketDecodeResult<T>, TSession, ValueTask> callback)
+        public void OnReceiveOneTime<T>(Func<PacketDecodeResult<T>, TSession, ValueTask> callback)
         {
             DataDispatcher.OneTimeRegister(callback);
 
@@ -156,12 +159,21 @@ namespace Hive.Framework.Networking.Shared
             TaskHelper.ManagedRun(ReceiveLoop, CancellationTokenSource.Token);
         }
 
-        protected abstract ValueTask DispatchPacket(IPacketDecodeResult<object>? packet, Type? packetType = null);
+        protected abstract ValueTask DispatchPacket(PacketDecodeResult<object?> packet, Type? packetType = null);
 
         protected async ValueTask ProcessPacket(ReadOnlyMemory<byte> payloadBytes)
         {
-            var idMemory = PacketCodec.GetPacketIdMemory(payloadBytes);
             var packetFlags = PacketCodec.GetPacketFlags(payloadBytes);
+
+            if (packetFlags.HasFlag(PacketFlags.NoPayload))
+            {
+                var noPayloadPacket = PacketCodec.Decode(payloadBytes.Span);
+                await DispatchPacket(noPayloadPacket.AsPacketDecodeResult());
+
+                return;
+            }
+
+            var idMemory = PacketCodec.GetPacketIdMemory(payloadBytes);
             var id = PacketCodec.GetPacketId(idMemory);
 
             var isPacketFinalized = packetFlags.HasFlag(PacketFlags.Finalized);
@@ -177,7 +189,7 @@ namespace Hive.Framework.Networking.Shared
             var packet = PacketCodec.Decode(payloadBytes.Span);
             var packetType = PacketCodec.PacketIdMapper.GetPacketType(id);
 
-            await DispatchPacket(packet, packetType);
+            await DispatchPacket(packet.AsPacketDecodeResult(), packetType);
         }
 
         protected async Task InvokeDataReceivedEventAsync(ReadOnlyMemory<byte> id, ReadOnlyMemory<byte> data)
@@ -193,6 +205,9 @@ namespace Hive.Framework.Networking.Shared
             return payloadLength + PacketHeaderLength;
         }
 
+        [IgnoreException(typeof(ObjectDisposedException))]
+        [IgnoreException(typeof(OperationCanceledException))]
+        [IgnoreSocketException(SocketError.OperationAborted)]
         protected virtual async Task SendLoop()
         {
             try
@@ -207,20 +222,14 @@ namespace Hive.Framework.Networking.Shared
                     await SendOnce(slice.MemoryOwner.Memory[..slice.Length]);
                 }
             }
-            catch (TaskCanceledException)
-            {
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-                throw;
-            }
             finally
             {
                 SendingLoopRunning = false;
             }
         }
 
+        [IgnoreException(typeof(ObjectDisposedException))]
+        [IgnoreSocketException(SocketError.OperationAborted)]
         protected virtual async Task ReceiveLoop()
         {
             var bufferOwner = MemoryPool<byte>.Shared.Rent(DefaultBufferSize);
