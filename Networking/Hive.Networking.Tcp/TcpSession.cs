@@ -61,7 +61,10 @@ namespace Hive.Framework.Networking.Tcp
 
             _closed = false;
 
-            Socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            if (RemoteEndPoint == null)
+                throw new ArgumentNullException(nameof(RemoteEndPoint));
+
+            Socket = new Socket(RemoteEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
             Socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
 
             // 连接到指定地址

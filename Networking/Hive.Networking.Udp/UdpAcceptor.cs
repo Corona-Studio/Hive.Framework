@@ -28,7 +28,7 @@ namespace Hive.Framework.Networking.Udp
 
         public override void Start()
         {
-            Socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            Socket = new Socket(EndPoint.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
             Socket.ReceiveBufferSize = UdpSession<int>.DefaultSocketBufferSize;
             Socket.Bind(EndPoint);
 

@@ -238,7 +238,7 @@ public class TcpGateWayServerTests
         _server.OnReceive<ServerRedirectTestMessage1>((message1, _) =>
         {
             lock(_receiveDictionary)
-                _receiveDictionary.Add((Guid)message1.Prefixes[0]!, message1.Payload.Content!);
+                _receiveDictionary.Add((Guid)message1.Prefixes![0]!, message1.Payload.Content!);
         });
 
         await Task.Delay(100);
@@ -306,7 +306,7 @@ public class TcpGateWayServerTests
                 new ServerRedirectTestMessage2 { Value = message.Payload.Value },
                 writer =>
                 {
-                    writer.WriteGuid((Guid)message.Prefixes[0]!);
+                    writer.WriteGuid((Guid)message.Prefixes![0]!);
                 });
         });
 

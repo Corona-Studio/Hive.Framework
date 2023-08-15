@@ -28,7 +28,7 @@ namespace Hive.Framework.Networking.Tcp
 
         private void InitSocket()
         {
-            ServerSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            ServerSocket = new Socket(EndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
         }
 
         public override void Start()

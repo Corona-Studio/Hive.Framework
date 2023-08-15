@@ -102,7 +102,11 @@ namespace Hive.Framework.Networking.Kcp
 
             // 创建新连接
             _closed = false;
-            Socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+
+            if (RemoteEndPoint == null)
+                throw new ArgumentNullException(nameof(RemoteEndPoint));
+
+            Socket = new Socket(RemoteEndPoint.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
             Socket.ReceiveBufferSize = DefaultSocketBufferSize;
 
             var unsetConvBytes = BitConverter.GetBytes(UnsetConv);
