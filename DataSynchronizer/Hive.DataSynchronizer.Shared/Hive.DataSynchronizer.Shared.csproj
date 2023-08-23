@@ -1,0 +1,13 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Codecs\Hive.Codec.Abstractions\Hive.Codec.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Common\Hive.Common.Shared\Hive.Common.Shared.csproj" />
+    <ProjectReference Include="..\Hive.DataSynchronizer.Abstraction\Hive.DataSynchronizer.Abstraction.csproj" />
+  </ItemGroup>
+
+</Project>

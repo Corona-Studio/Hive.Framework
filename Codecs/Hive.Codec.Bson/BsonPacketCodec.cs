@@ -52,7 +52,7 @@ public class BsonPacketCodec : IPacketCodec<ushort>
         return (PacketFlags) flags;
     }
 
-    public SerializedPacketMemory Encode<T>(T obj, PacketFlags flags)
+    public ReadOnlyMemory<byte> Encode<T>(T obj, PacketFlags flags)
     {
         var dataSpan = obj.ToBson().AsSpan();
 
@@ -63,26 +63,26 @@ public class BsonPacketCodec : IPacketCodec<ushort>
 
         // [LENGTH (2) | PACKET_FLAGS (4) | TYPE (2) | CONTENT]
         var index = 0;
-        var result = MemoryPool<byte>.Shared.Rent(2 + 4 + 2 + dataSpan.Length);
+        var result = new Memory<byte>(new byte[2 + 4 + 2 + dataSpan.Length]);
         
         BitConverter.TryWriteBytes(
-            result.Memory.Span.SliceAndIncrement(ref index, sizeof(ushort)),
+            result.Span.SliceAndIncrement(ref index, sizeof(ushort)),
             (ushort)(dataSpan.Length + 4 + 2));
 
         // Packet Flags
         BitConverter.TryWriteBytes(
-            result.Memory.Span.SliceAndIncrement(ref index, sizeof(uint)),
+            result.Span.SliceAndIncrement(ref index, sizeof(uint)),
             (uint)flags);
 
         // Packet Id
         BitConverter.TryWriteBytes(
-            result.Memory.Span.SliceAndIncrement(ref index, sizeof(ushort)),
+            result.Span.SliceAndIncrement(ref index, sizeof(ushort)),
             packetId);
 
         // Packet Payload
-        dataSpan.CopyTo(result.Memory.Span.SliceAndIncrement(ref index, dataSpan.Length));
+        dataSpan.CopyTo(result.Span.SliceAndIncrement(ref index, dataSpan.Length));
 
-        return new SerializedPacketMemory(index, result);
+        return result;
     }
 
     public unsafe PacketDecodeResultWithId<ushort> Decode(ReadOnlySpan<byte> data)

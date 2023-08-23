@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using Hive.Framework.Networking.Abstractions;
 
@@ -88,5 +90,22 @@ public class BasicWeightedLoadBalancer<TSession> : ILoadBalancer<TSession> where
     {
         lock (_sessions)
             return _sessions.Select(p => p.Key).ToList().AsReadOnly();
+    }
+
+    public IEnumerator<TSession> GetEnumerator()
+    {
+        var sessions =
+            _sessionAvailabilityDic
+                .Where(x => x.Value)
+                .Select(x => x.Key)
+                .ToList();
+        var collection = new ReadOnlyCollection<TSession>(sessions);
+
+        return collection.GetEnumerator();
+    }
+
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+        return GetEnumerator();
     }
 }

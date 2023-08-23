@@ -199,7 +199,7 @@ namespace Hive.Framework.Networking.Kcp
             }
         }
 
-        public override async ValueTask SendAsync(SerializedPacketMemory data)
+        public override async ValueTask SendAsync(ReadOnlyMemory<byte> data)
         {
             if (CancellationTokenSource == null)
                 throw new ArgumentNullException(nameof(CancellationTokenSource));
@@ -209,22 +209,19 @@ namespace Hive.Framework.Networking.Kcp
             if(Kcp == null)
                 throw new ArgumentNullException(nameof(Kcp));
 
-            using (data)
+            var sentLen = 0;
+            var sendData = data;
+
+            while (sentLen < sendData.Length)
             {
-                var sentLen = 0;
-                var sendData = data.MemoryOwner.Memory[..data.Length];
+                var sendThisTime = Kcp.Send(sendData.Span[sentLen..]);
 
-                while (sentLen < sendData.Length)
-                {
-                    var sendThisTime = Kcp.Send(sendData.Span[sentLen..]);
+                if (sendThisTime < 0)
+                    throw new InvalidOperationException("KCP 返回了小于零的发送长度，可能为 KcpCore 的内部错误！");
 
-                    if (sendThisTime < 0)
-                        throw new InvalidOperationException("KCP 返回了小于零的发送长度，可能为 KcpCore 的内部错误！");
+                sentLen += sendThisTime;
 
-                    sentLen += sendThisTime;
-
-                    await Task.Delay(1);
-                }
+                await Task.Delay(1);
             }
 
             if (SendingLoopRunning) return;
@@ -242,7 +239,7 @@ namespace Hive.Framework.Networking.Kcp
                 {
                     if (!IsConnected || !CanSend) SpinWait.SpinUntil(() => IsConnected && CanSend);
 
-                    await SendOnce(ReadOnlyMemory<byte>.Empty);
+                    await SendOnce(Memory<byte>.Empty);
                 }
             }
             catch (TaskCanceledException)
@@ -277,14 +274,16 @@ namespace Hive.Framework.Networking.Kcp
 
             await Kcp.OutputAsync(_sendBuffer);
 
-            var sendData = _sendBuffer.WrittenMemory.ToArray();
+            var sendData = _sendBuffer.WrittenMemory;
 
             while (sentLen < sendData.Length)
             {
-                var sendThisTime = await Socket.SendToAsync(
-                    new ArraySegment<byte>(sendData, sentLen, sendData.Length - sentLen),
-                    SocketFlags.None,
-                    RemoteEndPoint!);
+                if (!Socket.Connected)
+                    await Socket.ConnectAsync(RemoteEndPoint!);
+
+                var sendThisTime = await Socket.SendAsync(
+                    sendData[sentLen..],
+                    SocketFlags.None);
 
                 sentLen += sendThisTime;
             }

@@ -2,7 +2,7 @@
 
 namespace Hive.Framework.Networking.Abstractions;
 
-public interface ILoadBalancer<TSession> where TSession : ISession<TSession>
+public interface ILoadBalancer<TSession> : IEnumerable<TSession> where TSession : ISession<TSession>
 {
     int Available { get; }
 

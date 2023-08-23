@@ -44,6 +44,11 @@ namespace Hive.Codec.Shared
             throw new InvalidOperationException($"Cannot get id of msg type {type}");
         }
 
+        public ReadOnlyMemory<byte> GetPacketIdMemory(Type type)
+        {
+            return BitConverter.GetBytes(GetPacketId(type));
+        }
+
         public Type GetPacketType(ushort id)
         {
             lock (_locker)

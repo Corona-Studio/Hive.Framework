@@ -51,7 +51,7 @@ public class ProtoBufPacketCodec : IPacketCodec<ushort>
         return (PacketFlags)flags;
     }
 
-    public SerializedPacketMemory Encode<T>(T obj, PacketFlags flags)
+    public ReadOnlyMemory<byte> Encode<T>(T obj, PacketFlags flags)
     {
         using var contentMeasure = Serializer.Measure(obj);
 
@@ -62,29 +62,29 @@ public class ProtoBufPacketCodec : IPacketCodec<ushort>
 
         // [LENGTH (2) | PACKET_FLAGS (4) | TYPE (2) | CONTENT]
         var index = 0;
-        var result = MemoryPool<byte>.Shared.Rent(2 + 4 + 2 + (int)contentMeasure.Length);
+        var result = new Memory<byte>(new byte[2 + 4 + 2 + (int)contentMeasure.Length]);
 
         BitConverter.TryWriteBytes(
-            result.Memory.Span.SliceAndIncrement(ref index, sizeof(ushort)),
+            result.Span.SliceAndIncrement(ref index, sizeof(ushort)),
             (ushort)(contentMeasure.Length + 4 + 2));
 
         // Packet Flags
         BitConverter.TryWriteBytes(
-            result.Memory.Span.SliceAndIncrement(ref index, sizeof(uint)),
+            result.Span.SliceAndIncrement(ref index, sizeof(uint)),
             (uint)flags);
 
         // Packet Id
         BitConverter.TryWriteBytes(
-            result.Memory.Span.SliceAndIncrement(ref index, sizeof(ushort)),
+            result.Span.SliceAndIncrement(ref index, sizeof(ushort)),
             packetId);
 
         // Packet Payload
-        var payloadMemory = result.Memory.SliceAndIncrement(ref index, (int) contentMeasure.Length);
+        var payloadMemory = result.SliceAndIncrement(ref index, (int) contentMeasure.Length);
         var writer = new FakeMemoryBufferWriter<byte>(payloadMemory);
 
         contentMeasure.Serialize(writer);
 
-        return new SerializedPacketMemory(index, result);
+        return result;
     }
 
     public PacketDecodeResultWithId<ushort> Decode(ReadOnlySpan<byte> data)

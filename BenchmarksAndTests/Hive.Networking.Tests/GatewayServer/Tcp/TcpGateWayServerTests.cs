@@ -93,6 +93,7 @@ public class TcpGateWayServerTests
         _packetIdMapper.Register<ClientCanTransmitMessage>();
         _packetIdMapper.Register<ServerRedirectTestMessage1>();
         _packetIdMapper.Register<ServerRedirectTestMessage2>();
+        _packetIdMapper.Register<ServerBroadcastTestMessage>();
 
         _clientPacketCodec = new ProtoBufPacketCodec(_packetIdMapper);
         _serverPacketCodec = new ProtoBufPacketCodec(_packetIdMapper, new IPacketPrefixResolver[]
@@ -379,6 +380,54 @@ public class TcpGateWayServerTests
         {
             Assert.That(client1Counter, Is.EqualTo(client1LocalCounter));
             Assert.That(client2Counter, Is.EqualTo(client2LocalCounter));
+        });
+    }
+
+    [Test]
+    [Order(8)]
+    public async Task ServerBroadcastWithPayloadTest()
+    {
+        await Task.Delay(1000);
+
+        var client1ReceivedNumber = 0;
+        var client2ReceivedNumber = 0;
+
+        _client1.OnReceive<ServerBroadcastTestMessage>((result, _) =>
+        {
+            client1ReceivedNumber += result.Payload.Number;
+        });
+
+        _client2.OnReceive<ServerBroadcastTestMessage>((result, _) =>
+        {
+            client2ReceivedNumber += result.Payload.Number;
+        });
+
+        await Task.Delay(500);
+
+        var localSentNumber = 0;
+
+        for (var i = 0; i < 100; i++)
+        {
+            var rnd = Random.Shared.Next(-100, 100);
+
+            localSentNumber += rnd;
+
+            await _server.SendAsync(
+                new ServerBroadcastTestMessage
+                {
+                    Number = rnd
+                },
+                PacketFlags.Broadcast | PacketFlags.S2CPacket);
+            await Task.Delay(10);
+        }
+
+        await Task.Delay(8000);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(client1ReceivedNumber, Is.EqualTo(localSentNumber));
+            Assert.That(client2ReceivedNumber, Is.EqualTo(localSentNumber));
+            Assert.That(client1ReceivedNumber, Is.EqualTo(client2ReceivedNumber));
         });
     }
 }

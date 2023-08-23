@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Quic;
 using System.Net.Security;
 using System.Runtime.Versioning;
+using Hive.Framework.Shared;
 
 namespace Hive.Framework.Networking.Quic;
 
@@ -66,6 +67,7 @@ public sealed class QuicSession<TId> : AbstractSession<TId, QuicSession<TId>>
             RemoteEndPoint = RemoteEndPoint!,
             DefaultStreamErrorCode = 0,
             DefaultCloseErrorCode = 0,
+            IdleTimeout = TimeSpan.FromMinutes(5),
             ClientAuthenticationOptions = new SslClientAuthenticationOptions
             {
                 ApplicationProtocols = new List<SslApplicationProtocol> { SslApplicationProtocol.Http3 },
@@ -84,9 +86,17 @@ public sealed class QuicSession<TId> : AbstractSession<TId, QuicSession<TId>>
         if (QuicStream == null)
             throw new InvalidOperationException("QuicStream Init failed!");
 
-        if (!IsConnected || !CanSend) SpinWait.SpinUntil(() => IsConnected && CanReceive);
+        if (!IsConnected || !CanSend || !QuicStream.CanWrite)
+            SpinWait.SpinUntil(() => IsConnected && CanReceive && QuicStream.CanWrite);
 
         await QuicStream.WriteAsync(data);
+    }
+
+    [IgnoreQuicException(QuicError.OperationAborted)]
+    [IgnoreQuicException(QuicError.ConnectionAborted)]
+    protected override Task ReceiveLoop()
+    {
+        return base.ReceiveLoop();
     }
 
     public override async ValueTask<int> ReceiveOnce(Memory<byte> buffer)
@@ -96,6 +106,7 @@ public sealed class QuicSession<TId> : AbstractSession<TId, QuicSession<TId>>
 
         if (!IsConnected || !CanReceive || !QuicStream.CanRead)
             SpinWait.SpinUntil(() => IsConnected && CanReceive && QuicStream.CanRead);
+
         return await QuicStream.ReadAsync(buffer);
     }
 
@@ -105,16 +116,17 @@ public sealed class QuicSession<TId> : AbstractSession<TId, QuicSession<TId>>
 
         _connectionReady = false;
 
+        if (QuicStream != null)
+        {
+            QuicStream.CompleteWrites();
+            await QuicStream.DisposeAsync();
+            QuicStream = null;
+        }
+
         if (QuicConnection != null)
         {
             await QuicConnection.DisposeAsync();
             QuicConnection = null;
-        }
-
-        if (QuicStream != null)
-        {
-            await QuicStream.DisposeAsync();
-            QuicStream = null;
         }
     }
 }

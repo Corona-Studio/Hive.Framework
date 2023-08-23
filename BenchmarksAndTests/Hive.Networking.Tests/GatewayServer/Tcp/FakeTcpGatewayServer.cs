@@ -54,11 +54,11 @@ public class FakeTcpGatewayServer : AbstractGatewayServer<TcpSession<ushort>, Gu
 
     private async Task TcpServerSessionOnOnDataReceived(object? sender, ReceivedDataEventArgs e)
     {
-        await DoForwardDataToClientAsync(e.Data);
+        await DoForwardDataToClientAsync(e);
     }
 
     private async Task TcpClientSessionOnOnDataReceived(object? sender, ReceivedDataEventArgs e)
     {
-        await DoForwardDataToServerAsync((TcpSession<ushort>)sender!, e.Data);
+        await DoForwardDataToServerAsync((TcpSession<ushort>)sender!, e);
     }
 }

@@ -13,6 +13,7 @@ using Hive.Framework.Networking.Abstractions.EventArgs;
 using Hive.Framework.Networking.Shared.Attributes;
 using Hive.Framework.Networking.Shared.Helpers;
 using Hive.Framework.Shared;
+using Hive.Framework.Shared.Helpers;
 
 namespace Hive.Framework.Networking.Shared
 {
@@ -29,7 +30,7 @@ namespace Hive.Framework.Networking.Shared
         public const int DefaultSocketBufferSize = 8192 * 4; 
         protected const int PacketHeaderLength = sizeof(ushort); // 包头长度2Byte
         
-        protected Channel<SerializedPacketMemory>? SendChannel;
+        protected Channel<ReadOnlyMemory<byte>>? SendChannel;
         protected CancellationTokenSource? CancellationTokenSource;
         protected bool ReceivingLoopRunning;
         protected bool SendingLoopRunning;
@@ -52,7 +53,7 @@ namespace Hive.Framework.Networking.Shared
         protected AbstractSession(IPacketCodec<TId> packetCodec, IDataDispatcher<TSession> dataDispatcher)
         {
             ResetCancellationToken(new CancellationTokenSource());
-            ResetSendChannel(Channel.CreateBounded<SerializedPacketMemory>(new BoundedChannelOptions(1024)
+            ResetSendChannel(Channel.CreateBounded<ReadOnlyMemory<byte>>(new BoundedChannelOptions(1024)
             {
                 SingleReader = true,
                 SingleWriter = true,
@@ -74,7 +75,7 @@ namespace Hive.Framework.Networking.Shared
             DoConnect();
         }
 
-        public virtual async ValueTask SendAsync(SerializedPacketMemory data)
+        public virtual async ValueTask SendAsync(ReadOnlyMemory<byte> serializedPacket)
         {
             if (CancellationTokenSource == null)
                 throw new ArgumentNullException(nameof(CancellationTokenSource));
@@ -82,7 +83,7 @@ namespace Hive.Framework.Networking.Shared
                 throw new ArgumentNullException(nameof(SendChannel));
 
             if (await SendChannel.Writer.WaitToWriteAsync(CancellationTokenSource.Token))
-                await SendChannel.Writer.WriteAsync(data);
+                await SendChannel.Writer.WriteAsync(serializedPacket);
 
             if (SendingLoopRunning) return;
 
@@ -164,8 +165,10 @@ namespace Hive.Framework.Networking.Shared
         protected async ValueTask ProcessPacket(ReadOnlyMemory<byte> payloadBytes)
         {
             var packetFlags = PacketCodec.GetPacketFlags(payloadBytes);
+            var isNoPayloadPacket = packetFlags.HasFlag(PacketFlags.NoPayload);
 
-            if (packetFlags.HasFlag(PacketFlags.NoPayload))
+            // 报文既不包含负载同时也没有广播标志，直接发送给分发器
+            if (isNoPayloadPacket && !packetFlags.HasFlag(PacketFlags.Broadcast))
             {
                 var noPayloadPacket = PacketCodec.Decode(payloadBytes.Span);
                 await DispatchPacket(noPayloadPacket.AsPacketDecodeResult());
@@ -173,15 +176,25 @@ namespace Hive.Framework.Networking.Shared
                 return;
             }
 
+            // 报文是需要发给服务端的无负载报文，转发给服务器
+            if (isNoPayloadPacket && packetFlags.HasFlag(PacketFlags.Broadcast))
+            {
+                await InvokeDataReceivedEventAsync(ReadOnlyMemory<byte>.Empty, payloadBytes.Copy());
+
+                return;
+            }
+
+            // 报文是需要转发给服务器的普通报文
             var idMemory = PacketCodec.GetPacketIdMemory(payloadBytes);
             var id = PacketCodec.GetPacketId(idMemory);
 
             var isPacketFinalized = packetFlags.HasFlag(PacketFlags.Finalized);
             var shouldRedirect = RedirectReceivedData && (RedirectPacketIds?.Contains(id) ?? false);
+            var isS2CPacket = packetFlags.HasFlag(PacketFlags.S2CPacket);
 
-            if ((shouldRedirect || packetFlags.HasFlag(PacketFlags.S2CPacket)) && !isPacketFinalized)
+            if ((shouldRedirect || isS2CPacket) && !isPacketFinalized)
             {
-                await InvokeDataReceivedEventAsync(idMemory, payloadBytes.ToArray().AsMemory());
+                await InvokeDataReceivedEventAsync(idMemory, payloadBytes.Copy());
                 
                 return;
             }
@@ -192,6 +205,12 @@ namespace Hive.Framework.Networking.Shared
             await DispatchPacket(packet.AsPacketDecodeResult(), packetType);
         }
 
+        /// <summary>
+        /// 触发数据转发事件
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="data"></param>
+        /// <returns></returns>
         protected async Task InvokeDataReceivedEventAsync(ReadOnlyMemory<byte> id, ReadOnlyMemory<byte> data)
         {
             await (OnDataReceived?.InvokeAsync(this, new ReceivedDataEventArgs(id, data)) ?? Task.CompletedTask);
@@ -218,8 +237,8 @@ namespace Hive.Framework.Networking.Shared
                     if (SendChannel == null) throw new InvalidOperationException(nameof(SendChannel));
                     if (!await SendChannel.Reader.WaitToReadAsync(CancellationTokenSource.Token)) break;
 
-                    using var slice = await SendChannel.Reader.ReadAsync(CancellationTokenSource.Token);
-                    await SendOnce(slice.MemoryOwner.Memory[..slice.Length]);
+                    var slice = await SendChannel.Reader.ReadAsync(CancellationTokenSource.Token);
+                    await SendOnce(slice);
                 }
             }
             finally
@@ -288,8 +307,8 @@ namespace Hive.Framework.Networking.Shared
                         if (receivedLen >= PacketHeaderLength) //还有超过4字节的数据
                         {
                             actualLen = GetTotalLength(BitConverter.ToUInt16(buffer.Span.Slice(offset, PacketHeaderLength)));
-                            // 如果receivedLen>=actualLen,那么下一次循环会把这个包处理掉
-                            // 如果receivedLen<actualLen,等下一次大循环接收到足够的数据，再处理
+                            // 如果 receivedLen >= actualLen,那么下一次循环会把这个包处理掉
+                            // 如果 receivedLen < actualLen,等下一次大循环接收到足够的数据，再处理
                         }
                         else
                         {
@@ -304,14 +323,6 @@ namespace Hive.Framework.Networking.Shared
                     offset = 0;
                 }
             }
-            catch (TaskCanceledException)
-            {
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-                throw;
-            }
             finally
             {
                 ReceivingLoopRunning = false;
@@ -322,7 +333,7 @@ namespace Hive.Framework.Networking.Shared
         public virtual ValueTask DoConnect()
         {
             ResetCancellationToken(new CancellationTokenSource());
-            ResetSendChannel(Channel.CreateBounded<SerializedPacketMemory>(new BoundedChannelOptions(1024)
+            ResetSendChannel(Channel.CreateBounded<ReadOnlyMemory<byte>>(new BoundedChannelOptions(1024)
             {
                 SingleReader = true,
                 SingleWriter = true,
@@ -347,7 +358,7 @@ namespace Hive.Framework.Networking.Shared
             CancellationTokenSource = cancellationToken;
         }
 
-        protected void ResetSendChannel(Channel<SerializedPacketMemory>? channel = null)
+        protected void ResetSendChannel(Channel<ReadOnlyMemory<byte>>? channel = null)
         {
             SendChannel?.Writer?.TryComplete();
             SendChannel = channel;

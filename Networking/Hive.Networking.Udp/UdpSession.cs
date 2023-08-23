@@ -9,6 +9,7 @@ using System.Threading.Channels;
 using Hive.Framework.Networking.Shared.Helpers;
 using System.Buffers;
 using Hive.Framework.Networking.Shared.Attributes;
+using Hive.Framework.Shared;
 
 namespace Hive.Framework.Networking.Udp
 {
@@ -103,14 +104,15 @@ namespace Hive.Framework.Networking.Udp
             if (Socket == null)
                 throw new InvalidOperationException("Socket Init failed!");
 
-            var dataArray = data.ToArray();
             var totalLen = data.Length;
             var sentLen = 0;
 
             while (sentLen < totalLen)
             {
-                var segment = new ArraySegment<byte>(dataArray, sentLen, totalLen - sentLen);
-                var sendThisTime = await Socket.SendToAsync(segment, SocketFlags.None, RemoteEndPoint!);
+                if(!Socket.Connected)
+                    await Socket.ConnectAsync(RemoteEndPoint!);
+
+                var sendThisTime = await Socket.SendAsync(data[sentLen..], SocketFlags.None);
 
                 sentLen += sendThisTime;
             }

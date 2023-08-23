@@ -30,8 +30,8 @@ namespace Hive.Framework.Shared.Helpers
             var allPorts = ipsTCP.Select(ep => ep.Port).ToList();
             allPorts.AddRange(ipsUDP.Select(ep => ep.Port));
             allPorts.AddRange(tcpConnInfoArray.Select(conn => conn.LocalEndPoint.Port));
-
-            return allPorts.ToHashSet();
+            
+            return new HashSet<int>(allPorts);
         }
 
         public static int GetRandomPort()

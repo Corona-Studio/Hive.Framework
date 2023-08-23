@@ -48,18 +48,19 @@ namespace Hive.Framework.Shared.Collections
 
 		public TV? GetValueByKey(TK key)
 		{
-			if (key != null && _kv.ContainsKey(key))
+			if (key != null && _kv.TryGetValue(key, out var byKey))
 			{
-				return _kv[key];
+				return byKey;
 			}
+
 			return default;
 		}
 
 		public TK? GetKeyByValue(TV value)
 		{
-			if (value != null && _vk.ContainsKey(value))
+			if (value != null && _vk.TryGetValue(value, out var byValue))
 			{
-				return _vk[value];
+				return byValue;
 			}
 			return default;
 		}

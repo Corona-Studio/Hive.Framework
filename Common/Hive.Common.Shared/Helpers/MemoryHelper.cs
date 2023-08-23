@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Buffers;
 using System.Linq;
 
 namespace Hive.Framework.Shared.Helpers
@@ -7,6 +6,15 @@ namespace Hive.Framework.Shared.Helpers
     public static class MemoryHelper
     {
         public static Span<T> SliceAndIncrement<T>(this Span<T> span, ref int index, int length)
+        {
+            var result = span.Slice(index, length);
+
+            index += length;
+
+            return result;
+        }
+
+        public static ReadOnlySpan<T> SliceAndIncrement<T>(this ReadOnlySpan<T> span, ref int index, int length)
         {
             var result = span.Slice(index, length);
 
@@ -24,19 +32,37 @@ namespace Hive.Framework.Shared.Helpers
             return result;
         }
 
-        public static SerializedPacketMemory CombineMemory(params ReadOnlyMemory<byte>[] memories)
+        public static Memory<T> Copy<T>(this Memory<T> old)
+        {
+            var result = new Memory<T>(new T[old.Length]);
+
+            old.CopyTo(result);
+
+            return result;
+        }
+
+        public static ReadOnlyMemory<T> Copy<T>(this ReadOnlyMemory<T> old)
+        {
+            var result = new Memory<T>(new T[old.Length]);
+
+            old.CopyTo(result);
+
+            return result;
+        }
+
+        public static ReadOnlyMemory<byte> CombineMemory(params ReadOnlyMemory<byte>[] memories)
         {
             var totalSize = memories.Sum(m => m.Length);
-            var rentMemory = MemoryPool<byte>.Shared.Rent(totalSize);
+            var result = new Memory<byte>(new byte[totalSize]);
 
             var index = 0;
 
             foreach (var memory in memories)
             {
-                memory.Span.CopyTo(rentMemory.Memory.Span.SliceAndIncrement(ref index, memory.Length));
+                memory.Span.CopyTo(result.Span.SliceAndIncrement(ref index, memory.Length));
             }
 
-            return new SerializedPacketMemory(totalSize, rentMemory);
+            return result;
         }
     }
 }

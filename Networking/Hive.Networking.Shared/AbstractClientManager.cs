@@ -210,6 +210,11 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
         return _idSessionMapper.TryGetValue(sessionId, out session);
     }
 
+    public IEnumerable<TSession> GetAllSessions()
+    {
+        return _idSessionMapper.Values;
+    }
+
     /// <summary>
     /// 当客户端成功连接时调用，
     /// 默认的实现会将会话加入在线列表并开始轮询在线状态

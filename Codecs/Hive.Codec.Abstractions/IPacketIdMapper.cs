@@ -15,6 +15,7 @@ namespace Hive.Framework.Codec.Abstractions
         void Register(Type type, out TId id);
 
         TId GetPacketId(Type type);
+        ReadOnlyMemory<byte> GetPacketIdMemory(Type type);
         Type GetPacketType(TId id);
     }
 }

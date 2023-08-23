@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Buffers;
 using Hive.Framework.Shared;
 
 namespace Hive.Framework.Codec.Abstractions
@@ -20,7 +19,7 @@ namespace Hive.Framework.Codec.Abstractions
         ReadOnlyMemory<byte> GetPacketFlagsMemory(ReadOnlyMemory<byte> payload);
         PacketFlags GetPacketFlags(ReadOnlyMemory<byte> data);
 
-        SerializedPacketMemory Encode<T>(T obj, PacketFlags flags);
+        ReadOnlyMemory<byte> Encode<T>(T obj, PacketFlags flags);
 
         PacketDecodeResultWithId<TId> Decode(ReadOnlySpan<byte> data);
     }

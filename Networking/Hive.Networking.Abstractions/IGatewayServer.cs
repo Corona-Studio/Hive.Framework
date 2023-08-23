@@ -19,7 +19,7 @@ public interface IGatewayServer<TSession, TSessionId, TId> : IDisposable
     IAcceptorImpl<TSession, TSessionId> Acceptor { get; }
 
     Func<TSession, ILoadBalancer<TSession>> LoadBalancerGetter { get; }
-    event EventHandler<LoadBalancerInitializedEventArgs<TSession>> OnLoadBalancerInitialized;
+    event EventHandler<LoadBalancerInitializedEventArgs<TSession>>? OnLoadBalancerInitialized;
 
     void StartServer();
     void StopServer();

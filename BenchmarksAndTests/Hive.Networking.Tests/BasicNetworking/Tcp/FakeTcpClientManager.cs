@@ -29,7 +29,7 @@ public class FakeTcpClientManager : AbstractClientManager<Guid, TcpSession<ushor
     public int AdderCount { get; private set; }
     public int AdderPackageReceiveCount { get; private set; }
     public int BidirectionalPacketAddResult { get; private set; }
-    public PacketFlags NoPayloadPacketFlags { get; private set; }
+    public int NoPayloadPacketCount { get; private set; }
 
     public override ReadOnlyMemory<byte> GetEncodedC2SSessionPrefix(TcpSession<ushort> session)
     {
@@ -74,9 +74,9 @@ public class FakeTcpClientManager : AbstractClientManager<Guid, TcpSession<ushor
             await tcpSession.SendAsync(new S2CTestPacket { ReversedRandomNumber = -message.Payload.RandomNumber }, PacketFlags.None);
         });
 
-        session.OnReceive<INoPayloadPacketPlaceHolder>((result, _) =>
+        session.OnReceive<INoPayloadPacketPlaceHolder>((_, _) =>
         {
-            NoPayloadPacketFlags |= result.Flags;
+            NoPayloadPacketCount++;
         });
     }
 

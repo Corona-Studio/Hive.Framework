@@ -1,5 +1,8 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 using Hive.Framework.Codec.Abstractions;
 using Hive.Framework.Networking.Abstractions;
@@ -37,7 +40,7 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
     /// <para>该方法会在服务器添加到负载均衡器后进行调用，用于后续的额外设置（例如设置该服务器的权重）</para>
     /// <para>该方法的第一个参数 <see cref="ILoadBalancer{TSession}"/> 会传入当前的负载均衡器，第二个参数 <see cref="TSession"/> 会传入当前添加的会话</para>
     /// </summary>
-    public event EventHandler<LoadBalancerInitializedEventArgs<TSession>> OnLoadBalancerInitialized;
+    public event EventHandler<LoadBalancerInitializedEventArgs<TSession>>? OnLoadBalancerInitialized;
 
     protected AbstractGatewayServer(
         IPacketCodec<TId> packetCodec,
@@ -153,25 +156,31 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
     /// <summary>
     /// 客户端数据转发方法
     /// <para>一般情况下，此方法会拆解客户端数据包，并向其追加客户端会话 ID 等信息，并将数据包转发给相应服务器</para>
+    /// <para>注意：在转发前应确认客户端封包标志是否包含 <see cref="PacketFlags.NoPayload"/> 标志，如果该报文包含该标志且标志中不包含 <see cref="PacketFlags.Broadcast"/> 标志，则不应该转发该包</para>
     /// <para>注意：在调用该转发方法时，应始终保持 [封包 ID] 的下一位为 [客户端会话 ID]，并且服务端也应该从 [客户端会话 ID] 部分开始解析自定义包头</para>
     /// </summary>
     /// <param name="session"></param>
-    /// <param name="data"></param>
+    /// <param name="receivedDataEventArgs"></param>
     /// <returns></returns>
-    protected virtual async ValueTask DoForwardDataToServerAsync(TSession session, ReadOnlyMemory<byte> data)
+    protected virtual async ValueTask DoForwardDataToServerAsync(TSession session, ReceivedDataEventArgs receivedDataEventArgs)
     {
-        var packetIdMemory = PacketCodec.GetPacketIdMemory(data);
-        var packetId = PacketCodec.GetPacketId(packetIdMemory);
-        
-        if (!GetServerSession(packetId, true, out var serverSession)) return;
+        var data = receivedDataEventArgs.Data;
+        var currentPacketFlagsMemory = PacketCodec.GetPacketFlagsMemory(data);
+        var currentPacketFlags = (PacketFlags)BitConverter.ToUInt32(currentPacketFlagsMemory.Span);
+
+        // 一般情况下，是不允许客户端使用广播向其他会话发送消息的
+        if (currentPacketFlags.HasFlag(PacketFlags.Broadcast)) return;
 
         // [LENGTH (2) | PACKET_FLAGS (4) | PACKET_ID | SESSION_ID | PAYLOAD]
         var clientSessionIdMemory = Acceptor.ClientManager.GetEncodedC2SSessionPrefix(session);
 
-        var currentPacketFlagsMemory = PacketCodec.GetPacketFlagsMemory(data);
-        var currentPacketFlags = (PacketFlags)BitConverter.ToUInt32(currentPacketFlagsMemory.Span);
+        // 不是广播包且包含负载，则将数据包转发给指定服务器
         var newPacketFlags = currentPacketFlags | PacketFlags.HasCustomPacketPrefix;
         var packetFlagsMemory = BitConverter.GetBytes((uint)newPacketFlags).AsMemory();
+        var packetIdMemory = receivedDataEventArgs.Id;
+        var packetId = PacketCodec.GetPacketId(receivedDataEventArgs.Id);
+        
+        if (!GetServerSession(packetId, true, out var serverSession)) return;
 
         var payload = data[(2 + 4 + packetIdMemory.Length)..];
         var resultLength = packetFlagsMemory.Length + packetIdMemory.Length + clientSessionIdMemory.Length + payload.Length;
@@ -193,33 +202,104 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
     /// 服务端数据转发方法
     /// <para>一般情况下，此方法会拆解服务端数据包，并解析其中包含的客户端会话 ID 等信息，并将数据包转发给相应客户端</para>
     /// <para>注意：在调用该转发方法时，应始终保持 [封包 ID] 的下一位为 [客户端会话 ID]，并且服务端也应该从 [客户端会话 ID] 部分开始解析自定义包头</para>
+    /// <para>如果是广播包或无负载封包的话，则不需要包含 [客户端会话 ID]</para>
     /// </summary>
-    /// <param name="session"></param>
-    /// <param name="data"></param>
+    /// <param name="receivedDataEventArgs"></param>
     /// <returns></returns>
-    protected virtual async ValueTask DoForwardDataToClientAsync(ReadOnlyMemory<byte> data)
+    protected virtual async ValueTask DoForwardDataToClientAsync(ReceivedDataEventArgs receivedDataEventArgs)
     {
-        var packetIdMemory = PacketCodec.GetPacketIdMemory(data);
-        var packetFlags = PacketCodec.GetPacketFlags(data);
+        var data = receivedDataEventArgs.Data;
+        var currentPacketFlagsMemory = PacketCodec.GetPacketFlagsMemory(data);
+        var currentPacketFlags = (PacketFlags)BitConverter.ToUInt32(currentPacketFlagsMemory.Span);
+        var isBroadcastPacket = currentPacketFlags.HasFlag(PacketFlags.Broadcast);
 
-        if (!packetFlags.HasFlag(PacketFlags.S2CPacket)) return;
+        var newFlag = currentPacketFlags | PacketFlags.Finalized;
+        var newPacketFlagsMemory = BitConverter.GetBytes((uint)newFlag);
+
+        // 如果是广播包，则处理广播逻辑
+        if (isBroadcastPacket)
+        {
+            var isC2SPacket = currentPacketFlags.HasFlag(PacketFlags.C2SPacket);
+            var isS2CPacket = currentPacketFlags.HasFlag(PacketFlags.S2CPacket);
+
+            // 如果是广播包，则必须指明广播的群体，如果没有指明，该包将会被视作无效
+            // 如果该包标记了 PacketFlags.C2SPacket，则该包是向全体服务端广播
+            // 如果该包标记了 PacketFlags.S2CPacket，则该包是向全体客户端广播
+            // PacketFlags.C2SPacket 和 PacketFlags.S2CPacket，意味着向全体会话发送
+            if (!isS2CPacket && !isC2SPacket) return;
+
+            var oldPacketLengthMemory = data[..2];
+            var oldPacketPayloadMemory = data[6..];
+            var resultBroadcastPacket = MemoryHelper.CombineMemory(
+                oldPacketLengthMemory,
+                newPacketFlagsMemory,
+                oldPacketPayloadMemory);
+
+            var serverSessionsIps = new HashSet<IPEndPoint>();
+
+            if (isC2SPacket)
+            {
+                foreach (var (_, loadBalancer) in PacketRouteTable)
+                {
+                    foreach (var broadcastServerSession in loadBalancer)
+                    {
+                        serverSessionsIps.Add(broadcastServerSession.RemoteEndPoint);
+                        await broadcastServerSession.SendAsync(resultBroadcastPacket);
+                    }
+                }
+
+            }
+
+            if (isS2CPacket)
+            {
+                Console.WriteLine($"{Acceptor.ClientManager.GetAllSessions().Count()}");
+                foreach (var possibleSession in Acceptor.ClientManager.GetAllSessions())
+                {
+                    if(serverSessionsIps.Contains(possibleSession.RemoteEndPoint)) continue;
+
+                    await possibleSession.SendAsync(resultBroadcastPacket);
+                }
+            }
+
+            return;
+        }
+
+        // 如果该包既不是广播包也没有标明是发向客户端的包，则视为无效包
+        if (!currentPacketFlags.HasFlag(PacketFlags.S2CPacket)) return;
 
         var sessionId = Acceptor.ClientManager.ResolveSessionPrefix(data);
 
+        // 如果没有从客户端管理器中获取到相应的会话，则丢弃该包
         if (!Acceptor.ClientManager.TryGetSession(sessionId, out var session))
             return;
 
-        var newFlag = packetFlags | PacketFlags.Finalized;
-        var packetFlagsMemory = BitConverter.GetBytes((uint) newFlag);
-        var payload = data[(2 + 4 + packetIdMemory.Length + Acceptor.ClientManager.SessionIdSize)..];
-        var resultLength = packetFlagsMemory.Length + packetIdMemory.Length + payload.Length;
-        var lengthMemory = BitConverter.GetBytes((ushort)resultLength).AsMemory();
+        var isNoPayloadPacket = currentPacketFlags.HasFlag(PacketFlags.NoPayload);
 
         // [LENGTH (2) | PACKET_FLAGS (4) | PACKET_ID | SESSION_ID | PAYLOAD]
+        // 如果是无负载的包，则去掉会话 ID 前缀后即可发送
+        if (isNoPayloadPacket)
+        {
+            var oldPacketPayloadMemory = data[(2 + 4 + Acceptor.ClientManager.SessionIdSize)..];
+            var newPacketLength = newPacketFlagsMemory.Length + oldPacketPayloadMemory.Length;
+            var newPacketLengthMemory = BitConverter.GetBytes((ushort)newPacketLength).AsMemory();
+
+            var repackedNoPayloadData = MemoryHelper.CombineMemory(
+                newPacketLengthMemory, newPacketFlagsMemory, oldPacketPayloadMemory);
+
+            await session!.SendAsync(repackedNoPayloadData);
+
+            return;
+        }
+
+        var packetIdMemory = receivedDataEventArgs.Id;
+        var payload = data[(2 + 4 + packetIdMemory.Length + Acceptor.ClientManager.SessionIdSize)..];
+        var resultLength = newPacketFlagsMemory.Length + packetIdMemory.Length + payload.Length;
+        var lengthMemory = BitConverter.GetBytes((ushort)resultLength).AsMemory();
+
         var repackedData =
             MemoryHelper.CombineMemory(
                 lengthMemory,
-                packetFlagsMemory,
+                newPacketFlagsMemory,
                 packetIdMemory,
                 payload);
 

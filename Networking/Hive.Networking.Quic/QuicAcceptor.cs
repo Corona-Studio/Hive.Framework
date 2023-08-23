@@ -7,6 +7,7 @@ using System.Net.Quic;
 using System.Net.Security;
 using System.Runtime.Versioning;
 using System.Security.Cryptography.X509Certificates;
+using Hive.Framework.Networking.Shared.Attributes;
 
 namespace Hive.Framework.Networking.Quic;
 
@@ -54,6 +55,7 @@ public sealed class QuicAcceptor<TId, TSessionId> : AbstractAcceptor<QuicConnect
             {
                 DefaultStreamErrorCode = 0,
                 DefaultCloseErrorCode = 0,
+                IdleTimeout = TimeSpan.FromMinutes(5),
                 ServerAuthenticationOptions = new SslServerAuthenticationOptions
                 {
                     ApplicationProtocols = new List<SslApplicationProtocol> { SslApplicationProtocol.Http3 },
@@ -67,6 +69,8 @@ public sealed class QuicAcceptor<TId, TSessionId> : AbstractAcceptor<QuicConnect
         QuicListener = listener;
     }
 
+    [IgnoreQuicException(QuicError.OperationAborted)]
+    [IgnoreException(typeof(OperationCanceledException))]
     private async Task StartAcceptClient()
     {
         await InitListener();

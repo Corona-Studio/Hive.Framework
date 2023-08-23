@@ -63,7 +63,7 @@ public static class TaskHelper
                 return list;
             });
 
-        task.CatchException(function.GetMethodInfo().GetCustomAttributes<AbstractIgnoreExceptionAttribute>().ToArray());
+        task.CatchException(function.GetMethodInfo().GetCustomAttributes<AbstractIgnoreExceptionAttribute>());
     }
 
     public static async Task CancelAfterAndWaitAllTaskAsync(this CancellationTokenSource cts, TimeSpan timeSpan)
@@ -139,7 +139,7 @@ public static class TaskHelper
         }
         catch (TaskCanceledException)
         {
-            // Log.Verbose(e, "A Task.WaitUtil task has canceled");
+            Console.WriteLine("Task canceled");
         }
     }
 
@@ -151,7 +151,7 @@ public static class TaskHelper
         }
         catch (TaskCanceledException)
         {
-            // Log.Verbose(e, "A Task.WaitWhile task has canceled");
+            Console.WriteLine("Task canceled");
         }
     }
 

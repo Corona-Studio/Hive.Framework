@@ -7,4 +7,8 @@
     <RootNamespace>Hive.Framework.Shared</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="System.Memory" Version="4.5.5" />
+  </ItemGroup>
+
 </Project>

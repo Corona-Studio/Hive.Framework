@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Buffers;
 using System.Net;
 using System.Threading.Tasks;
 using Hive.Framework.Networking.Abstractions.EventArgs;
@@ -24,7 +23,7 @@ namespace Hive.Framework.Networking.Abstractions
         /// </summary>
         /// <param name="data"></param>
         /// <returns></returns>
-        ValueTask SendAsync(SerializedPacketMemory data);
+        ValueTask SendAsync(ReadOnlyMemory<byte> data);
         ValueTask SendOnce(ReadOnlyMemory<byte> data);
         ValueTask<int> ReceiveOnce(Memory<byte> buffer);
 

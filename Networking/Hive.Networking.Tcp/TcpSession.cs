@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Hive.Framework.Codec.Abstractions;
 using Hive.Framework.Networking.Abstractions;
 using Hive.Framework.Networking.Shared;
+using Hive.Framework.Shared;
 
 namespace Hive.Framework.Networking.Tcp
 {

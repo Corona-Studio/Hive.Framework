@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Net;
 using Hive.Framework.Networking.Abstractions.EventArgs;
 
@@ -70,6 +71,12 @@ public interface IClientManager<TSessionId, TSession>
     /// <param name="session"></param>
     /// <returns></returns>
     bool TryGetSession(TSessionId sessionId, out TSession? session);
+
+    /// <summary>
+    /// 获取所有处于正常状态的会话
+    /// </summary>
+    /// <returns></returns>
+    IEnumerable<TSession> GetAllSessions();
 
     event EventHandler<ClientConnectionChangedEventArgs<TSession>>? OnClientConnectionStateChanged;
 }

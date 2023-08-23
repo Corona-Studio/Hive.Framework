@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\DataSynchronizer\Hive.DataSynchronizer.Abstraction\Hive.DataSynchronizer.Abstraction.csproj" />
+    <ProjectReference Include="..\..\DataSynchronizer\Hive.DataSynchronizer.SourceGenerator\Hive.DataSynchronizer.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\DataSynchronizer\Hive.DataSynchronizer\Hive.DataSynchronizer.csproj" />
+  </ItemGroup>
+
+</Project>
