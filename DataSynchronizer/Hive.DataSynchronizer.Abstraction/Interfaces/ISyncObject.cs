@@ -1,6 +1,6 @@
 ﻿namespace Hive.DataSynchronizer.Abstraction.Interfaces
 {
-    public interface IDataSynchronizationObject
+    public interface ISyncObject
     {
         ushort ObjectSyncId { get; }
 

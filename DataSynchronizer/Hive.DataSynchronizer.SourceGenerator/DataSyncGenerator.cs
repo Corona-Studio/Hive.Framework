@@ -11,16 +11,19 @@ using Microsoft.CodeAnalysis.Text;
 namespace Hive.DataSynchronizer.SourceGenerator;
 
 [Generator]
-public class DataSynchronizationGenerator : ISourceGenerator
+public class DataSyncGenerator : ISourceGenerator
 {
-    private const string DataSynchronizationObjectInterface =
-        "Hive.DataSynchronizer.Abstraction.Interfaces.IDataSynchronizationObject";
+    private const string SyncObjectInterface =
+        "Hive.DataSynchronizer.Abstraction.Interfaces.ISyncObject";
 
-    private const string DataSynchronizationObjectAttribute =
-        "Hive.DataSynchronizer.Shared.Attributes.DataSynchronizationObjectAttribute";
+    private const string SyncObjectAttribute =
+        "Hive.DataSynchronizer.Shared.Attributes.SyncObjectAttribute";
 
-    private const string DataSynchronizationPropertyAttribute =
-        "Hive.DataSynchronizer.Shared.Attributes.DataSynchronizationPropertyAttribute";
+    private const string SyncPropertyAttribute =
+        "Hive.DataSynchronizer.Shared.Attributes.SyncPropertyAttribute";
+
+    private const string CustomSerializerAttribute =
+        "Hive.DataSynchronizer.Shared.Attributes.CustomSerializerAttribute";
 
     public void Initialize(GeneratorInitializationContext context)
     {
@@ -46,21 +49,21 @@ public class DataSynchronizationGenerator : ISourceGenerator
                 .Where(cls => cls.AttributeLists.Any(attrList =>
                     attrList.Attributes.Any(attr =>
                         model.GetTypeInfo(attr).Type?.ToDisplayString() ==
-                        DataSynchronizationObjectAttribute)));
+                        SyncObjectAttribute)));
 
             foreach (var classSyntax in dataSyncClasses)
             {
                 var dataSyncAttribute =
                     classSyntax.AttributeLists.SelectMany(attrList => attrList.Attributes)
                         .First(attr =>
-                            model.GetTypeInfo(attr).Type?.ToDisplayString() == DataSynchronizationObjectAttribute);
+                            model.GetTypeInfo(attr).Type?.ToDisplayString() == SyncObjectAttribute);
 
                 // Process fields with [DataSynchronizationProperty] attribute
                 var dataSyncProperties = classSyntax.Members.OfType<FieldDeclarationSyntax>()
                     .Where(field => field.AttributeLists.Any(attrList =>
                         attrList.Attributes.Any(attr =>
                             model.GetTypeInfo(attr).Type?.ToDisplayString() ==
-                            DataSynchronizationPropertyAttribute)));
+                            SyncPropertyAttribute)));
 
                 // Generate property and PerformUpdate method
                 var classNamespace = classSyntax.Ancestors().OfType<NamespaceDeclarationSyntax>().FirstOrDefault()
@@ -78,7 +81,7 @@ public class DataSynchronizationGenerator : ISourceGenerator
 
                                      namespace {{classNamespace}}
                                      {
-                                        {{classSyntax.Modifiers}} class {{className}} : {{DataSynchronizationObjectInterface}}
+                                        {{classSyntax.Modifiers}} class {{className}} : {{SyncObjectInterface}}
                                         {
                                             private readonly ConcurrentDictionary<string, IUpdateInfo> _updatedFields
                                                 = new ConcurrentDictionary<string, IUpdateInfo>();
@@ -112,7 +115,7 @@ public class DataSynchronizationGenerator : ISourceGenerator
                     .SelectMany(attrList => attrList.Attributes)
                     .FirstOrDefault(attr =>
                         model.GetTypeInfo(attr).Type?.ToDisplayString() ==
-                        "Hive.DataSynchronizer.Shared.Attributes.UseCustomUpdateInfoTypeAttribute");
+                        CustomSerializerAttribute);
             var hasCustomUpdateInfoAttribute = customUpdateInfoTypeAttribute != null;
 
             var fieldName = field.Declaration.Variables.First().Identifier.ValueText;
@@ -174,7 +177,7 @@ public class DataSynchronizationGenerator : ISourceGenerator
                     .SelectMany(attrList => attrList.Attributes)
                     .FirstOrDefault(attr =>
                         model.GetTypeInfo(attr).Type?.ToDisplayString() ==
-                        "Hive.DataSynchronizer.Shared.Attributes.UseCustomUpdateInfoTypeAttribute");
+                        CustomSerializerAttribute);
             var hasCustomUpdateInfoAttribute = customUpdateInfoTypeAttribute != null;
 
             var fieldName = field.Declaration.Variables.First().Identifier.ValueText;

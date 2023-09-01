@@ -3,11 +3,11 @@
 namespace Hive.DataSynchronizer.Shared.Attributes
 {
     [AttributeUsage(AttributeTargets.Class)]
-    public sealed class DataSynchronizationObjectAttribute : Attribute
+    public sealed class SyncObjectAttribute : Attribute
     {
         public ushort ObjectSyncId { get; }
 
-        public DataSynchronizationObjectAttribute(ushort objectSyncId)
+        public SyncObjectAttribute(ushort objectSyncId)
         {
             ObjectSyncId = objectSyncId;
         }

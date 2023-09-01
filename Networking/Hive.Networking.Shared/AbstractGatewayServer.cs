@@ -252,7 +252,6 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
 
             if (isS2CPacket)
             {
-                Console.WriteLine($"{Acceptor.ClientManager.GetAllSessions().Count()}");
                 foreach (var possibleSession in Acceptor.ClientManager.GetAllSessions())
                 {
                     if(serverSessionsIps.Contains(possibleSession.RemoteEndPoint)) continue;

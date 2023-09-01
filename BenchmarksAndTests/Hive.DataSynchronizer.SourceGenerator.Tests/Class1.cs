@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Buffers;
 using System.Text;
 using Hive.DataSynchronizer.Shared.Attributes;
 using Hive.DataSynchronizer.Shared.UpdateInfo;
@@ -57,14 +56,14 @@ namespace Hive.DataSynchronizer.SourceGenerator.Tests
         }
     }
 
-    [DataSynchronizationObject(1)]
+    [SyncObject(1)]
     public partial class Class1
     {
-        [DataSynchronizationProperty]
+        [SyncProperty]
         private int _in;
 
-        [DataSynchronizationProperty]
-        [UseCustomUpdateInfoType(typeof(GuidUpdateInfo))]
+        [SyncProperty]
+        [CustomSerializer(typeof(GuidUpdateInfo))]
         private Guid _guidTest;
     }
 }

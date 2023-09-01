@@ -7,8 +7,8 @@ namespace Hive.DataSynchronizer.Abstraction
         void Start();
         void Stop();
 
-        void AddSync(IDataSynchronizationObject synchronizationObject);
-        void RemoveSync(IDataSynchronizationObject synchronizationObject);
+        void AddSync(ISyncObject synchronizationObject);
+        void RemoveSync(ISyncObject synchronizationObject);
         void RemoveSync(ushort objectSyncId);
     }
 }
