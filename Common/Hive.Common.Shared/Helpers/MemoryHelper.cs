@@ -59,6 +59,7 @@ namespace Hive.Framework.Shared.Helpers
 
             foreach (var memory in memories)
             {
+                if (memory.IsEmpty) continue;
                 memory.Span.CopyTo(result.Span.SliceAndIncrement(ref index, memory.Length));
             }
 

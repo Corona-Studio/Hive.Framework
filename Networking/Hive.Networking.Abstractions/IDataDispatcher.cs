@@ -23,5 +23,14 @@ namespace Hive.Framework.Networking.Abstractions
         void UnregisterAll<T>();
         void UnregisterAll();
         ValueTask DispatchAsync(TSession sender, PacketDecodeResult<object?> data, Type? dataType = null);
+
+        /// <summary>
+        /// 添加一个自定义的数据分发路由
+        /// </summary>
+        /// <param name="callback">
+        /// 这个方法用来判断数据分发器接收到的数据包是否是需要进行自定义转发的数据包
+        /// <para>如果是，那么应该返回这个数据包的类型，否则返回 null</para>
+        /// </param>
+        void AddCustomPacketRoute(Func<PacketDecodeResult<object?>, Type?> callback);
     }
 }

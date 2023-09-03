@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
@@ -24,6 +23,7 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
     where TId : unmanaged
 {
     protected readonly ConcurrentDictionary<TId, ILoadBalancer<TSession>> PacketRouteTable = new ();
+    protected readonly ConcurrentDictionary<IPEndPoint, TSession> ServerSessionTable = new ();
 
     public IPacketCodec<TId> PacketCodec { get; }
     public IAcceptorImpl<TSession, TSessionId> Acceptor { get; }
@@ -66,6 +66,10 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
 
     protected virtual void AddPacketRoute(TId packetId, TSession session)
     {
+        if(session.RemoteEndPoint is null)
+            throw new InvalidOperationException("Session remote end point is null.");
+
+        ServerSessionTable.AddOrUpdate(session.RemoteEndPoint, session, (_, _) => session);
         PacketRouteTable.AddOrUpdate(packetId, LoadBalancerGetter(session), (_, loadBalancer) =>
         {
             loadBalancer.AddSession(session);
@@ -120,6 +124,10 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
     /// <param name="e"></param>
     protected virtual void InvokeOnClientDisconnected(ClientConnectionChangedEventArgs<TSession> e)
     {
+        if(e.Session.RemoteEndPoint is null)
+            throw new InvalidOperationException("Session remote end point is null.");
+
+        ServerSessionTable.TryRemove(e.Session.RemoteEndPoint, out _);
         foreach (var (_, loadBalancer) in PacketRouteTable)
             loadBalancer.UpdateSessionAvailability(e.Session, false);
     }
@@ -131,6 +139,10 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
     /// <param name="e"></param>
     protected virtual void InvokeOnClientReconnected(ClientConnectionChangedEventArgs<TSession> e)
     {
+        if(e.Session.RemoteEndPoint is null)
+            throw new InvalidOperationException("Session remote end point is null.");
+        
+        ServerSessionTable.AddOrUpdate(e.Session.RemoteEndPoint, e.Session, (_, _) => e.Session);
         foreach (var (_, loadBalancer) in PacketRouteTable)
             loadBalancer.UpdateSessionAvailability(e.Session, true);
     }
@@ -235,25 +247,26 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
                 newPacketFlagsMemory,
                 oldPacketPayloadMemory);
 
-            var serverSessionsIps = new HashSet<IPEndPoint>();
-
             if (isC2SPacket)
             {
                 foreach (var (_, loadBalancer) in PacketRouteTable)
                 {
                     foreach (var broadcastServerSession in loadBalancer)
                     {
-                        serverSessionsIps.Add(broadcastServerSession.RemoteEndPoint);
                         await broadcastServerSession.SendAsync(resultBroadcastPacket);
                     }
                 }
 
             }
 
+            var serverSessionsIps = ServerSessionTable.Keys.ToHashSet();
+
             if (isS2CPacket)
             {
                 foreach (var possibleSession in Acceptor.ClientManager.GetAllSessions())
                 {
+                    if(possibleSession.RemoteEndPoint is null)
+                        throw new InvalidOperationException("Session remote end point is null.");
                     if(serverSessionsIps.Contains(possibleSession.RemoteEndPoint)) continue;
 
                     await possibleSession.SendAsync(resultBroadcastPacket);
@@ -313,7 +326,7 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
             return false;
         }
 
-        serverSession = useLoadBalancer? loadBalancer.GetOne() : loadBalancer.GetRawList()[0];
+        serverSession = useLoadBalancer? loadBalancer.GetOne() : loadBalancer.GetRawList().RandomSelect();
         return true;
     }
 

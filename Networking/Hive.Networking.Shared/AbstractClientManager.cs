@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Hive.Framework.Networking.Abstractions;
 using Hive.Framework.Networking.Abstractions.EventArgs;
 using Hive.Framework.Networking.Shared.Helpers;
+using Hive.Framework.Shared.Helpers;
 
 namespace Hive.Framework.Networking.Shared;
 
@@ -71,8 +72,8 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
         _sessionIdMapper.TryRemove(oldSession, out _);
         _sessionIdMapper.AddOrUpdate(session, sessionId, (_, _) => sessionId);
         
-        _endPointSessionMapper.TryRemove(oldSession.RemoteEndPoint, out _);
-        _endPointSessionMapper.AddOrUpdate(session.RemoteEndPoint, session, (_, _) => session);
+        _endPointSessionMapper.TryRemove(oldSession.RemoteEndPoint!, out _);
+        _endPointSessionMapper.AddOrUpdate(session.RemoteEndPoint!, session, (_, _) => session);
     }
 
     /// <summary>
@@ -191,7 +192,7 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
         lock (_disconnectedSessions)
         {
             disconnectedSession =
-                _disconnectedSessions.FirstOrDefault(s => s.RemoteEndPoint.Equals(remoteEndPoint));
+                _disconnectedSessions.FirstOrDefault(s => s.RemoteEndPoint!.Equals(remoteEndPoint));
 
             if (disconnectedSession != null && disconnectedSession.ShouldDestroyAfterDisconnected)
             {
@@ -228,7 +229,7 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
 
         _idSessionMapper.TryAdd(newId, session);
         _sessionIdMapper.TryAdd(session, newId);
-        _endPointSessionMapper.TryAdd(session.RemoteEndPoint, session);
+        _endPointSessionMapper.TryAdd(session.RemoteEndPoint!, session);
 
         OnClientConnectionStateChanged?.Invoke(this, new ClientConnectionChangedEventArgs<TSession>(session, ClientConnectionStatus.Connected));
     }
@@ -245,7 +246,7 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
     {
         _idSessionMapper.TryRemove(sessionId, out _);
         _sessionIdMapper.TryRemove(session, out _);
-        _endPointSessionMapper.TryRemove(session.RemoteEndPoint, out _);
+        _endPointSessionMapper.TryRemove(session.RemoteEndPoint!, out _);
 
         lock(_disconnectedSessions)
             _disconnectedSessions.Add(session);

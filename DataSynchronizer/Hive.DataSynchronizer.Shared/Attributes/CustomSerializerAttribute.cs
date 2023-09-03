@@ -1,5 +1,5 @@
 ﻿using System;
-using Hive.DataSynchronizer.Shared.UpdateInfo;
+using Hive.DataSynchronizer.Shared.ObjectSyncPacket;
 
 namespace Hive.DataSynchronizer.Shared.Attributes
 {
@@ -10,8 +10,8 @@ namespace Hive.DataSynchronizer.Shared.Attributes
 
         public CustomSerializerAttribute(Type type)
         {
-            if(!type.IsSubclassOf(typeof(AbstractUpdateInfoBase)))
-                throw new ArgumentException($"Type {type} is not a subclass of {nameof(AbstractUpdateInfoBase)}");
+            if(!type.IsSubclassOf(typeof(AbstractObjectSyncPacket)))
+                throw new ArgumentException($"Type {type} is not a subclass of {nameof(AbstractObjectSyncPacket)}");
 
             Type = type;
         }

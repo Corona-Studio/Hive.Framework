@@ -5,6 +5,7 @@ using Hive.Framework.Networking.Shared.Helpers;
 using Hive.Framework.Networking.Tests.Messages;
 using Hive.Framework.Networking.Tests.Messages.BidirectionalPacket;
 using Hive.Framework.Shared;
+using Hive.Framework.Shared.Helpers;
 
 namespace Hive.Framework.Networking.Tests.BasicNetworking;
 
@@ -123,7 +124,7 @@ public abstract class AbstractNetworkingTestBase<TSession, TClient, TAcceptor, T
             await Task.Delay(10);
         }
 
-        await Task.Delay(3000);
+        await Task.Delay(1500);
 
         Assert.Multiple(() =>
         {
@@ -146,7 +147,7 @@ public abstract class AbstractNetworkingTestBase<TSession, TClient, TAcceptor, T
             sentCount++;
         }
 
-        await Task.Delay(3000);
+        await Task.Delay(1500);
 
         Assert.Multiple(() =>
         {
@@ -222,7 +223,7 @@ public abstract class AbstractNetworkingTestBase<TSession, TClient, TAcceptor, T
             await Task.Delay(10);
         }
 
-        await Task.Delay(6000);
+        await Task.Delay(2000);
 
         Assert.That(receivedCount + ClientManager.BidirectionalPacketAddResult, Is.EqualTo(0));
     }
@@ -235,7 +236,7 @@ public abstract class AbstractNetworkingTestBase<TSession, TClient, TAcceptor, T
 
         await Client.SendAsync(new SignOutMessage { Id = 1919870 }, PacketFlags.None);
 
-        await Task.Delay(3000);
+        await Task.Delay(2000);
 
         Assert.Multiple(() =>
         {

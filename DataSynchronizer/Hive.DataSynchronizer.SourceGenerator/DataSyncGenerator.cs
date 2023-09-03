@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Text;
@@ -25,13 +26,14 @@ public class DataSyncGenerator : ISourceGenerator
     private const string CustomSerializerAttribute =
         "Hive.DataSynchronizer.Shared.Attributes.CustomSerializerAttribute";
 
+    private const string SyncOptionAttribute =
+        "Hive.DataSynchronizer.Shared.Attributes.SyncOptionAttribute";
+
     public void Initialize(GeneratorInitializationContext context)
     {
-        /*
 #if DEBUG
-        if (!Debugger.IsAttached) Debugger.Launch();
+        // if (!Debugger.IsAttached) Debugger.Launch();
 #endif
-        */
     }
 
     public void Execute(GeneratorExecutionContext context)
@@ -66,8 +68,8 @@ public class DataSyncGenerator : ISourceGenerator
                             SyncPropertyAttribute)));
 
                 // Generate property and PerformUpdate method
-                var classNamespace = classSyntax.Ancestors().OfType<NamespaceDeclarationSyntax>().FirstOrDefault()
-                    ?.Name.ToString();
+                var classNamespace = NamespaceHelper.GetNamespace(classSyntax);
+                
                 var className = classSyntax.Identifier.ValueText;
                 var propertiesCode = GenerateProperties(dataSyncProperties, model);
                 var performUpdateMethod = GeneratePerformUpdateMethod(dataSyncProperties, model);
@@ -75,16 +77,21 @@ public class DataSyncGenerator : ISourceGenerator
                 // Generate the entire new class code
                 var newClassCode = $$"""
                                      using System;
+                                     using System.CodeDom.Compiler;
                                      using System.Collections.Concurrent;
-                                     using Hive.DataSynchronizer.Shared.UpdateInfo;
+                                     using System.Collections.Generic;
+                                     using System.Linq;
+                                     using Hive.Framework.Shared;
+                                     using Hive.DataSynchronizer.Shared.ObjectSyncPacket;
                                      using Hive.DataSynchronizer.Abstraction.Interfaces;
 
                                      namespace {{classNamespace}}
                                      {
+                                        [GeneratedCode("{{nameof(DataSyncGenerator)}}", "{{typeof(DataSyncGenerator).Assembly.GetName().Version?.ToString() ?? "1.0.0.0"}}")]
                                         {{classSyntax.Modifiers}} class {{className}} : {{SyncObjectInterface}}
                                         {
-                                            private readonly ConcurrentDictionary<string, IUpdateInfo> _updatedFields
-                                                = new ConcurrentDictionary<string, IUpdateInfo>();
+                                            private readonly ConcurrentDictionary<string, ISyncPacket> _updatedFields
+                                                = new ConcurrentDictionary<string, ISyncPacket>();
                                      
                                             public ushort ObjectSyncId => {{dataSyncAttribute.ArgumentList!.Arguments.First()}};
                                      
@@ -93,6 +100,8 @@ public class DataSyncGenerator : ISourceGenerator
                                             {{performUpdateMethod}}
                                      
                                             {{GenerateNotifyPropertyChangedMethod()}}
+                                            
+                                            {{GenerateGetPendingChangedMethod()}}
                                         }
                                      }
                                      """;
@@ -117,6 +126,14 @@ public class DataSyncGenerator : ISourceGenerator
                         model.GetTypeInfo(attr).Type?.ToDisplayString() ==
                         CustomSerializerAttribute);
             var hasCustomUpdateInfoAttribute = customUpdateInfoTypeAttribute != null;
+            
+            var syncOptionAttribute =
+                field.AttributeLists
+                    .SelectMany(attrList => attrList.Attributes)
+                    .FirstOrDefault(attr =>
+                        model.GetTypeInfo(attr).Type?.ToDisplayString() ==
+                        SyncOptionAttribute);
+            var hasSyncOptionAttribute = syncOptionAttribute != null;
 
             var fieldName = field.Declaration.Variables.First().Identifier.ValueText;
             var fieldType = model.GetTypeInfo(field.Declaration.Type).Type;
@@ -136,6 +153,20 @@ public class DataSyncGenerator : ISourceGenerator
                 updateInfoType = GetTypeCastCodeBasedOnPropertyType(fieldType, model);
             }
 
+            string syncOptions;
+            if (hasSyncOptionAttribute)
+            {
+                var optionArgument = (MemberAccessExpressionSyntax)syncOptionAttribute
+                    .ArgumentList!.Arguments.First().Expression;
+                var syncOption = optionArgument.ToString();
+
+                syncOptions = syncOption;
+            }
+            else
+            {
+                syncOptions = "SyncOptions.ClientOnly";
+            }
+
             var generatedProperty = $$"""
                                       public {{fieldType}} {{propertyName}}
                                       {
@@ -144,7 +175,7 @@ public class DataSyncGenerator : ISourceGenerator
                                         {
                                             NotifyPropertyChanged(
                                                 nameof({{propertyName}}),
-                                                new {{updateInfoType}}(ObjectSyncId, nameof({{propertyName}}), value));
+                                                new {{updateInfoType}}(ObjectSyncId, nameof({{propertyName}}), {{syncOptions}}, value));
                                             {{fieldName}} = value;
                                         }
                                       }
@@ -159,9 +190,25 @@ public class DataSyncGenerator : ISourceGenerator
     private string GenerateNotifyPropertyChangedMethod()
     {
         return """
-               public void NotifyPropertyChanged(string propertyName, IUpdateInfo updateInfo)
+               public void NotifyPropertyChanged(string propertyName, ISyncPacket updateInfo)
                {
                     _updatedFields.AddOrUpdate(propertyName, updateInfo, (d1, d2) => updateInfo);
+               }
+               """;
+    }
+
+    private string GenerateGetPendingChangedMethod()
+    {
+        return """
+               public IEnumerable<ISyncPacket> GetPendingChanges()
+               {
+                    if (!_updatedFields.Any()) return Enumerable.Empty<ISyncPacket>();
+                    
+                    var result = _updatedFields.Values.ToList();
+                    
+                    _updatedFields.Clear();
+                    
+                    return result;
                }
                """;
     }
@@ -211,7 +258,7 @@ public class DataSyncGenerator : ISourceGenerator
         }
 
         var performUpdateMethod = $$"""
-                                    public void PerformUpdate(IUpdateInfo infoBase)
+                                    public void PerformUpdate(ISyncPacket infoBase)
                                     {
                                         if (infoBase == null)
                                             throw new ArgumentNullException(nameof(infoBase));
@@ -228,27 +275,27 @@ public class DataSyncGenerator : ISourceGenerator
         var comparer = SymbolEqualityComparer.Default;
 
         if (comparer.Equals(typeSymbol, TypeSymbolHelper.GetTypeSymbolForType(typeof(bool), model)))
-            return "BooleanUpdateInfo";
+            return "BooleanSyncPacket";
         if (comparer.Equals(typeSymbol, TypeSymbolHelper.GetTypeSymbolForType(typeof(char), model)))
-            return "CharUpdateInfo";
+            return "CharSyncPacket";
         if (comparer.Equals(typeSymbol, TypeSymbolHelper.GetTypeSymbolForType(typeof(double), model)))
-            return "DoubleUpdateInfo";
+            return "DoubleSyncPacket";
         if (comparer.Equals(typeSymbol, TypeSymbolHelper.GetTypeSymbolForType(typeof(short), model)))
-            return "Int16UpdateInfo";
+            return "Int16SyncPacket";
         if (comparer.Equals(typeSymbol, TypeSymbolHelper.GetTypeSymbolForType(typeof(int), model)))
-            return "Int32UpdateInfo";
+            return "Int32SyncPacket";
         if (comparer.Equals(typeSymbol, TypeSymbolHelper.GetTypeSymbolForType(typeof(long), model)))
-            return "Int64UpdateInfo";
+            return "Int64SyncPacket";
         if (comparer.Equals(typeSymbol, TypeSymbolHelper.GetTypeSymbolForType(typeof(float), model)))
-            return "SingleUpdateInfo";
+            return "SingleSyncPacket";
         if (comparer.Equals(typeSymbol, TypeSymbolHelper.GetTypeSymbolForType(typeof(string), model)))
-            return "StringUpdateInfo";
+            return "StringSyncPacket";
         if (comparer.Equals(typeSymbol, TypeSymbolHelper.GetTypeSymbolForType(typeof(ushort), model)))
-            return "UInt16UpdateInfo";
+            return "UInt16SyncPacket";
         if (comparer.Equals(typeSymbol, TypeSymbolHelper.GetTypeSymbolForType(typeof(uint), model)))
-            return "UInt32UpdateInfo";
+            return "UInt32SyncPacket";
         if (comparer.Equals(typeSymbol, TypeSymbolHelper.GetTypeSymbolForType(typeof(ulong), model)))
-            return "UInt64UpdateInfo";
+            return "UInt64SyncPacket";
 
         return "__unknown__";
     }

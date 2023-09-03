@@ -11,7 +11,7 @@ using System.Diagnostics;
 using Hive.Framework.Networking.Shared.Helpers;
 using System.Threading;
 using Hive.Framework.Networking.Shared.Attributes;
-using Hive.Framework.Shared;
+using Hive.Framework.Shared.Helpers;
 
 namespace Hive.Framework.Networking.Kcp
 {

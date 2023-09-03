@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Net.Sockets;
+using Hive.Framework.Shared.Attributes;
 
 namespace Hive.Framework.Networking.Shared.Attributes;
 

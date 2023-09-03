@@ -5,9 +5,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Codecs\Hive.Codec.Abstractions\Hive.Codec.Abstractions.csproj" />
-    <ProjectReference Include="..\..\Common\Hive.Common.Shared\Hive.Common.Shared.csproj" />
     <ProjectReference Include="..\Hive.DataSynchronizer.Abstraction\Hive.DataSynchronizer.Abstraction.csproj" />
+    <ProjectReference Include="..\..\Networking\Hive.Networking.Abstractions\Hive.Networking.Abstractions.csproj" />
   </ItemGroup>
 
 </Project>

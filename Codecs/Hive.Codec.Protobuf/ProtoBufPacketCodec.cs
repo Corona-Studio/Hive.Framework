@@ -6,11 +6,15 @@ using System.Buffers;
 using ProtoBuf.Meta;
 using System.Linq;
 using Hive.Framework.Shared.Helpers;
+using System.Collections.Concurrent;
 
 namespace Hive.Framework.Codec.Protobuf;
 
 public class ProtoBufPacketCodec : IPacketCodec<ushort>
 {
+    private readonly ConcurrentDictionary<Type, (Func<object, ReadOnlyMemory<byte>>, Func<ReadOnlyMemory<byte>, object?>)> _customSerializers
+        = new();
+        
     public ProtoBufPacketCodec(
         IPacketIdMapper<ushort> packetIdMapper,
         IPacketPrefixResolver[]? prefixResolvers = null)
@@ -53,20 +57,38 @@ public class ProtoBufPacketCodec : IPacketCodec<ushort>
 
     public ReadOnlyMemory<byte> Encode<T>(T obj, PacketFlags flags)
     {
-        using var contentMeasure = Serializer.Measure(obj);
+        if (obj is null)
+            throw new ArgumentNullException(nameof(obj));
 
-        if (contentMeasure.Length + 8 > ushort.MaxValue || contentMeasure.Length > int.MaxValue)
-            throw new InvalidOperationException($"Message too large [Length - {contentMeasure.Length}]");
+        var isCustomSerializer = false;
+        var contentLength = 0L;
+        var dataSpan = ReadOnlySpan<byte>.Empty;
+        MeasureState<T> contentMeasure = default;
 
-        var packetId = PacketIdMapper.GetPacketId(typeof(T));
+        if(_customSerializers.TryGetValue(obj.GetType(), out var customSerializer))
+        {
+            dataSpan = customSerializer.Item1(obj).Span;
+            contentLength = dataSpan.Length;
+            isCustomSerializer = true;
+        }
+        else
+        {
+            contentMeasure = Serializer.Measure(obj);
+            contentLength = contentMeasure.Length;
+        }
+
+        if (contentLength + 8 > ushort.MaxValue || contentLength > int.MaxValue)
+            throw new InvalidOperationException($"Message too large [Length - {contentLength}]");
+
+        var packetId = PacketIdMapper.GetPacketId(obj.GetType());
 
         // [LENGTH (2) | PACKET_FLAGS (4) | TYPE (2) | CONTENT]
         var index = 0;
-        var result = new Memory<byte>(new byte[2 + 4 + 2 + (int)contentMeasure.Length]);
+        var result = new Memory<byte>(new byte[2 + 4 + 2 + (int)contentLength]);
 
         BitConverter.TryWriteBytes(
             result.Span.SliceAndIncrement(ref index, sizeof(ushort)),
-            (ushort)(contentMeasure.Length + 4 + 2));
+            (ushort)(contentLength + 4 + 2));
 
         // Packet Flags
         BitConverter.TryWriteBytes(
@@ -79,10 +101,18 @@ public class ProtoBufPacketCodec : IPacketCodec<ushort>
             packetId);
 
         // Packet Payload
-        var payloadMemory = result.SliceAndIncrement(ref index, (int) contentMeasure.Length);
+        var payloadMemory = result.SliceAndIncrement(ref index, (int)contentLength);
         var writer = new FakeMemoryBufferWriter<byte>(payloadMemory);
 
-        contentMeasure.Serialize(writer);
+        if (isCustomSerializer)
+        {
+            writer.Write(dataSpan);
+        }
+        else
+        {
+            contentMeasure.Serialize(writer);
+            contentMeasure.Dispose();
+        }
 
         return result;
     }
@@ -128,8 +158,31 @@ public class ProtoBufPacketCodec : IPacketCodec<ushort>
 
         // var packetLength = BitConverter.ToUInt16(packetLengthSpan);
         var packetType = PacketIdMapper.GetPacketType(packetId);
+
+        if (_customSerializers.TryGetValue(PacketIdMapper.GetPacketType(packetId), out var customSerializer))
+        {
+            var deserializedPayload = customSerializer.Item2(packetData.ToArray());
+
+            if (deserializedPayload is null)
+                throw new InvalidOperationException($"Failed to deserialize packet with id {packetId}!");
+
+            return new PacketDecodeResultWithId<ushort>(packetPrefixes, flags, packetId, deserializedPayload);
+        }
+        
         var payload = RuntimeTypeModel.Default.Deserialize(packetType, packetData);
 
         return new PacketDecodeResultWithId<ushort>(packetPrefixes, flags, packetId, payload);
+    }
+
+    public void RegisterCustomSerializer<T>(Func<T, ReadOnlyMemory<byte>> serializer, Func<ReadOnlyMemory<byte>, T> deserializer){
+        PacketIdMapper.GetPacketId(typeof(T));
+
+        var serializerWrapper = new Func<object, ReadOnlyMemory<byte>>(obj => serializer((T)obj));
+        var deserializerWrapper = new Func<ReadOnlyMemory<byte>, object?>(memory => deserializer(memory));
+
+        _customSerializers.AddOrUpdate(
+            typeof(T),
+            (serializerWrapper, deserializerWrapper),
+            (_, _) => (serializerWrapper, deserializerWrapper));
     }
 }

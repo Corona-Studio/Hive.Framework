@@ -1,13 +1,16 @@
 ﻿using Hive.Framework.Codec.Abstractions;
 using MemoryPack;
-using System.Buffers;
 using Hive.Framework.Shared;
 using Hive.Framework.Shared.Helpers;
+using System.Collections.Concurrent;
 
 namespace Hive.Codec.MemoryPack;
 
 public class MemoryPackPacketCodec : IPacketCodec<ushort>
 {
+    private readonly ConcurrentDictionary<Type, (Func<object, ReadOnlyMemory<byte>>, Func<ReadOnlyMemory<byte>, object?>)> _customSerializers
+        = new();
+
     public MemoryPackPacketCodec(
         IPacketIdMapper<ushort> packetIdMapper,
         IPacketPrefixResolver[]? prefixResolvers = null)
@@ -50,12 +53,24 @@ public class MemoryPackPacketCodec : IPacketCodec<ushort>
 
     public ReadOnlyMemory<byte> Encode<T>(T obj, PacketFlags flags)
     {
-        var dataSpan = MemoryPackSerializer.Serialize(obj).AsSpan();
+        if (obj is null)
+            throw new ArgumentNullException(nameof(obj));
+
+        ReadOnlySpan<byte> dataSpan;
+
+        if(_customSerializers.TryGetValue(obj.GetType(), out var customSerializer))
+        {
+            dataSpan = customSerializer.Item1(obj).Span;
+        }
+        else
+        {
+            dataSpan = MemoryPackSerializer.Serialize(obj).AsSpan();
+        }
 
         if (dataSpan.Length + 8 > ushort.MaxValue)
             throw new InvalidOperationException($"Message too large [Length - {dataSpan.Length}]");
 
-        var packetId = PacketIdMapper.GetPacketId(typeof(T));
+        var packetId = PacketIdMapper.GetPacketId(obj.GetType());
 
         // [LENGTH (2) | PACKET_FLAGS (4) | TYPE (2) | CONTENT]
         var index = 0;
@@ -120,10 +135,32 @@ public class MemoryPackPacketCodec : IPacketCodec<ushort>
         // 封包数据段
         var packetData = data[payloadStartIndex..];
 
+        if (_customSerializers.TryGetValue(PacketIdMapper.GetPacketType(packetId), out var customSerializer))
+        {
+            var deserializedPayload = customSerializer.Item2(packetData.ToArray());
+
+            if (deserializedPayload is null)
+                throw new InvalidOperationException($"Failed to deserialize packet with id {packetId}!");
+
+            return new PacketDecodeResultWithId<ushort>(packetPrefixes, flags, packetId, deserializedPayload);
+        }
+
         // var packetLength = BitConverter.ToUInt16(packetLengthSpan);
         var packetType = PacketIdMapper.GetPacketType(packetId);
         var payload = MemoryPackSerializer.Deserialize(packetType, packetData);
 
         return new PacketDecodeResultWithId<ushort>(packetPrefixes, flags, packetId, payload);
+    }
+
+    public void RegisterCustomSerializer<T>(Func<T, ReadOnlyMemory<byte>> serializer, Func<ReadOnlyMemory<byte>, T> deserializer){
+        PacketIdMapper.GetPacketId(typeof(T));
+
+        var serializerWrapper = new Func<object, ReadOnlyMemory<byte>>(obj => serializer((T)obj));
+        var deserializerWrapper = new Func<ReadOnlyMemory<byte>, object?>(memory => deserializer(memory));
+
+        _customSerializers.AddOrUpdate(
+            typeof(T),
+            (serializerWrapper, deserializerWrapper),
+            (_, _) => (serializerWrapper, deserializerWrapper));
     }
 }

@@ -6,11 +6,11 @@ using System;
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Reflection;
-using Hive.Framework.Networking.Shared.Attributes;
+using Hive.Framework.Shared.Attributes;
 
-namespace Hive.Framework.Networking.Shared.Helpers;
-
-/// <summary>
+namespace Hive.Framework.Shared.Helpers
+{
+    /// <summary>
 ///     管理Task和CancellationTokenSource
 /// </summary>
 public static class TaskHelper
@@ -442,4 +442,5 @@ public class SpinWaitAsync
     }
 
     #endregion
+}
 }

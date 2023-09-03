@@ -1,4 +1,5 @@
 ﻿using System;
+using Hive.Framework.Shared.Attributes;
 
 namespace Hive.Framework.Networking.Shared.Attributes;
 

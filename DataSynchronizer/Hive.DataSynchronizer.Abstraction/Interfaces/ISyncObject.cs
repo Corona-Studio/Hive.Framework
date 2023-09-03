@@ -1,10 +1,13 @@
-﻿namespace Hive.DataSynchronizer.Abstraction.Interfaces
+﻿using System.Collections.Generic;
+
+namespace Hive.DataSynchronizer.Abstraction.Interfaces
 {
     public interface ISyncObject
     {
         ushort ObjectSyncId { get; }
 
-        void PerformUpdate(IUpdateInfo infoBase);
-        void NotifyPropertyChanged(string propertyName, IUpdateInfo updateInfo);
+        void PerformUpdate(ISyncPacket infoBase);
+        IEnumerable<ISyncPacket> GetPendingChanges();
+        void NotifyPropertyChanged(string propertyName, ISyncPacket syncPacket);
     }
 }

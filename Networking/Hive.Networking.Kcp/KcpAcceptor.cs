@@ -9,6 +9,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using Hive.Framework.Shared.Collections;
+using Hive.Framework.Shared.Helpers;
 
 namespace Hive.Framework.Networking.Kcp
 {

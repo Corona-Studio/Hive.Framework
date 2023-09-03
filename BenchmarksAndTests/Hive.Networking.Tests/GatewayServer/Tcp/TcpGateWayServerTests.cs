@@ -1,5 +1,8 @@
 ﻿using System.Net;
 using Hive.Codec.Shared;
+using Hive.DataSynchronizer;
+using Hive.DataSynchronizer.Abstraction.Interfaces;
+using Hive.DataSynchronizer.Shared.Helpers;
 using Hive.Framework.Codec.Abstractions;
 using Hive.Framework.Codec.Protobuf;
 using Hive.Framework.Networking.Abstractions;
@@ -29,6 +32,10 @@ public class TcpGateWayServerTests
     private TcpSession<ushort> _client1 = null!;
     private TcpSession<ushort> _client2 = null!;
     private TcpSession<ushort> _server = null!;
+
+    private DefaultDataSynchronizer _client1DataSynchronizer = null!;
+    private DefaultDataSynchronizer _client2DataSynchronizer = null!;
+    private DefaultDataSynchronizer _serverDataSynchronizer = null!;
     
     private readonly IPEndPoint _gatewayServerEndPoint = IPEndPoint.Parse($"127.0.0.1:{NetworkHelper.GetRandomPort()}");
 
@@ -94,14 +101,25 @@ public class TcpGateWayServerTests
         _packetIdMapper.Register<ServerRedirectTestMessage1>();
         _packetIdMapper.Register<ServerRedirectTestMessage2>();
         _packetIdMapper.Register<ServerBroadcastTestMessage>();
+        
+        _packetIdMapper.RegisterSyncPacketPacketIds();
 
         _clientPacketCodec = new ProtoBufPacketCodec(_packetIdMapper);
         _serverPacketCodec = new ProtoBufPacketCodec(_packetIdMapper, new IPacketPrefixResolver[]
         {
             new ClientIdPrefixResolver()
         });
+        
+        _clientPacketCodec.RegisterSyncPacketCodecs(false);
+        _serverPacketCodec.RegisterSyncPacketCodecs(false);
 
-        _gatewayServerDataDispatcherProvider = () => new DefaultDataDispatcher<TcpSession<ushort>>();
+        _gatewayServerDataDispatcherProvider = () =>
+        {
+            var dispatcher = new DefaultDataDispatcher<TcpSession<ushort>>();
+            dispatcher.RegisterSyncPacketRoutes();
+
+            return dispatcher;
+        };
 
         _gatewayServer = new FakeTcpGatewayServer(
             _clientPacketCodec,
@@ -126,6 +144,10 @@ public class TcpGateWayServerTests
         _server = new TcpSession<ushort>(_gatewayServerEndPoint, _serverPacketCodec, _gatewayServerDataDispatcherProvider());
         _client1 = new TcpSession<ushort>(_gatewayServerEndPoint, _clientPacketCodec, _gatewayServerDataDispatcherProvider());
         _client2 = new TcpSession<ushort>(_gatewayServerEndPoint, _clientPacketCodec, _gatewayServerDataDispatcherProvider());
+
+        _serverDataSynchronizer = new DefaultDataSynchronizer(_server);
+        _client1DataSynchronizer = new DefaultDataSynchronizer(_client1);
+        _client2DataSynchronizer = new DefaultDataSynchronizer(_client2);
 
         _redirectIds = new[]
         {
@@ -176,7 +198,7 @@ public class TcpGateWayServerTests
 
         StartClientHeartBeat();
 
-        await Task.Delay(5000);
+        await Task.Delay(2000);
 
         Assert.That(GatewayServerTestProperties.ConnectedClient, Is.EqualTo(3));
     }
@@ -222,7 +244,7 @@ public class TcpGateWayServerTests
             RedirectPacketIds = _redirectIds
         }, PacketFlags.None);
 
-        await Task.Delay(TimeSpan.FromSeconds(5));
+        await Task.Delay(TimeSpan.FromSeconds(2));
 
         Assert.That(clientsCanTransmit, Is.EqualTo(2));
     }
@@ -362,11 +384,11 @@ public class TcpGateWayServerTests
             await Task.Delay(10);
         }
 
-        await Task.Delay(TimeSpan.FromSeconds(2));
+        await Task.Delay(TimeSpan.FromSeconds(1));
 
         Assert.That(packetReceived, Is.EqualTo(packetSendCount));
 
-        await Task.Delay(TimeSpan.FromSeconds(5));
+        await Task.Delay(TimeSpan.FromSeconds(2));
 
         Assert.Multiple(() =>
         {
@@ -374,7 +396,7 @@ public class TcpGateWayServerTests
             Assert.That(client2ReceiveCounter, Is.EqualTo(client2SendCounter));
         });
 
-        await Task.Delay(TimeSpan.FromSeconds(15));
+        await Task.Delay(TimeSpan.FromSeconds(2));
 
         Assert.Multiple(() =>
         {
@@ -421,13 +443,106 @@ public class TcpGateWayServerTests
             await Task.Delay(10);
         }
 
-        await Task.Delay(8000);
+        await Task.Delay(1500);
 
         Assert.Multiple(() =>
         {
             Assert.That(client1ReceivedNumber, Is.EqualTo(localSentNumber));
             Assert.That(client2ReceivedNumber, Is.EqualTo(localSentNumber));
             Assert.That(client1ReceivedNumber, Is.EqualTo(client2ReceivedNumber));
+        });
+    }
+
+    [Test]
+    [Order(9)]
+    public async Task ServerBroadcastWithoutPayloadTest()
+    {
+        await Task.Delay(1000);
+
+        var client1ReceivedCount = 0;
+        var client2ReceivedCount = 0;
+
+        _client1.OnReceive<INoPayloadPacketPlaceHolder>((_, _) =>
+        {
+            client1ReceivedCount++;
+        });
+
+        _client2.OnReceive<INoPayloadPacketPlaceHolder>((_, _) =>
+        {
+            client2ReceivedCount++;
+        });
+
+        await Task.Delay(500);
+
+        const int localSentCount = 100;
+
+        for (var i = 0; i < localSentCount; i++)
+        {
+            await _server.SendWithoutPayload(PacketFlags.Broadcast | PacketFlags.S2CPacket);
+
+            await Task.Delay(10);
+        }
+
+        await Task.Delay(1500);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(client1ReceivedCount, Is.EqualTo(localSentCount));
+            Assert.That(client2ReceivedCount, Is.EqualTo(localSentCount));
+            Assert.That(client1ReceivedCount, Is.EqualTo(client2ReceivedCount));
+        });
+    }
+
+    [Test]
+    [Order(10)]
+    public async Task DataSyncTest()
+    {
+        var client1SyncObject = new DataSyncModel1();
+        var client2SyncObject = new DataSyncModel2();
+        
+        var serverSyncObject1 = new DataSyncModel1();
+        var serverSyncObject2 = new DataSyncModel2();
+
+        _client1.OnReceive<ISyncPacket>((packet, _) =>
+        {
+            _client1DataSynchronizer.PerformSync(packet.Payload);
+        });
+
+        _client2.OnReceive<ISyncPacket>((packet, _) =>
+        {
+            _client2DataSynchronizer.PerformSync(packet.Payload);
+        });
+        
+        _serverDataSynchronizer.Start();
+        _client1DataSynchronizer.Start();
+        _client2DataSynchronizer.Start();
+
+        _client1DataSynchronizer.AddSync(client1SyncObject);
+        _client2DataSynchronizer.AddSync(client2SyncObject);
+        
+        _serverDataSynchronizer.AddSync(serverSyncObject1);
+        _serverDataSynchronizer.AddSync(serverSyncObject2);
+
+        for (var i = 0; i < 20; i++)
+        {
+            serverSyncObject1.Field1 = Random.Shared.Next();
+            serverSyncObject1.Field2 = Random.Shared.NextDouble();
+            
+            serverSyncObject2.Field1 = Random.Shared.Next();
+            serverSyncObject2.Field2 = Random.Shared.NextDouble();
+            
+            await Task.Delay(150);
+        }
+
+        await Task.Delay(8000);
+        
+        Assert.Multiple(() =>
+        {
+            Assert.That(client1SyncObject.Field1, Is.EqualTo(serverSyncObject1.Field1));
+            Assert.That(client1SyncObject.Field2, Is.EqualTo(serverSyncObject1.Field2));
+            
+            Assert.That(client2SyncObject.Field1, Is.EqualTo(serverSyncObject2.Field1));
+            Assert.That(client2SyncObject.Field2, Is.EqualTo(serverSyncObject2.Field2));
         });
     }
 }

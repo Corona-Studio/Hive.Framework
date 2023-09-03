@@ -8,6 +8,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Buffers;
+using Hive.Framework.Shared.Helpers;
 
 namespace Hive.Framework.Networking.Udp
 {

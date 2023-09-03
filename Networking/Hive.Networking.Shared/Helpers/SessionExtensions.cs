@@ -73,19 +73,21 @@ public static class SessionExtensions
     {
         flags |= PacketFlags.NoPayload;
 
-        var writer = new ArrayBufferWriter<byte>(20);
+        var writer = prefixWriteAction == null ? null : new ArrayBufferWriter<byte>(20);
 
         // [LENGTH (2) | PACKET_FLAGS (4) | PACKET_ID | SESSION_ID | PAYLOAD]
-        prefixWriteAction?.Invoke(writer);
+        prefixWriteAction?.Invoke(writer!);
 
-        if (writer.WrittenCount != 0)
+        var writtenCount = writer?.WrittenCount ?? 0;
+
+        if (writtenCount != 0)
             flags |= PacketFlags.HasCustomPacketPrefix;
 
-        var resultLength = sizeof(uint) + writer.WrittenCount;
+        var resultLength = sizeof(uint) + writtenCount;
         var resultLengthMemory = BitConverter.GetBytes((ushort) resultLength);
         var packetFlagsMemory = BitConverter.GetBytes((uint)flags);
         var resultPacket = MemoryHelper.CombineMemory(
-            resultLengthMemory, packetFlagsMemory, writer.WrittenMemory);
+            resultLengthMemory, packetFlagsMemory, writer?.WrittenMemory ?? ReadOnlyMemory<byte>.Empty);
 
         await session.SendAsync(resultPacket);
     }

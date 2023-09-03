@@ -4,14 +4,15 @@ using Hive.Framework.Networking.Shared;
 using System.Net;
 using System.Net.Quic;
 using System.Net.Security;
+using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
-using Hive.Framework.Shared;
 
 namespace Hive.Framework.Networking.Quic;
 
-#pragma warning disable CA1416 
-
 [RequiresPreviewFeatures]
+[SupportedOSPlatform(nameof(OSPlatform.Windows))]
+[SupportedOSPlatform(nameof(OSPlatform.Linux))]
+[SupportedOSPlatform(nameof(OSPlatform.OSX))]
 public sealed class QuicSession<TId> : AbstractSession<TId, QuicSession<TId>>
     where TId : unmanaged
 {
@@ -79,6 +80,12 @@ public sealed class QuicSession<TId> : AbstractSession<TId, QuicSession<TId>>
         QuicStream = await QuicConnection.OpenOutboundStreamAsync(QuicStreamType.Bidirectional);
 
         _connectionReady = true;
+    }
+
+    [IgnoreQuicException(QuicError.StreamAborted)]
+    protected override Task SendLoop()
+    {
+        return base.SendLoop();
     }
 
     public override async ValueTask SendOnce(ReadOnlyMemory<byte> data)

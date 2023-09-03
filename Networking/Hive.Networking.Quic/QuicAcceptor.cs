@@ -8,12 +8,14 @@ using System.Net.Security;
 using System.Runtime.Versioning;
 using System.Security.Cryptography.X509Certificates;
 using Hive.Framework.Networking.Shared.Attributes;
+using Hive.Framework.Shared.Helpers;
 
 namespace Hive.Framework.Networking.Quic;
 
-#pragma warning disable CA1416 
-
 [RequiresPreviewFeatures]
+[SupportedOSPlatform("windows")]
+[SupportedOSPlatform("linux")]
+[SupportedOSPlatform("macos")]
 public sealed class QuicAcceptor<TId, TSessionId> : AbstractAcceptor<QuicConnection, QuicSession<TId>, TId, TSessionId>
     where TId : unmanaged
     where TSessionId : unmanaged

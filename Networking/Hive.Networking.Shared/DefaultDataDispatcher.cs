@@ -13,6 +13,17 @@ namespace Hive.Framework.Networking.Shared
         private readonly ConcurrentDictionary<Type, GuaranteedDeliveryBroadcastBlock<(PacketDecodeResult<object>, TSender)>> _registeredDataFlow = new ();
         private readonly ConcurrentDictionary<object, List<IDisposable>> _registeredLinks = new ();
         private readonly ConcurrentDictionary<Type, List<IDisposable>> _typedRegisteredLinks = new();
+        private readonly ConcurrentBag<Func<PacketDecodeResult<object?>, Type?>> _customPacketRoutes = new();
+
+        public DefaultDataDispatcher()
+        {
+            AddCustomPacketRoute(packet =>
+            {
+                if (packet.Payload == null) return typeof(INoPayloadPacketPlaceHolder);
+
+                return null;
+            });
+        }
 
         private void AddCallbackLog(object callback, params IDisposable[] links)
         {
@@ -256,21 +267,25 @@ namespace Hive.Framework.Networking.Shared
 
         public async ValueTask DispatchAsync(TSender sender, PacketDecodeResult<object?> data, Type? dataType = null)
         {
-            PacketDecodeResult<object> result;
+            foreach (var customPacketRoute in _customPacketRoutes)
+            {
+                var type = customPacketRoute(data);
+                if (type == null) continue;
 
-            if (data.Payload == null)
-            {
-                dataType = typeof(INoPayloadPacketPlaceHolder);
-                result = new PacketDecodeResult<object>(data.Prefixes, data.Flags, NoPayloadPacketPlaceHolder.Empty);
+                dataType = type;
+                break;
             }
-            else
-            {
-                result = new PacketDecodeResult<object>(data.Prefixes, data.Flags, data.Payload!);
-            }
+
+            var result  = new PacketDecodeResult<object>(data.Prefixes, data.Flags, data.Payload ?? NoPayloadPacketPlaceHolder.Empty);
 
             if (!_registeredDataFlow.TryGetValue(dataType ?? data.Payload!.GetType(), out var block)) return;
 
             await block.SendAsync((result, sender));
+        }
+
+        public void AddCustomPacketRoute(Func<PacketDecodeResult<object?>, Type?> callback)
+        {
+            _customPacketRoutes.Add(callback);
         }
     }
 }

@@ -20,7 +20,8 @@ namespace Hive.Framework.Codec.Abstractions
         PacketFlags GetPacketFlags(ReadOnlyMemory<byte> data);
 
         ReadOnlyMemory<byte> Encode<T>(T obj, PacketFlags flags);
-
         PacketDecodeResultWithId<TId> Decode(ReadOnlySpan<byte> data);
+
+        void RegisterCustomSerializer<T>(Func<T, ReadOnlyMemory<byte>> serializer, Func<ReadOnlyMemory<byte>, T> deserializer);
     }
 }

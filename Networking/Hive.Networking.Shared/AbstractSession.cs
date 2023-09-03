@@ -22,7 +22,7 @@ namespace Hive.Framework.Networking.Shared
     /// </summary>
     /// <typeparam name="TId">封包 ID 类型（通常为 ushort）</typeparam>
     /// <typeparam name="TSession">连接会话类型 例如在 TCP 实现下，其类型为 TcpSession{TId}</typeparam>
-    public abstract class AbstractSession<TId, TSession> : ISession<TSession>, ISender<TId>, ICanRedirectPacket<TId>, IHasCodec<TId>
+    public abstract class AbstractSession<TId, TSession> : ISession<TSession>, ICanRedirectPacket<TId>, IHasCodec<TId>
         where TSession : ISession<TSession>
         where TId : unmanaged
     {
@@ -176,6 +176,17 @@ namespace Hive.Framework.Networking.Shared
                 return;
             }
 
+            var isPacketFinalized = packetFlags.HasFlag(PacketFlags.Finalized);
+
+            // 报文是被标记了 PacketFlags.Finalized 的无负载广播包，直接发送给分发器
+            if (isNoPayloadPacket && packetFlags.HasFlag(PacketFlags.Broadcast) && isPacketFinalized)
+            {
+                var noPayloadPacket = PacketCodec.Decode(payloadBytes.Span);
+                await DispatchPacket(noPayloadPacket.AsPacketDecodeResult());
+
+                return;
+            }
+
             // 报文是需要发给服务端的无负载报文，转发给服务器
             if (isNoPayloadPacket && packetFlags.HasFlag(PacketFlags.Broadcast))
             {
@@ -188,7 +199,7 @@ namespace Hive.Framework.Networking.Shared
             var idMemory = PacketCodec.GetPacketIdMemory(payloadBytes);
             var id = PacketCodec.GetPacketId(idMemory);
 
-            var isPacketFinalized = packetFlags.HasFlag(PacketFlags.Finalized);
+            
             var shouldRedirect = RedirectReceivedData && (RedirectPacketIds?.Contains(id) ?? false);
             var isS2CPacket = packetFlags.HasFlag(PacketFlags.S2CPacket);
 

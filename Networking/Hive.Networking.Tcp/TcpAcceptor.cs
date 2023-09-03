@@ -8,6 +8,7 @@ using Hive.Framework.Networking.Abstractions;
 using Hive.Framework.Networking.Shared;
 using Hive.Framework.Networking.Shared.Attributes;
 using Hive.Framework.Networking.Shared.Helpers;
+using Hive.Framework.Shared.Helpers;
 
 namespace Hive.Framework.Networking.Tcp
 {
