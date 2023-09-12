@@ -50,17 +50,17 @@ namespace Hive.DataSynchronizer.Shared.Helpers
 
                 return type switch
                 {
-                    var t when t == typeof(BooleanSyncPacket) => typeof(ISyncPacket),
-                    var t when t == typeof(CharSyncPacket) => typeof(ISyncPacket),
-                    var t when t == typeof(DoubleSyncPacket) => typeof(ISyncPacket),
-                    var t when t == typeof(Int16SyncPacket) => typeof(ISyncPacket),
-                    var t when t == typeof(Int32SyncPacket) => typeof(ISyncPacket),
-                    var t when t == typeof(Int64SyncPacket) => typeof(ISyncPacket),
-                    var t when t == typeof(SingleSyncPacket) => typeof(ISyncPacket),
-                    var t when t == typeof(StringSyncPacket) => typeof(ISyncPacket),
-                    var t when t == typeof(UInt16SyncPacket) => typeof(ISyncPacket),
-                    var t when t == typeof(UInt32SyncPacket) => typeof(ISyncPacket),
-                    var t when t == typeof(UInt64SyncPacket) => typeof(ISyncPacket),
+                    _ when type == typeof(BooleanSyncPacket) => typeof(ISyncPacket),
+                    _ when type == typeof(CharSyncPacket) => typeof(ISyncPacket),
+                    _ when type == typeof(DoubleSyncPacket) => typeof(ISyncPacket),
+                    _ when type == typeof(Int16SyncPacket) => typeof(ISyncPacket),
+                    _ when type == typeof(Int32SyncPacket) => typeof(ISyncPacket),
+                    _ when type == typeof(Int64SyncPacket) => typeof(ISyncPacket),
+                    _ when type == typeof(SingleSyncPacket) => typeof(ISyncPacket),
+                    _ when type == typeof(StringSyncPacket) => typeof(ISyncPacket),
+                    _ when type == typeof(UInt16SyncPacket) => typeof(ISyncPacket),
+                    _ when type == typeof(UInt32SyncPacket) => typeof(ISyncPacket),
+                    _ when type == typeof(UInt64SyncPacket) => typeof(ISyncPacket),
                     _ => null
                 };
             });
