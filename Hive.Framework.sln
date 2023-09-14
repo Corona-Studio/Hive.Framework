@@ -43,17 +43,17 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.Networking.Tests", "Be
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Unity.Mathematics", "Common\Unity.Mathematics\src\Unity.Mathematics\Unity.Mathematics.csproj", "{19810344-7387-4155-935F-BDD5CC61F0BF}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DataSynchronizer", "DataSynchronizer", "{FC605D62-8065-4450-8F75-44200FA893B8}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DataSync", "DataSync", "{FC605D62-8065-4450-8F75-44200FA893B8}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.DataSynchronizer", "DataSynchronizer\Hive.DataSynchronizer\Hive.DataSynchronizer.csproj", "{25A17E77-A2F1-4B02-9F3A-A46A6DFB2B31}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.DataSync", "DataSynchronizer\Hive.DataSync\Hive.DataSync.csproj", "{25A17E77-A2F1-4B02-9F3A-A46A6DFB2B31}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.DataSynchronizer.Shared", "DataSynchronizer\Hive.DataSynchronizer.Shared\Hive.DataSynchronizer.Shared.csproj", "{801D0F09-ABE4-4582-A6A1-65F8CB6FD7F3}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.DataSync.Shared", "DataSynchronizer\Hive.DataSync.Shared\Hive.DataSync.Shared.csproj", "{801D0F09-ABE4-4582-A6A1-65F8CB6FD7F3}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.DataSynchronizer.SourceGenerator", "DataSynchronizer\Hive.DataSynchronizer.SourceGenerator\Hive.DataSynchronizer.SourceGenerator.csproj", "{1E5F0A5B-5C9A-49FD-B6E5-3F4F6B78F5A4}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.DataSync.SourceGen", "DataSynchronizer\Hive.DataSync.SourceGen\Hive.DataSync.SourceGen.csproj", "{1E5F0A5B-5C9A-49FD-B6E5-3F4F6B78F5A4}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.DataSynchronizer.SourceGenerator.Tests", "BenchmarksAndTests\Hive.DataSynchronizer.SourceGenerator.Tests\Hive.DataSynchronizer.SourceGenerator.Tests.csproj", "{AC834C6B-20E0-440B-890F-379CDA24A5C4}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.DataSync.SourceGen.Tests", "BenchmarksAndTests\Hive.DataSync.SourceGen.Tests\Hive.DataSync.SourceGen.Tests.csproj", "{AC834C6B-20E0-440B-890F-379CDA24A5C4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hive.DataSynchronizer.Abstraction", "DataSynchronizer\Hive.DataSynchronizer.Abstraction\Hive.DataSynchronizer.Abstraction.csproj", "{DDC68B65-61CE-4582-B307-CA28F17646AF}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hive.DataSync.Abstraction", "DataSynchronizer\Hive.DataSync.Abstraction\Hive.DataSync.Abstraction.csproj", "{DDC68B65-61CE-4582-B307-CA28F17646AF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>preview</LangVersion>
+    <RootNamespace>DataSync</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Hive.DataSync.Abstraction\Hive.DataSync.Abstraction.csproj" />
+    <ProjectReference Include="..\Hive.DataSync.Shared\Hive.DataSync.Shared.csproj" />
+    <ProjectReference Include="..\..\Networking\Hive.Networking.Abstractions\Hive.Networking.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

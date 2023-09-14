@@ -1,4 +1,4 @@
-﻿using Hive.DataSynchronizer.Shared.Attributes;
+﻿using Hive.DataSync.Shared.Attributes;
 
 namespace Hive.Framework.Networking.Tests.GatewayServer;
 

@@ -22,7 +22,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <ProjectReference Include="..\..\DataSynchronizer\Hive.DataSynchronizer.SourceGenerator\Hive.DataSynchronizer.SourceGenerator.csproj" OutputItemType="Analyzer"     ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\DataSynchronizer\Hive.DataSync.SourceGen\Hive.DataSync.SourceGen.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>
@@ -37,13 +37,13 @@
     <ProjectReference Include="..\..\Codecs\Hive.Codec.Protobuf\Hive.Codec.Protobuf.csproj" />
     <ProjectReference Include="..\..\Codecs\Hive.Codec.Shared\Hive.Codec.Shared.csproj" />
     <ProjectReference Include="..\..\Common\Hive.Common.ECS\Hive.Common.ECS.csproj" />
-    <ProjectReference Include="..\..\DataSynchronizer\Hive.DataSynchronizer.Shared\Hive.DataSynchronizer.Shared.csproj" />
+    <ProjectReference Include="..\..\DataSynchronizer\Hive.DataSync.Shared\Hive.DataSync.Shared.csproj" />
     <ProjectReference Include="..\..\Networking\Hive.Networking.Kcp\Hive.Networking.Kcp.csproj" />
     <ProjectReference Include="..\..\Networking\Hive.Networking.Quic\Hive.Networking.Quic.csproj" />
     <ProjectReference Include="..\..\Networking\Hive.Networking.Shared\Hive.Networking.Shared.csproj" />
     <ProjectReference Include="..\..\Networking\Hive.Networking.Tcp\Hive.Networking.Tcp.csproj" />
     <ProjectReference Include="..\..\Networking\Hive.Networking.Udp\Hive.Networking.Udp.csproj" />
-    <ProjectReference Include="..\..\DataSynchronizer\Hive.DataSynchronizer\Hive.DataSynchronizer.csproj" />
+    <ProjectReference Include="..\..\DataSynchronizer\Hive.DataSync\Hive.DataSync.csproj" />
   </ItemGroup>
 
 </Project>
