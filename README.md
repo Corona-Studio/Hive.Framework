@@ -23,3 +23,8 @@
   - Hive.Framework.Networking.Shared: 网络库共享项目，用于存放网络库的默认抽象和共用方法，使用该库开发自定义的网络实现
   - Hive.Framework.Networking.Tcp: 基于 TCP 的官方网络库实现
   - Hive.Framework.Networking.Udp: 基于 UDP 的官方网络库实现
++ DataSync
+  - Hive.DataSync: 数据同步器的默认实现
+  - Hive.DataSync.Abstraction: 数据同步其规范抽象，使用该库开发自定义的同步器实现
+  - Hive.DataSync.Shared: 共用库，用于存放通用的方法和对象实现
+  - Hive.DataSync.SourceGen: 为默认实现提供的原生成器库，用来帮助为同步对象生成相对应的属性和方法
