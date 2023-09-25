@@ -12,7 +12,7 @@ public class FakeTcpGatewayServer : AbstractGatewayServer<TcpSession<ushort>, Gu
 {
     public FakeTcpGatewayServer(
         IPacketCodec<ushort> packetCodec,
-        IAcceptorImpl<TcpSession<ushort>, Guid> acceptor,
+        IAcceptor<TcpSession<ushort>, Guid> acceptor,
         Func<TcpSession<ushort>, ILoadBalancer<TcpSession<ushort>>> loadBalancerGetter) : base(packetCodec, acceptor, loadBalancerGetter)
     {
     }

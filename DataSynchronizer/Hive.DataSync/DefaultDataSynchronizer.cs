@@ -14,7 +14,7 @@ using Hive.Framework.Shared.Helpers;
 
 namespace DataSync
 {
-    public class DefaultDataSynchronizer : IDataSynchronizer
+    public class DefaultDataSynchronizer : IDataSynchronizer<ISyncObject>
     {
         const int MinSyncInterval = 5;
 
@@ -31,39 +31,39 @@ namespace DataSync
             _packetSender = packetSender;
         }
 
-        public void AddSync(ISyncObject synchronizationObject)
+        public void AddSync(ISyncObject syncObject)
         {
-            var syncIntervalAttr = synchronizationObject.GetType().GetCustomAttribute<SetSyncIntervalAttribute>();
+            var syncIntervalAttr = syncObject.GetType().GetCustomAttribute<SetSyncIntervalAttribute>();
             var syncInterval = syncIntervalAttr?.SyncInterval ?? TimeSpan.FromMilliseconds(100);
 
-            if (_syncObjectTypeMappings.TryGetValue(synchronizationObject.ObjectSyncId, out var objectType))
+            if (_syncObjectTypeMappings.TryGetValue(syncObject.ObjectSyncId, out var objectType))
             {
-                if (objectType != synchronizationObject.GetType())
+                if (objectType != syncObject.GetType())
                     throw new InvalidOperationException(
-                        $"Failed to add sync object {synchronizationObject.GetType().FullName} with id {synchronizationObject.ObjectSyncId} to the mapping dictionary. Please check if the object sync id is duplicated.");
+                        $"Failed to add sync object {syncObject.GetType().FullName} with id {syncObject.ObjectSyncId} to the mapping dictionary. Please check if the object sync id is duplicated.");
             }
             else
             {
-                var succeeded = _syncObjectTypeMappings.TryAdd(synchronizationObject.ObjectSyncId, synchronizationObject.GetType());
+                var succeeded = _syncObjectTypeMappings.TryAdd(syncObject.ObjectSyncId, syncObject.GetType());
                 if (!succeeded)
                     throw new InvalidOperationException(
-                        $"Failed to add sync object {synchronizationObject.GetType().FullName} with id {synchronizationObject.ObjectSyncId} to the mapping dictionary.");
+                        $"Failed to add sync object {syncObject.GetType().FullName} with id {syncObject.ObjectSyncId} to the mapping dictionary.");
             }
 
-            _syncIntervals.AddOrUpdate(synchronizationObject, syncInterval, (_, _) => syncInterval);
-            _syncObjectMappings.AddOrUpdate(synchronizationObject.ObjectSyncId, new List<ISyncObject> { synchronizationObject }, (_, list) =>
+            _syncIntervals.AddOrUpdate(syncObject, syncInterval, (_, _) => syncInterval);
+            _syncObjectMappings.AddOrUpdate(syncObject.ObjectSyncId, new List<ISyncObject> { syncObject }, (_, list) =>
             {
-                if(list.Contains(synchronizationObject)) return list;
+                if(list.Contains(syncObject)) return list;
                 
-                list.Add(synchronizationObject);
+                list.Add(syncObject);
                 return list;
             });
         }
 
-        public void RemoveSync(ISyncObject synchronizationObject)
+        public void RemoveSync(ISyncObject syncObject)
         {
-            if(_syncObjectMappings.TryGetValue(synchronizationObject.ObjectSyncId, out var list))
-                list.Remove(synchronizationObject);
+            if(_syncObjectMappings.TryGetValue(syncObject.ObjectSyncId, out var list))
+                list.Remove(syncObject);
         }
 
         public void RemoveSync(ushort objectSyncId)

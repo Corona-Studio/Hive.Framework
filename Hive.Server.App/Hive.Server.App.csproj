@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net7.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Microsoft.Extensions.Hosting" Version="7.0.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Codecs\Hive.Codec.Abstractions\Hive.Codec.Abstractions.csproj" />
+      <ProjectReference Include="..\Codecs\Hive.Codec.Protobuf\Hive.Codec.Protobuf.csproj" />
+      <ProjectReference Include="..\Common\Hive.Common.Shared\Hive.Common.Shared.csproj" />
+      <ProjectReference Include="..\Networking\Hive.Networking.Abstractions\Hive.Networking.Abstractions.csproj" />
+    </ItemGroup>
+
+</Project>

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using Hive.Framework.Codec.Abstractions;
 using Hive.Framework.Networking.Abstractions.EventArgs;
 
@@ -16,13 +17,13 @@ public interface IGatewayServer<TSession, TSessionId, TId> : IDisposable
     where TSessionId : unmanaged
 {
     IPacketCodec<TId> PacketCodec { get; }
-    IAcceptorImpl<TSession, TSessionId> Acceptor { get; }
+    IAcceptor<TSession, TSessionId> Acceptor { get; }
 
     Func<TSession, ILoadBalancer<TSession>> LoadBalancerGetter { get; }
     event EventHandler<LoadBalancerInitializedEventArgs<TSession>>? OnLoadBalancerInitialized;
 
-    void StartServer();
-    void StopServer();
+    void StartServer(CancellationToken token);
+    void StopServer(CancellationToken token);
 
     bool ServerInitialized { get; }
 }

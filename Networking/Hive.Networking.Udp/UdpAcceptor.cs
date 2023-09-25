@@ -2,13 +2,11 @@
 using Hive.Framework.Codec.Abstractions;
 using Hive.Framework.Networking.Abstractions;
 using Hive.Framework.Networking.Shared;
-using Hive.Framework.Networking.Shared.Helpers;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Buffers;
-using Hive.Framework.Shared.Helpers;
 
 namespace Hive.Framework.Networking.Udp
 {
@@ -16,81 +14,80 @@ namespace Hive.Framework.Networking.Udp
         where TId : unmanaged
         where TSessionId : unmanaged
     {
-        public UdpAcceptor(
-            IPEndPoint endPoint,
-            IPacketCodec<TId> packetCodec,
-            Func<IDataDispatcher<UdpSession<TId>>> dataDispatcherProvider,
-            IClientManager<TSessionId, UdpSession<TId>> clientManager)
-            : base(endPoint, packetCodec, dataDispatcherProvider, clientManager)
+
+
+        private Socket? _serverSocket;
+
+        public UdpAcceptor(IPEndPoint endPoint, IPacketCodec<TId> packetCodec, IDataDispatcher<UdpSession<TId>> dataDispatcher, IClientManager<TSessionId, UdpSession<TId>> clientManager, ISessionCreator<UdpSession<TId>, Socket> sessionCreator) : base(endPoint, packetCodec, dataDispatcher, clientManager, sessionCreator)
         {
         }
-
-        public Socket? Socket { get; private set; }
-
-        public override void Start()
+        
+        private void InitSocket()
         {
-            Socket = new Socket(EndPoint.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
-            Socket.ReceiveBufferSize = UdpSession<int>.DefaultSocketBufferSize;
-            Socket.Bind(EndPoint);
-
-            TaskHelper.ManagedRun(StartAcceptClient, CancellationTokenSource.Token);
+            _serverSocket = new Socket(EndPoint.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
         }
 
-        public override void Stop()
+        public override Task<bool> SetupAsync(CancellationToken token)
         {
-            Socket?.Dispose();
-        }
+            if (_serverSocket == null)
+                InitSocket();
 
-        private async Task StartAcceptClient()
-        {
-            while (!CancellationTokenSource.IsCancellationRequested)
+            if (_serverSocket == null)
             {
-                await DoAcceptClient(Socket!, CancellationTokenSource.Token);
-                await Task.Delay(1);
+                throw new NullReferenceException("ServerSocket is null and InitSocket failed.");
             }
+            
+            _serverSocket.ReceiveBufferSize = UdpSession<int>.DefaultSocketBufferSize;
+            _serverSocket.Bind(EndPoint);
+            
+            return Task.FromResult(true);
         }
 
-        public override async ValueTask DoAcceptClient(Socket client, CancellationToken cancellationToken)
+        public override Task<bool> CloseAsync(CancellationToken token)
         {
-            if (client.Available <= 0) return;
+            if (_serverSocket == null) return Task.FromResult(false);
+
+            _serverSocket.Close();
+            _serverSocket.Dispose();
+            _serverSocket = null;
+            
+            return Task.FromResult(true);
+        }
+
+        public override async ValueTask<bool> DoAcceptAsync(CancellationToken token)
+        {
+            if (_serverSocket == null)
+                return false;
+            
+            if (_serverSocket.Available <= 0) return false;
 
             var buffer = ArrayPool<byte>.Shared.Rent(1024);
             try
             {
                 EndPoint? endPoint = new IPEndPoint(IPAddress.Any, 0);
-                var received = client.ReceiveFrom(buffer, ref endPoint);
+                var received = _serverSocket.ReceiveFrom(buffer, ref endPoint);
 
-                if (received == 0) return;
+                if (received == 0) return false;
 
                 if (ClientManager.TryGetSession((IPEndPoint)endPoint, out var session))
                 {
-                    await session!.DataChannel.Writer.WriteAsync(buffer.AsMemory()[..received], cancellationToken);
+                    await session!.DataChannel.Writer.WriteAsync(buffer.AsMemory()[..received], token);
 
-                    return;
+                    return false;
                 }
 
                 var clientSession =
-                    new UdpSession<TId>(client, (IPEndPoint)endPoint, PacketCodec, DataDispatcherProvider());
+                    new UdpSession<TId>(_serverSocket, (IPEndPoint)endPoint, Codec, DataDispatcher);
 
-                await clientSession.DataChannel.Writer.WriteAsync(buffer.AsMemory()[..received], cancellationToken);
+                await clientSession.DataChannel.Writer.WriteAsync(buffer.AsMemory()[..received], token);
 
                 ClientManager.AddSession(clientSession);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-                throw;
+                return true;
             }
             finally
             {
                 ArrayPool<byte>.Shared.Return(buffer);
             }
-        }
-
-        public override void Dispose()
-        {
-            base.Dispose();
-            Stop();
         }
     }
 }

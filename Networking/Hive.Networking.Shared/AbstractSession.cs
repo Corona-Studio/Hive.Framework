@@ -20,11 +20,11 @@ namespace Hive.Framework.Networking.Shared
     /// <summary>
     /// 连接会话抽象
     /// </summary>
-    /// <typeparam name="TId">封包 ID 类型（通常为 ushort）</typeparam>
-    /// <typeparam name="TSession">连接会话类型 例如在 TCP 实现下，其类型为 TcpSession{TId}</typeparam>
-    public abstract class AbstractSession<TId, TSession> : ISession<TSession>, ICanRedirectPacket<TId>, IHasCodec<TId>
-        where TSession : ISession<TSession>
-        where TId : unmanaged
+    /// <typeparam name="TPackId">封包 ID 类型（通常为 ushort）</typeparam>
+    /// <typeparam name="TSelf">连接会话类型 例如在 TCP 实现下，其类型为 TcpSession{TId}</typeparam>
+    public abstract class AbstractSession<TPackId, TSelf> : ISession<TSelf>, ICanRedirectPacket<TPackId>, IHasCodec<TPackId>
+        where TSelf : ISession<TSelf>
+        where TPackId : unmanaged
     {
         protected const int DefaultBufferSize = 40960;
         public const int DefaultSocketBufferSize = 8192 * 4; 
@@ -35,11 +35,11 @@ namespace Hive.Framework.Networking.Shared
         protected bool ReceivingLoopRunning;
         protected bool SendingLoopRunning;
 
-        public IPacketCodec<TId> PacketCodec { get; }
-        public IDataDispatcher<TSession> DataDispatcher { get; }
+        public IPacketCodec<TPackId> Codec { get; }
+        public IDataDispatcher<TSelf> DataDispatcher { get; }
         public IPEndPoint? LocalEndPoint { get; protected set; }
         public IPEndPoint? RemoteEndPoint { get; protected set; }
-        public ISet<TId>? RedirectPacketIds { get; set; }
+        public ISet<TPackId>? RedirectPacketIds { get; set; }
         public bool RedirectReceivedData { get; set; }
 
         public abstract bool ShouldDestroyAfterDisconnected { get; }
@@ -50,7 +50,7 @@ namespace Hive.Framework.Networking.Shared
 
         public AsyncEventHandler<ReceivedDataEventArgs>? OnDataReceived { get; set; }
 
-        protected AbstractSession(IPacketCodec<TId> packetCodec, IDataDispatcher<TSession> dataDispatcher)
+        protected AbstractSession(IPacketCodec<TPackId> packetCodec, IDataDispatcher<TSelf> dataDispatcher)
         {
             ResetCancellationToken(new CancellationTokenSource());
             ResetSendChannel(Channel.CreateBounded<ReadOnlyMemory<byte>>(new BoundedChannelOptions(1024)
@@ -60,7 +60,7 @@ namespace Hive.Framework.Networking.Shared
                 FullMode = BoundedChannelFullMode.DropOldest
             }));
 
-            PacketCodec = packetCodec;
+            Codec = packetCodec;
             DataDispatcher = dataDispatcher;
         }
 
@@ -96,11 +96,11 @@ namespace Hive.Framework.Networking.Shared
         {
             if (obj == null) throw new ArgumentNullException($"The data trying to send [{nameof(obj)}] is null!");
 
-            var encodedBytes = PacketCodec.Encode(obj, flags);
+            var encodedBytes = Codec.Encode(obj, flags);
             await SendAsync(encodedBytes);
         }
 
-        public void OnReceive<T>(Action<PacketDecodeResult<T>, TSession> callback)
+        public void OnReceive<T>(Action<PacketDecodeResult<T>, TSelf> callback)
         {
             DataDispatcher.Register(callback);
 
@@ -111,7 +111,7 @@ namespace Hive.Framework.Networking.Shared
             ReceivingLoopRunning = true;
         }
 
-        public void OnReceive<T>(Func<PacketDecodeResult<T>, TSession, ValueTask> callback)
+        public void OnReceive<T>(Func<PacketDecodeResult<T>, TSelf, ValueTask> callback)
         {
             DataDispatcher.Register(callback);
 
@@ -122,7 +122,7 @@ namespace Hive.Framework.Networking.Shared
             ReceivingLoopRunning = true;
         }
 
-        public void OnReceiveOneTime<T>(Action<PacketDecodeResult<T>, TSession> callback)
+        public void OnReceiveOneTime<T>(Action<PacketDecodeResult<T>, TSelf> callback)
         {
             DataDispatcher.OneTimeRegister(callback);
 
@@ -133,7 +133,7 @@ namespace Hive.Framework.Networking.Shared
             ReceivingLoopRunning = true;
         }
 
-        public void OnReceiveOneTime<T>(Func<PacketDecodeResult<T>, TSession, ValueTask> callback)
+        public void OnReceiveOneTime<T>(Func<PacketDecodeResult<T>, TSelf, ValueTask> callback)
         {
             DataDispatcher.OneTimeRegister(callback);
 
@@ -164,13 +164,13 @@ namespace Hive.Framework.Networking.Shared
 
         protected async ValueTask ProcessPacket(ReadOnlyMemory<byte> payloadBytes)
         {
-            var packetFlags = PacketCodec.GetPacketFlags(payloadBytes);
+            var packetFlags = Codec.GetPacketFlags(payloadBytes);
             var isNoPayloadPacket = packetFlags.HasFlag(PacketFlags.NoPayload);
 
             // 报文既不包含负载同时也没有广播标志，直接发送给分发器
             if (isNoPayloadPacket && !packetFlags.HasFlag(PacketFlags.Broadcast))
             {
-                var noPayloadPacket = PacketCodec.Decode(payloadBytes.Span);
+                var noPayloadPacket = Codec.Decode(payloadBytes.Span);
                 await DispatchPacket(noPayloadPacket.AsPacketDecodeResult());
 
                 return;
@@ -181,7 +181,7 @@ namespace Hive.Framework.Networking.Shared
             // 报文是被标记了 PacketFlags.Finalized 的无负载广播包，直接发送给分发器
             if (isNoPayloadPacket && packetFlags.HasFlag(PacketFlags.Broadcast) && isPacketFinalized)
             {
-                var noPayloadPacket = PacketCodec.Decode(payloadBytes.Span);
+                var noPayloadPacket = Codec.Decode(payloadBytes.Span);
                 await DispatchPacket(noPayloadPacket.AsPacketDecodeResult());
 
                 return;
@@ -196,8 +196,8 @@ namespace Hive.Framework.Networking.Shared
             }
 
             // 报文是需要转发给服务器的普通报文
-            var idMemory = PacketCodec.GetPacketIdMemory(payloadBytes);
-            var id = PacketCodec.GetPacketId(idMemory);
+            var idMemory = Codec.GetPacketIdMemory(payloadBytes);
+            var id = Codec.GetPacketId(idMemory);
 
             
             var shouldRedirect = RedirectReceivedData && (RedirectPacketIds?.Contains(id) ?? false);
@@ -210,8 +210,8 @@ namespace Hive.Framework.Networking.Shared
                 return;
             }
 
-            var packet = PacketCodec.Decode(payloadBytes.Span);
-            var packetType = PacketCodec.PacketIdMapper.GetPacketType(id);
+            var packet = Codec.Decode(payloadBytes.Span);
+            var packetType = Codec.PacketIdMapper.GetPacketType(id);
 
             await DispatchPacket(packet.AsPacketDecodeResult(), packetType);
         }

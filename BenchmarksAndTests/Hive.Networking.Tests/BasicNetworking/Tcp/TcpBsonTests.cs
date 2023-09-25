@@ -17,14 +17,17 @@ public sealed class TcpBsonTests : TcpTestBase
     {
         PacketIdMapper = new DefaultPacketIdMapper();
         RegisterMessages();
-
+        
         Codec = new BsonPacketCodec(PacketIdMapper);
         ClientManager = new FakeTcpClientManager();
-        DataDispatcherProvider = () => new DefaultDataDispatcher<TcpSession<ushort>>();
+        var dispatcher = new DefaultDataDispatcher<TcpSession<ushort>>();
 
-        Server = new TcpAcceptor<ushort, Guid>(_endPoint, Codec, DataDispatcherProvider, ClientManager);
-        Server.Start();
+        var cts=new CancellationTokenSource(); 
+        Server = new TcpAcceptor<ushort, Guid>(_endPoint, Codec, dispatcher, ClientManager,
+            new TcpSessionCreator<ushort>(Codec,dispatcher));
+        Server.SetupAsync(cts.Token);
+        Server.StartAcceptLoop(cts.Token);
 
-        Client = new TcpSession<ushort>(_endPoint, Codec, DataDispatcherProvider());
+        Client = new TcpSession<ushort>(_endPoint, Codec, dispatcher);
     }
 }

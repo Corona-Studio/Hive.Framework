@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net7.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="MemoryPack" Version="1.9.16" />
+      <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="7.0.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Codecs\Hive.Codec.Abstractions\Hive.Codec.Abstractions.csproj" />
+      <ProjectReference Include="..\Codecs\Hive.Codec.Protobuf\Hive.Codec.Protobuf.csproj" />
+      <ProjectReference Include="..\Networking\Hive.Networking.Abstractions\Hive.Networking.Abstractions.csproj" />
+    </ItemGroup>
+
+
+</Project>

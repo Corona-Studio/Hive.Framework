@@ -28,12 +28,13 @@ public abstract class AbstractNetworkingTestBase<TSession, TClient, TAcceptor, T
     where TClientManager : AbstractClientManager<Guid, TSession>, INetworkingTestProperties
 
 {
-    protected IPacketIdMapper<ushort> PacketIdMapper = null!;
-    protected TSession Client = null!;
-    protected TAcceptor Server = null!;
-    protected IPacketCodec<ushort> Codec = null!;
-    protected TClientManager ClientManager = null!;
-    protected Func<IDataDispatcher<TSession>> DataDispatcherProvider = null!;
+    protected IPacketIdMapper<ushort> PacketIdMapper;
+    protected TClientManager ClientManager;
+    protected IDataDispatcher<TSession> DataDispatcher;
+    protected TSession Client;
+    protected TAcceptor Server;
+    protected IPacketCodec<ushort> Codec;
+    
 
     private bool ShouldSendHeartBeat { get; set; } = true;
     private void StartHeartBeat()
@@ -69,7 +70,7 @@ public abstract class AbstractNetworkingTestBase<TSession, TClient, TAcceptor, T
     public void TearDown()
     {
         Client.Dispose();
-        Server.Dispose();
+        Server.CloseAsync(CancellationToken.None).Wait();
     }
 
     [Test]

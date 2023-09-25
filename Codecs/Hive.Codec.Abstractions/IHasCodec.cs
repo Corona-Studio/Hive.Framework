@@ -6,6 +6,6 @@
     /// <typeparam name="TId">封包 ID 类型（通常为 ushort）</typeparam>
     public interface IHasCodec<TId> where TId : unmanaged
     {
-        IPacketCodec<TId> PacketCodec { get; }
+        IPacketCodec<TId> Codec { get; }
     }
 }

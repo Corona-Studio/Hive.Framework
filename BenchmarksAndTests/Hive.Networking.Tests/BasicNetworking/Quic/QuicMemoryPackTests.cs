@@ -4,6 +4,7 @@ using System.Net;
 using System.Runtime.Versioning;
 using Hive.Codec.MemoryPack;
 using Hive.Codec.Shared;
+using Hive.Framework.Networking.Udp;
 using Hive.Framework.Shared.Helpers;
 
 namespace Hive.Framework.Networking.Tests.BasicNetworking.Quic;
@@ -22,11 +23,14 @@ public sealed class QuicMemoryPackTests : QuicTestBase
 
         Codec = new MemoryPackPacketCodec(PacketIdMapper);
         ClientManager = new FakeQuicClientManager();
-        DataDispatcherProvider = () => new DefaultDataDispatcher<QuicSession<ushort>>();
+        DataDispatcher =  new DefaultDataDispatcher<QuicSession<ushort>>();
+        
+        var cts = new CancellationTokenSource();
+        Server = new QuicAcceptor<ushort, Guid>(_endPoint, Codec, DataDispatcher, ClientManager, new QuicSessionCreator<ushort>(Codec, DataDispatcher),
+            QuicCertHelper.GenerateTestCertificate());
+        Server.SetupAsync(cts.Token).Wait(cts.Token);
+        Server.StartAcceptLoop(cts.Token);
 
-        Server = new QuicAcceptor<ushort, Guid>(_endPoint, QuicCertHelper.GenerateTestCertificate(), Codec, DataDispatcherProvider, ClientManager);
-        Server.Start();
-
-        Client = new QuicSession<ushort>(_endPoint, Codec, DataDispatcherProvider());
+        Client = new QuicSession<ushort>(_endPoint, Codec, DataDispatcher);
     }
 }

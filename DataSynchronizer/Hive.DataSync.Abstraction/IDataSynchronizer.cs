@@ -2,13 +2,13 @@
 
 namespace Hive.DataSync.Abstraction
 {
-    public interface IDataSynchronizer
+    public interface IDataSynchronizer<in T>
     {
         void Start();
         void Stop();
 
-        void AddSync(ISyncObject synchronizationObject);
-        void RemoveSync(ISyncObject synchronizationObject);
+        void AddSync(T syncObject);
+        void RemoveSync(T syncObject);
         void RemoveSync(ushort objectSyncId);
 
         void PerformSync(ISyncPacket syncPacket);

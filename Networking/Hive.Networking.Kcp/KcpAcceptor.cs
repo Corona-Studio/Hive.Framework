@@ -9,7 +9,6 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using Hive.Framework.Shared.Collections;
-using Hive.Framework.Shared.Helpers;
 
 namespace Hive.Framework.Networking.Kcp
 {
@@ -17,34 +16,12 @@ namespace Hive.Framework.Networking.Kcp
         where TId : unmanaged
         where TSessionId : unmanaged
     {
-        public KcpAcceptor(
-            IPEndPoint endPoint,
-            IPacketCodec<TId> packetCodec,
-            Func<IDataDispatcher<KcpSession<TId>>> dataDispatcherProvider,
-            IClientManager<TSessionId, KcpSession<TId>> clientManager)
-            : base(endPoint, packetCodec, dataDispatcherProvider, clientManager)
-        {
-        }
         
         private readonly BiDictionary<EndPoint, uint> _convDictionary = new BiDictionary<EndPoint, uint>();
         private readonly BiDictionary<uint, KcpSession<TId>> _convSessionDictionary =
             new BiDictionary<uint, KcpSession<TId>>();
 
-        public Socket? Socket { get; private set; }
-
-        public override void Start()
-        {
-            Socket = new Socket(EndPoint.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
-            Socket.ReceiveBufferSize = KcpSession<int>.DefaultSocketBufferSize;
-            Socket.Bind(EndPoint);
-
-            TaskHelper.ManagedRun(StartAcceptClient, CancellationTokenSource.Token);
-        }
-
-        public override void Stop()
-        {
-            Socket?.Dispose();
-        }
+        private Socket? _serverSocket;
 
         private uint GetNewClientConv()
         {
@@ -70,26 +47,51 @@ namespace Hive.Framework.Networking.Kcp
             return conv;
         }
 
-        private async Task StartAcceptClient()
+        public KcpAcceptor(IPEndPoint endPoint, IPacketCodec<TId> codec, IDataDispatcher<KcpSession<TId>> dataDispatcher, IClientManager<TSessionId, KcpSession<TId>> clientManager, ISessionCreator<KcpSession<TId>, Socket> sessionCreator) : base(endPoint, codec, dataDispatcher, clientManager, sessionCreator)
         {
-            while (!CancellationTokenSource.IsCancellationRequested)
-            {
-                await DoAcceptClient(Socket!, CancellationTokenSource.Token);
-                await Task.Delay(10);
-            }
         }
 
-        public override async ValueTask DoAcceptClient(Socket client, CancellationToken cancellationToken)
+        public override Task<bool> SetupAsync(CancellationToken token)
         {
-            if (client.Available <= 0) return;
+            try
+            {
+                _serverSocket = new Socket(EndPoint.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
+                _serverSocket.ReceiveBufferSize = KcpSession<int>.DefaultSocketBufferSize;
+                _serverSocket.Bind(EndPoint);
 
+                return Task.FromResult(true);
+            }
+            catch
+            {
+                _serverSocket?.Dispose();
+                _serverSocket = null;
+            }
+            return Task.FromResult(false);
+        }
+
+        public override Task<bool> CloseAsync(CancellationToken token)
+        {
+            if (_serverSocket == null) return Task.FromResult(false);
+
+            _serverSocket.Close();
+            _serverSocket.Dispose();
+            _serverSocket = null;
+            
+            return Task.FromResult(true);
+        }
+
+        public override async ValueTask<bool> DoAcceptAsync(CancellationToken token)
+        {
+            if (_serverSocket == null) return false;
+            if (_serverSocket.Available <= 0) return false;
+            
             var buffer = ArrayPool<byte>.Shared.Rent(1024);
             try
             {
                 EndPoint? endPoint = new IPEndPoint(IPAddress.Any, 0);
-                var received = client.ReceiveFrom(buffer, ref endPoint);
+                var received = _serverSocket.ReceiveFrom(buffer, ref endPoint);
 
-                if (received == 0) return;
+                if (received == 0) return false;
 
                 lock (_convSessionDictionary)
                 {
@@ -98,12 +100,12 @@ namespace Hive.Framework.Networking.Kcp
                         // 删除临时转发
                         _convSessionDictionary.RemoveByValue(session!);
                         session!.Kcp!.Input(buffer[..received]);
-                        return;
+                        return false;
                     }
                 }
 
                 // 如果接收到的字节小于 Conv（uint）的长度，则忽略这个连接请求
-                if(received < sizeof(uint)) return;
+                if(received < sizeof(uint)) return false;
 
                 var receivedConv = BitConverter.ToUInt32(buffer);
 
@@ -114,13 +116,13 @@ namespace Hive.Framework.Networking.Kcp
                     var newConv = GetNewClientConv();
                     var convBytes = BitConverter.GetBytes(newConv);
 
-                    await Socket!.RawSendTo(convBytes, endPoint);
+                    await _serverSocket!.RawSendTo(convBytes, endPoint);
 
                     // 将暂时生成的 Conv 保存到字典中，以备客户端发起真正连接时验证
                     lock(_convDictionary)
                         _convDictionary.Add(endPoint, newConv);
 
-                    return;
+                    return false;
                 }
                 else
                 {
@@ -130,14 +132,14 @@ namespace Hive.Framework.Networking.Kcp
                     {
                         // 如果没有查询到记录，则忽略
                         if (!_convDictionary.TryGetKeyByValue(receivedConv, out var savedEndPoint))
-                            return;
+                            return false;
                         // 如果终结点不匹配，则忽略
-                        if (!savedEndPoint.Equals(endPoint)) return;
+                        if (!savedEndPoint.Equals(endPoint)) return false;
                     }
 
                     var convBytes = BitConverter.GetBytes(receivedConv);
 
-                    await Socket!.RawSendTo(convBytes, endPoint);
+                    await _serverSocket!.RawSendTo(convBytes, endPoint);
                 }
 
                 // 如果在字典中发现了这个会话，说明 Conv 已经协商成功但是客户端管理器还没有接收到登录报文
@@ -147,36 +149,24 @@ namespace Hive.Framework.Networking.Kcp
                     if (_convSessionDictionary.TryGetValueByKey(receivedConv, out var savedSession))
                     {
                         savedSession.Kcp!.Input(buffer[..received]);
-                        return;
+                        return false;
                     }
                 }
 
-                var clientSession = new KcpSession<TId>(
-                    client,
-                    (IPEndPoint)endPoint,
-                    receivedConv,
-                    PacketCodec,
-                    DataDispatcherProvider());
+                var clientSession = new KcpSession<TId>(_serverSocket, (IPEndPoint)endPoint, receivedConv, Codec,
+                    DataDispatcher); // todo SessionCreator.CreateSession(_serverSocket,(IPEndPoint)endPoint);
 
                 lock (_convSessionDictionary)
                     _convSessionDictionary.Add(receivedConv, clientSession);
                 ClientManager.AddSession(clientSession);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-                throw;
+
+                await Task.Delay(10, token);
+                return true;
             }
             finally
             {
                 ArrayPool<byte>.Shared.Return(buffer);
             }
-        }
-
-        public override void Dispose()
-        {
-            base.Dispose();
-            Stop();
         }
     }
 }

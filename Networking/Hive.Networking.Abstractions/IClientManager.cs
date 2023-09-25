@@ -5,7 +5,12 @@ using Hive.Framework.Networking.Abstractions.EventArgs;
 
 namespace Hive.Framework.Networking.Abstractions;
 
-public interface IClientManager<TSessionId, TSession>
+public interface IClientManager
+{
+    
+}
+
+public interface IClientManager<TSessionId, TSession> : IClientManager
     where TSession : ISession<TSession>
     where TSessionId : unmanaged
 {

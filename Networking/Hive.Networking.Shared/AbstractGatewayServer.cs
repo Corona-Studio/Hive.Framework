@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Net;
+using System.Threading;
 using System.Threading.Tasks;
 using Hive.Framework.Codec.Abstractions;
 using Hive.Framework.Networking.Abstractions;
@@ -26,7 +27,7 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
     protected readonly ConcurrentDictionary<IPEndPoint, TSession> ServerSessionTable = new ();
 
     public IPacketCodec<TId> PacketCodec { get; }
-    public IAcceptorImpl<TSession, TSessionId> Acceptor { get; }
+    public IAcceptor<TSession, TSessionId> Acceptor { get; }
 
     /// <summary>
     /// 负载均衡器创建方法
@@ -44,7 +45,7 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
 
     protected AbstractGatewayServer(
         IPacketCodec<TId> packetCodec,
-        IAcceptorImpl<TSession, TSessionId> acceptor,
+        IAcceptor<TSession, TSessionId> acceptor,
         Func<TSession, ILoadBalancer<TSession>> loadBalancerGetter)
     {
         PacketCodec = packetCodec;
@@ -54,14 +55,15 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
         acceptor.ClientManager.OnClientConnectionStateChanged += ClientManagerOnOnClientConnectionStateChanged;
     }
 
-    public virtual void StartServer()
+    public virtual void StartServer(CancellationToken token)
     {
-        Acceptor.Start();
+        Acceptor.SetupAsync(token);
+        Acceptor.StartAcceptLoop(token);
     }
 
-    public virtual void StopServer()
+    public virtual void StopServer(CancellationToken token)
     {
-        Acceptor.Stop();
+        Acceptor.CloseAsync(token);
     }
 
     protected virtual void AddPacketRoute(TId packetId, TSession session)
@@ -334,6 +336,7 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
 
     public virtual void Dispose()
     {
-        Acceptor.Dispose();
+        // todo CancelToken
+        Acceptor.CloseAsync(CancellationToken.None);
     }
 }

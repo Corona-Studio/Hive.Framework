@@ -7,8 +7,6 @@ using Hive.Framework.Codec.Abstractions;
 using Hive.Framework.Networking.Abstractions;
 using Hive.Framework.Networking.Shared;
 using Hive.Framework.Networking.Shared.Attributes;
-using Hive.Framework.Networking.Shared.Helpers;
-using Hive.Framework.Shared.Helpers;
 
 namespace Hive.Framework.Networking.Tcp
 {
@@ -16,64 +14,62 @@ namespace Hive.Framework.Networking.Tcp
         where TId : unmanaged
         where TSessionId : unmanaged
     {
-        public TcpAcceptor(
-            IPEndPoint endPoint,
-            IPacketCodec<TId> packetCodec,
-            Func<IDataDispatcher<TcpSession<TId>>> dataDispatcherProvider,
-            IClientManager<TSessionId, TcpSession<TId>> clientManager)
-            : base(endPoint, packetCodec, dataDispatcherProvider, clientManager)
+        private Socket? _serverSocket;
+
+        public override bool IsValid => _serverSocket != null;
+
+        public TcpAcceptor(IPEndPoint endPoint, IPacketCodec<TId> packetCodec, IDataDispatcher<TcpSession<TId>> dataDispatcher, IClientManager<TSessionId, TcpSession<TId>> clientManager, ISessionCreator<TcpSession<TId>, Socket> sessionCreator) : base(endPoint, packetCodec, dataDispatcher, clientManager, sessionCreator)
         {
         }
-        
-        public Socket? ServerSocket { get; private set; }
 
         private void InitSocket()
         {
-            ServerSocket = new Socket(EndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            _serverSocket = new Socket(EndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
         }
 
-        public override void Start()
+        public override Task<bool> SetupAsync(CancellationToken token)
         {
-            if (ServerSocket == null)
+            if (_serverSocket == null)
                 InitSocket();
 
-            ServerSocket!.Bind(EndPoint);
-            ServerSocket.Listen(EndPoint.Port);
+            if (_serverSocket == null)
+            {
+                throw new NullReferenceException("ServerSocket is null and InitSocket failed.");
+            }
 
-            TaskHelper.ManagedRun(StartAcceptClient, CancellationTokenSource.Token);
+            _serverSocket.Bind(EndPoint);
+            _serverSocket.Listen(EndPoint.Port);
+            return Task.FromResult(true);
         }
 
-        public override void Stop()
+        public override Task<bool> CloseAsync(CancellationToken token)
         {
-            if (ServerSocket == null) return;
+            if (_serverSocket == null) return Task.FromResult(false);
 
-            ServerSocket.Close();
-            ServerSocket.Dispose();
+            _serverSocket.Close();
+            _serverSocket.Dispose();
+            _serverSocket = null;
+            
+            return Task.FromResult(true);
         }
 
         [IgnoreSocketException(SocketError.OperationAborted)]
-        private async Task StartAcceptClient()
+        public override Task StartAcceptLoop(CancellationToken token)
         {
-            while (!CancellationTokenSource.IsCancellationRequested)
-            {
-                var clientSocket = await ServerSocket.AcceptAsync();
-                await DoAcceptClient(clientSocket, CancellationTokenSource.Token);
-            }
+            return base.StartAcceptLoop(token);
         }
 
-        public override ValueTask DoAcceptClient(Socket client, CancellationToken cancellationToken)
-        {
-            var clientSession = new TcpSession<TId>(client, PacketCodec, DataDispatcherProvider());
 
+        public override async ValueTask<bool> DoAcceptAsync(CancellationToken token)
+        {
+            if (_serverSocket == null)
+                return false;
+
+            var acceptSocket = await _serverSocket.AcceptAsync();
+            var clientSession = SessionCreator.CreateSession(acceptSocket, (IPEndPoint)acceptSocket.RemoteEndPoint);
             ClientManager.AddSession(clientSession);
 
-            return default;
-        }
-
-        public override void Dispose()
-        {
-            base.Dispose();
-            Stop();
+            return true;
         }
     }
 }

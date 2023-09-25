@@ -36,6 +36,7 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
 
     public TSessionId GetSessionId(TSession session)
     {
+        // todo Copilot和我(leon)都觉得SessionId应该存在Session里面，而不是在这里
         return _sessionIdMapper.TryGetValue(session, out var id) ? id : default;
     }
 
@@ -50,6 +51,7 @@ public abstract class AbstractClientManager<TSessionId, TSession> : IClientManag
     /// <param name="session">客户端会话</param>
     public virtual void AddSession(TSession session)
     {
+        // todo 这几个函数为啥不能合到一起去
         RegisterHeartBeatMessage(session);
         RegisterSigninMessage(session);
         RegisterClientSignOutMessage(session);
