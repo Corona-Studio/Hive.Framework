@@ -8,6 +8,7 @@ using Hive.Framework.Shared.Helpers;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using System.Collections.Concurrent;
+using MongoDB.Bson.IO;
 
 namespace Hive.Framework.Codec.Bson;
 
@@ -70,6 +71,9 @@ public class BsonPacketCodec : IPacketCodec<ushort>
         else
         {
             dataSpan = obj.ToBson().AsSpan();
+            BsonWriter writer = new BsonBinaryWriter(new MemoryStream());
+            BsonSerializer.Serialize(writer, obj);
+            writer.Flush();
         }
 
         if (dataSpan.Length + 8 > ushort.MaxValue)

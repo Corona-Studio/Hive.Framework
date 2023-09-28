@@ -1,116 +1,127 @@
 ﻿using System;
+using System.Buffers;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
-using Hive.Framework.Codec.Abstractions;
 using Hive.Framework.Networking.Abstractions;
 using Hive.Framework.Networking.Shared;
-using Hive.Framework.Shared;
+using Microsoft.Extensions.Logging;
 
 namespace Hive.Framework.Networking.Tcp
 {
     /// <summary>
     /// 基于 Socket 的 TCP 传输层实现
     /// </summary>
-    public sealed class TcpSession<TId> : AbstractSession<TId, TcpSession<TId>> where TId : unmanaged
+    public sealed class TcpSession : AbstractSession
     {
-        public TcpSession(Socket socket, IPacketCodec<TId> packetCodec, IDataDispatcher<TcpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
-        {
-            Socket = socket;
-            socket.ReceiveBufferSize = DefaultSocketBufferSize;
-
-            LocalEndPoint = socket.LocalEndPoint as IPEndPoint;
-            RemoteEndPoint = socket.RemoteEndPoint as IPEndPoint;
-
-            _connectionReady = true;
-        }
-
-        public TcpSession(IPEndPoint endPoint, IPacketCodec<TId> packetCodec, IDataDispatcher<TcpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
-        {
-            Connect(endPoint);
-        }
-
-        public TcpSession(string addressWithPort, IPacketCodec<TId> packetCodec, IDataDispatcher<TcpSession<TId>> dataDispatcher) : base(packetCodec, dataDispatcher)
-        {
-            Connect(addressWithPort);
-        }
-
-        private bool _closed;
-        private bool _connectionReady;
-
+        
         public Socket? Socket { get; private set; }
 
-        public override bool ShouldDestroyAfterDisconnected => true;
-        public override bool CanSend => _connectionReady;
-        public override bool CanReceive => _connectionReady;
-        public override bool IsConnected => Socket is { Connected: true } && _connectionReady;
-
-        protected override async ValueTask DispatchPacket(PacketDecodeResult<object?> packet, Type? packetType = null)
+        public override IPEndPoint? LocalEndPoint => Socket?.LocalEndPoint as IPEndPoint;
+        public override IPEndPoint? RemoteEndPoint => Socket?.RemoteEndPoint as IPEndPoint;
+        public override bool CanSend => IsConnected;
+        public override bool CanReceive => IsConnected;
+        public override bool IsConnected => Socket is { Connected: true };
+        public override async ValueTask<int> SendOnce(ReadOnlyMemory<byte> data, CancellationToken token)
         {
-            await DataDispatcher.DispatchAsync(this, packet, packetType);
+            return await Socket.SendAsync(data, SocketFlags.None, cancellationToken: token);
         }
-
-        public override async ValueTask DoConnect()
+        
+        protected override async Task ReceiveLoop(CancellationToken token)
         {
-            // 释放先前的连接
-            await DoDisconnect();
-            await base.DoConnect();
+            var bufferOwner = MemoryPool<byte>.Shared.Rent(DefaultBufferSize);
+            var buffer = bufferOwner.Memory;
 
-            // 创建新连接
-            Socket?.Shutdown(SocketShutdown.Both);
-            Socket?.Dispose();
+            var receivedLen = 0; //当前共接受了多少数据
+            var actualLen = 0;
+            var isNewPacket = true;
 
-            _closed = false;
+            var offset = 0; //当前接受到的数据在buffer中的偏移量，buffer中的有效数据：buffer[offset..offset+receivedLen]
 
-            if (RemoteEndPoint == null)
-                throw new ArgumentNullException(nameof(RemoteEndPoint));
-
-            Socket = new Socket(RemoteEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-            Socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-
-            // 连接到指定地址
-            await Socket.ConnectAsync(RemoteEndPoint);
-
-            _connectionReady = true;
-        }
-
-        public override ValueTask DoDisconnect()
-        {
-            base.DoDisconnect();
-            _connectionReady = false;
-
-            if (_closed || Socket == null) return default;
-
-            Socket?.Shutdown(SocketShutdown.Both);
-            Socket?.Close();
-            Socket = null;
-            _closed = true;
-
-            return default;
-        }
-
-        public override async ValueTask SendOnce(ReadOnlyMemory<byte> data)
-        {
-            if (Socket == null)
-                throw new InvalidOperationException("Socket Init failed!");
-
-            var totalLen = data.Length;
-            var sentLen = 0;
-
-            while (sentLen < totalLen)
+            try
             {
-                var sendThisTime = await Socket.SendAsync(data[sentLen..], SocketFlags.None);
+                while (!token.IsCancellationRequested)
+                {
+                    if (!IsConnected || !CanReceive)
+                    {
+                        await Task.Delay(10, token);
+                        continue;
+                    }
 
-                sentLen += sendThisTime;
+                    var lenThisTime = await ReceiveOnce(buffer[(offset + receivedLen)..], token);
+
+                    if (lenThisTime == 0)
+                    {
+                        // Logger.LogError("Received 0 bytes, the buffer may be full");
+                        break;
+                    }
+
+                    receivedLen += lenThisTime;
+                    if (isNewPacket && receivedLen >= PacketHeaderLength)
+                    {
+                        actualLen = BitConverter.ToUInt16(buffer.Span.Slice(offset, PacketHeaderLength)); // 获取实际长度(负载长度)
+                        isNewPacket = false;
+                    }
+
+                    if (actualLen == 0) continue;
+
+                    /*
+#if TRACE
+                    if (RemoteEndPoint is IPEndPoint remoteEndPoint)
+                        Logger.LogTrace("接收 {RemoteIP}:{RemotePort} 发来的 [{LenThisTime}/{ActualLen}] 字节",
+                            remoteEndPoint.Address, remoteEndPoint.Port, lenThisTime, actualLen);
+#endif
+                    */
+
+                    while (receivedLen >= actualLen) //解决粘包
+                    {
+                        /*
+#if TRACE
+                        Logger.LogTrace("集齐 {ActualLen} 字节 开始处理处理数据包", actualLen);
+#endif
+                        */
+                        
+                        FireMessageReceived(buffer.Slice(offset+PacketHeaderLength, actualLen));
+
+                        offset += actualLen;
+                        receivedLen -= actualLen;
+                        if (receivedLen >= PacketHeaderLength) //还有超过4字节的数据
+                        {
+                            var headMem = buffer.Slice(offset, PacketHeaderLength);
+                            actualLen = BitConverter.ToUInt16(headMem.Span);
+                            // 如果 receivedLen >= actualLen,那么下一次循环会把这个包处理掉
+                            // 如果 receivedLen < actualLen,等下一次大循环接收到足够的数据，再处理
+                        }
+                        else
+                        {
+                            isNewPacket = true;
+                            break;
+                        }
+                    }
+
+                    if (receivedLen > 0) //没有超过4字节的数据,offset不变，等到下一次Receive的时候继续接收
+                        buffer.Slice(offset, receivedLen).CopyTo(buffer);
+
+                    offset = 0;
+                }
+            }
+            finally
+            {
+                ReceivingLoopRunning = false;
+                bufferOwner.Dispose();
             }
         }
 
-        public override async ValueTask<int> ReceiveOnce(Memory<byte> buffer)
+        public override async ValueTask<int> ReceiveOnce(Memory<byte> buffer, CancellationToken token)
         {
-            if (Socket == null)
-                throw new InvalidOperationException("Socket Init failed!");
-            
-            return await Socket.ReceiveAsync(buffer, SocketFlags.None);
+            return await Socket.ReceiveAsync(buffer, SocketFlags.None, cancellationToken: token);
+        }
+
+        public TcpSession(Socket socket, ILogger<TcpSession> logger) : base(logger)
+        {
+            Socket = socket;
+            socket.ReceiveBufferSize = DefaultSocketBufferSize;
         }
     }
 }

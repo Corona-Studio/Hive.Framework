@@ -1,24 +1,34 @@
 ﻿using System;
 using System.Net;
+using System.Threading;
 using System.Threading.Tasks;
-using Hive.Framework.Networking.Abstractions.EventArgs;
-using Hive.Framework.Shared;
 
 namespace Hive.Framework.Networking.Abstractions
 {
     /// <summary>
-    /// 代表一个连接会话
+    /// 代表一个连接，可以是服务端之间的连接，也可以是客户端之间的连接
     /// </summary>
-    /// <typeparam name="TSelf">分包发送者，通常为自己</typeparam>
-    public interface ISession<TSelf> : ISender, IReceiver, IShouldDestroySession where TSelf : ISession<TSelf>
+    public partial interface ISession
     {
+        public int Id { get; }
+        
         IPEndPoint? LocalEndPoint { get; }
         IPEndPoint? RemoteEndPoint { get; }
-        IDataDispatcher<TSelf> DataDispatcher { get; }
         
-        ValueTask DoConnect();
-        ValueTask DoDisconnect();
+        /// <summary>
+        /// 收到数据后的回调，不需要IO，无需异步
+        /// </summary>
+        event Action<ISession, ReadOnlyMemory<byte>> OnMessageReceived;
 
-        AsyncEventHandler<ReceivedDataEventArgs>? OnDataReceived { get; set; }
+        public Task StartAsync(CancellationToken token);
+        
+
+        /// <summary>
+        /// 发送数据
+        /// </summary>
+        /// <param name="stream"></param>
+        /// <param name="token"></param>
+        /// <returns></returns>
+        ValueTask<bool> SendAsync(IMessageStream stream, CancellationToken token=default);
     }
 }

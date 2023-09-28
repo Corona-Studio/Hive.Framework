@@ -1,25 +1,32 @@
 ﻿using System;
-using Hive.Framework.Codec.Abstractions;
-using Hive.Framework.Networking.Abstractions;
 using Hive.Framework.Networking.Shared;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Buffers;
+using System.Collections.Generic;
+using System.Threading.Channels;
+using Hive.Framework.Networking.Abstractions;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Hive.Framework.Networking.Udp
 {
-    public sealed class UdpAcceptor<TId, TSessionId> : AbstractAcceptor<Socket, UdpSession<TId>, TId, TSessionId>
-        where TId : unmanaged
-        where TSessionId : unmanaged
+    public sealed class UdpAcceptor : AbstractAcceptor<UdpSession>
     {
-
-
         private Socket? _serverSocket;
+        private readonly ObjectFactory<UdpSession> _sessionFactory;
+        
+        private readonly ReaderWriterLockSlim _dictLock = new ReaderWriterLockSlim();
+        private readonly Dictionary<int, UdpSession> _udpSessions = new Dictionary<int, UdpSession>();
+        
+        private readonly IMessageStreamPool _messageStreamPool;
+        private readonly Channel<IMessageStream> _messageStreamChannel = Channel.CreateUnbounded<IMessageStream>();
 
-        public UdpAcceptor(IPEndPoint endPoint, IPacketCodec<TId> packetCodec, IDataDispatcher<UdpSession<TId>> dataDispatcher, IClientManager<TSessionId, UdpSession<TId>> clientManager, ISessionCreator<UdpSession<TId>, Socket> sessionCreator) : base(endPoint, packetCodec, dataDispatcher, clientManager, sessionCreator)
+        public UdpAcceptor(IPEndPoint endPoint, IMessageStreamPool messageStreamPool) : base(endPoint)
         {
+            _messageStreamPool = messageStreamPool;
+            _sessionFactory = ActivatorUtilities.CreateFactory<UdpSession>(new[] {typeof(IPEndPoint), typeof(UdpAcceptor)});
         }
         
         private void InitSocket()
@@ -53,6 +60,13 @@ namespace Hive.Framework.Networking.Udp
             
             return Task.FromResult(true);
         }
+        
+        internal async ValueTask<int> SendAsync(IPEndPoint endPoint,IMessageStream messageStream, CancellationToken token)
+        {
+            var segment = messageStream.GetArraySegment();
+            var len = await _serverSocket.SendToAsync(segment, SocketFlags.None, endPoint);
+            return len;
+        }
 
         public override async ValueTask<bool> DoAcceptAsync(CancellationToken token)
         {
@@ -69,24 +83,24 @@ namespace Hive.Framework.Networking.Udp
 
                 if (received == 0) return false;
 
-                if (ClientManager.TryGetSession((IPEndPoint)endPoint, out var session))
-                {
-                    await session!.DataChannel.Writer.WriteAsync(buffer.AsMemory()[..received], token);
-
-                    return false;
-                }
-
-                var clientSession =
-                    new UdpSession<TId>(_serverSocket, (IPEndPoint)endPoint, Codec, DataDispatcher);
-
-                await clientSession.DataChannel.Writer.WriteAsync(buffer.AsMemory()[..received], token);
-
-                ClientManager.AddSession(clientSession);
+                
                 return true;
             }
             finally
             {
                 ArrayPool<byte>.Shared.Return(buffer);
+            }
+        }
+
+        public override void Dispose()
+        {
+            _serverSocket?.Dispose();
+            _dictLock.Dispose();
+            
+            _messageStreamChannel.Writer.TryComplete();
+            while (_messageStreamChannel.Reader.TryRead(out var stream))
+            {
+                _messageStreamPool.Free(stream);
             }
         }
     }

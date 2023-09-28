@@ -1,255 +1,111 @@
 ﻿using System;
 using System.Buffers;
-using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using Hive.Codec.Shared.Helpers;
-using Hive.Framework.Codec.Abstractions;
 using Hive.Framework.Networking.Abstractions;
-using Hive.Framework.Networking.Abstractions.EventArgs;
 using Hive.Framework.Networking.Shared.Attributes;
-using Hive.Framework.Networking.Shared.Helpers;
-using Hive.Framework.Shared;
-using Hive.Framework.Shared.Helpers;
+using Microsoft.Extensions.Logging;
 
 namespace Hive.Framework.Networking.Shared
 {
     /// <summary>
     /// 连接会话抽象
     /// </summary>
-    /// <typeparam name="TPackId">封包 ID 类型（通常为 ushort）</typeparam>
-    /// <typeparam name="TSelf">连接会话类型 例如在 TCP 实现下，其类型为 TcpSession{TId}</typeparam>
-    public abstract class AbstractSession<TPackId, TSelf> : ISession<TSelf>, ICanRedirectPacket<TPackId>, IHasCodec<TPackId>
-        where TSelf : ISession<TSelf>
-        where TPackId : unmanaged
+    public abstract class AbstractSession : ISession, IDisposable
     {
-        protected const int DefaultBufferSize = 40960;
+        private ILogger<AbstractSession> _logger;
+        public const int DefaultBufferSize = 40960;
         public const int DefaultSocketBufferSize = 8192 * 4; 
         protected const int PacketHeaderLength = sizeof(ushort); // 包头长度2Byte
         
-        protected Channel<ReadOnlyMemory<byte>>? SendChannel;
-        protected CancellationTokenSource? CancellationTokenSource;
+        protected virtual Channel<IMessageStream>? SendChannel { get; set; } = Channel.CreateBounded<IMessageStream>(new BoundedChannelOptions(1024)
+        {
+            SingleReader = true,
+            SingleWriter = true,
+            FullMode = BoundedChannelFullMode.DropOldest
+        });
+
+        
         protected bool ReceivingLoopRunning;
         protected bool SendingLoopRunning;
 
-        public IPacketCodec<TPackId> Codec { get; }
-        public IDataDispatcher<TSelf> DataDispatcher { get; }
-        public IPEndPoint? LocalEndPoint { get; protected set; }
-        public IPEndPoint? RemoteEndPoint { get; protected set; }
-        public ISet<TPackId>? RedirectPacketIds { get; set; }
-        public bool RedirectReceivedData { get; set; }
+        protected AbstractSession(ILogger<AbstractSession> logger)
+        {
+            _logger = logger;
+        }
 
-        public abstract bool ShouldDestroyAfterDisconnected { get; }
+        public int Id { get; } // todo: 用于标识Session的唯一ID
+        public abstract IPEndPoint? LocalEndPoint { get; }
+        public abstract IPEndPoint? RemoteEndPoint { get; }
+        public event Action<ISession, ReadOnlyMemory<byte>>? OnMessageReceived;
+        
+        protected void FireMessageReceived(ReadOnlyMemory<byte> data)
+        {
+            OnMessageReceived?.Invoke(this, data);
+        }
+
+        public async ValueTask<bool> SendAsync(IMessageStream stream, CancellationToken token = default)
+        {
+            if (SendChannel == null)
+                return false;
+            
+            if (await SendChannel.Writer.WaitToWriteAsync(token))
+                return SendChannel.Writer.TryWrite(stream);
+            
+            return false;
+        }
+
         public abstract bool CanSend { get; }
         public abstract bool CanReceive { get; }
-        public bool Running => !(CancellationTokenSource?.IsCancellationRequested ?? true) && SendingLoopRunning && ReceivingLoopRunning;
+        public bool Running => SendingLoopRunning && ReceivingLoopRunning;
+        
         public abstract bool IsConnected { get; }
 
-        public AsyncEventHandler<ReceivedDataEventArgs>? OnDataReceived { get; set; }
-
-        protected AbstractSession(IPacketCodec<TPackId> packetCodec, IDataDispatcher<TSelf> dataDispatcher)
+        public Task StartAsync(CancellationToken token)
         {
-            ResetCancellationToken(new CancellationTokenSource());
-            ResetSendChannel(Channel.CreateBounded<ReadOnlyMemory<byte>>(new BoundedChannelOptions(1024)
-            {
-                SingleReader = true,
-                SingleWriter = true,
-                FullMode = BoundedChannelFullMode.DropOldest
-            }));
+            var sendTask = Task.Run(()=>SendLoop(token), token);
+            var receiveTask = Task.Run(()=>ReceiveLoop(token), token);
 
-            Codec = packetCodec;
-            DataDispatcher = dataDispatcher;
-        }
-
-        protected void Connect(string addressWithPort)
-        {
-            Connect(NetworkAddressHelper.ToIpEndPoint(addressWithPort));
-        }
-
-        protected void Connect(IPEndPoint remoteEndPoint)
-        {
-            RemoteEndPoint = remoteEndPoint;
-            DoConnect();
-        }
-
-        public virtual async ValueTask SendAsync(ReadOnlyMemory<byte> serializedPacket)
-        {
-            if (CancellationTokenSource == null)
-                throw new ArgumentNullException(nameof(CancellationTokenSource));
-            if (SendChannel == null)
-                throw new ArgumentNullException(nameof(SendChannel));
-
-            if (await SendChannel.Writer.WaitToWriteAsync(CancellationTokenSource.Token))
-                await SendChannel.Writer.WriteAsync(serializedPacket);
-
-            if (SendingLoopRunning) return;
-
-            BeginSend();
-
-            SendingLoopRunning = true;
-        }
-
-        public async ValueTask SendAsync<T>(T obj, PacketFlags flags)
-        {
-            if (obj == null) throw new ArgumentNullException($"The data trying to send [{nameof(obj)}] is null!");
-
-            var encodedBytes = Codec.Encode(obj, flags);
-            await SendAsync(encodedBytes);
-        }
-
-        public void OnReceive<T>(Action<PacketDecodeResult<T>, TSelf> callback)
-        {
-            DataDispatcher.Register(callback);
-
-            if (ReceivingLoopRunning) return;
-
-            BeginReceive();
-
-            ReceivingLoopRunning = true;
-        }
-
-        public void OnReceive<T>(Func<PacketDecodeResult<T>, TSelf, ValueTask> callback)
-        {
-            DataDispatcher.Register(callback);
-
-            if (ReceivingLoopRunning) return;
-
-            BeginReceive();
-
-            ReceivingLoopRunning = true;
-        }
-
-        public void OnReceiveOneTime<T>(Action<PacketDecodeResult<T>, TSelf> callback)
-        {
-            DataDispatcher.OneTimeRegister(callback);
-
-            if (ReceivingLoopRunning) return;
-
-            BeginReceive();
-
-            ReceivingLoopRunning = true;
-        }
-
-        public void OnReceiveOneTime<T>(Func<PacketDecodeResult<T>, TSelf, ValueTask> callback)
-        {
-            DataDispatcher.OneTimeRegister(callback);
-
-            if (ReceivingLoopRunning) return;
-
-            BeginReceive();
-
-            ReceivingLoopRunning = true;
-        }
-
-        public void BeginSend()
-        {
-            if (CancellationTokenSource == null)
-                throw new ArgumentNullException(nameof(CancellationTokenSource));
-
-            TaskHelper.ManagedRun(SendLoop, CancellationTokenSource.Token);
+            return Task.WhenAll(sendTask, receiveTask);
         }
         
-        public void BeginReceive()
-        {
-            if (CancellationTokenSource == null)
-                throw new ArgumentNullException(nameof(CancellationTokenSource));
-
-            TaskHelper.ManagedRun(ReceiveLoop, CancellationTokenSource.Token);
-        }
-
-        protected abstract ValueTask DispatchPacket(PacketDecodeResult<object?> packet, Type? packetType = null);
-
-        protected async ValueTask ProcessPacket(ReadOnlyMemory<byte> payloadBytes)
-        {
-            var packetFlags = Codec.GetPacketFlags(payloadBytes);
-            var isNoPayloadPacket = packetFlags.HasFlag(PacketFlags.NoPayload);
-
-            // 报文既不包含负载同时也没有广播标志，直接发送给分发器
-            if (isNoPayloadPacket && !packetFlags.HasFlag(PacketFlags.Broadcast))
-            {
-                var noPayloadPacket = Codec.Decode(payloadBytes.Span);
-                await DispatchPacket(noPayloadPacket.AsPacketDecodeResult());
-
-                return;
-            }
-
-            var isPacketFinalized = packetFlags.HasFlag(PacketFlags.Finalized);
-
-            // 报文是被标记了 PacketFlags.Finalized 的无负载广播包，直接发送给分发器
-            if (isNoPayloadPacket && packetFlags.HasFlag(PacketFlags.Broadcast) && isPacketFinalized)
-            {
-                var noPayloadPacket = Codec.Decode(payloadBytes.Span);
-                await DispatchPacket(noPayloadPacket.AsPacketDecodeResult());
-
-                return;
-            }
-
-            // 报文是需要发给服务端的无负载报文，转发给服务器
-            if (isNoPayloadPacket && packetFlags.HasFlag(PacketFlags.Broadcast))
-            {
-                await InvokeDataReceivedEventAsync(ReadOnlyMemory<byte>.Empty, payloadBytes.Copy());
-
-                return;
-            }
-
-            // 报文是需要转发给服务器的普通报文
-            var idMemory = Codec.GetPacketIdMemory(payloadBytes);
-            var id = Codec.GetPacketId(idMemory);
-
-            
-            var shouldRedirect = RedirectReceivedData && (RedirectPacketIds?.Contains(id) ?? false);
-            var isS2CPacket = packetFlags.HasFlag(PacketFlags.S2CPacket);
-
-            if ((shouldRedirect || isS2CPacket) && !isPacketFinalized)
-            {
-                await InvokeDataReceivedEventAsync(idMemory, payloadBytes.Copy());
-                
-                return;
-            }
-
-            var packet = Codec.Decode(payloadBytes.Span);
-            var packetType = Codec.PacketIdMapper.GetPacketType(id);
-
-            await DispatchPacket(packet.AsPacketDecodeResult(), packetType);
-        }
-
-        /// <summary>
-        /// 触发数据转发事件
-        /// </summary>
-        /// <param name="id"></param>
-        /// <param name="data"></param>
-        /// <returns></returns>
-        protected async Task InvokeDataReceivedEventAsync(ReadOnlyMemory<byte> id, ReadOnlyMemory<byte> data)
-        {
-            await (OnDataReceived?.InvokeAsync(this, new ReceivedDataEventArgs(id, data)) ?? Task.CompletedTask);
-        }
-
-        /// <summary>
-        ///     根据负载长度获取包的总长度，即包体长度+包头长度
-        /// </summary>
-        protected static int GetTotalLength(int payloadLength)
-        {
-            return payloadLength + PacketHeaderLength;
-        }
-
-        [IgnoreException(typeof(ObjectDisposedException))]
-        [IgnoreException(typeof(OperationCanceledException))]
-        [IgnoreSocketException(SocketError.OperationAborted)]
-        protected virtual async Task SendLoop()
+        protected virtual async Task SendLoop(CancellationToken token)
         {
             try
             {
-                while (!(CancellationTokenSource?.IsCancellationRequested ?? true))
+                var headBuffer = new Memory<byte>(new byte[PacketHeaderLength]);
+                SendingLoopRunning = true;
+                while (!token.IsCancellationRequested)
                 {
-                    if (!IsConnected || !CanSend) SpinWait.SpinUntil(() => IsConnected && CanSend);
                     if (SendChannel == null) throw new InvalidOperationException(nameof(SendChannel));
-                    if (!await SendChannel.Reader.WaitToReadAsync(CancellationTokenSource.Token)) break;
+                    if (!IsConnected || !CanSend || !await SendChannel.Reader.WaitToReadAsync(token))
+                    {
+                        await Task.Delay(10, token);
+                        continue;
+                    }
 
-                    var slice = await SendChannel.Reader.ReadAsync(CancellationTokenSource.Token);
-                    await SendOnce(slice);
+                    var stream = await SendChannel.Reader.ReadAsync(token);
+                    var data = stream.GetBufferMemory();
+                    
+
+                    var totalLen = data.Length;
+                    
+                    BitConverter.TryWriteBytes(headBuffer.Span, (ushort)totalLen);
+                    
+                    var sentLen = 0;
+                    
+                    await SendOnce(headBuffer, token);
+                    while (sentLen < totalLen)
+                    {
+                        var sendThisTime = await SendOnce(data[sentLen..], token);
+
+                        sentLen += sendThisTime;
+                    }
+                    
+                    stream.Dispose();
                 }
             }
             finally
@@ -260,7 +116,7 @@ namespace Hive.Framework.Networking.Shared
 
         [IgnoreException(typeof(ObjectDisposedException))]
         [IgnoreSocketException(SocketError.OperationAborted)]
-        protected virtual async Task ReceiveLoop()
+        protected virtual async Task ReceiveLoop(CancellationToken token)
         {
             var bufferOwner = MemoryPool<byte>.Shared.Rent(DefaultBufferSize);
             var buffer = bufferOwner.Memory;
@@ -273,11 +129,15 @@ namespace Hive.Framework.Networking.Shared
 
             try
             {
-                while (!(CancellationTokenSource?.IsCancellationRequested ?? true))
+                while (!token.IsCancellationRequested)
                 {
-                    if (!IsConnected || !CanReceive) SpinWait.SpinUntil(() => IsConnected && CanReceive);
+                    if (!IsConnected || !CanReceive)
+                    {
+                        await Task.Delay(10, token);
+                        continue;
+                    }
 
-                    var lenThisTime = await ReceiveOnce(buffer[(offset + receivedLen)..]);
+                    var lenThisTime = await ReceiveOnce(buffer[(offset + receivedLen)..], token);
 
                     if (lenThisTime == 0)
                     {
@@ -288,8 +148,7 @@ namespace Hive.Framework.Networking.Shared
                     receivedLen += lenThisTime;
                     if (isNewPacket && receivedLen >= PacketHeaderLength)
                     {
-                        var payloadLen = BitConverter.ToUInt16(buffer.Span.Slice(offset, PacketHeaderLength)); // 获取实际长度(负载长度)
-                        actualLen = GetTotalLength(payloadLen);
+                        actualLen = BitConverter.ToUInt16(buffer.Span.Slice(offset, PacketHeaderLength)); // 获取实际长度(负载长度)
                         isNewPacket = false;
                     }
 
@@ -310,14 +169,15 @@ namespace Hive.Framework.Networking.Shared
                         Logger.LogTrace("集齐 {ActualLen} 字节 开始处理处理数据包", actualLen);
 #endif
                         */
-
-                        await ProcessPacket(buffer.Slice(offset, actualLen));
+                        
+                        OnMessageReceived?.Invoke(this, buffer.Slice(offset+PacketHeaderLength, actualLen));
 
                         offset += actualLen;
                         receivedLen -= actualLen;
                         if (receivedLen >= PacketHeaderLength) //还有超过4字节的数据
                         {
-                            actualLen = GetTotalLength(BitConverter.ToUInt16(buffer.Span.Slice(offset, PacketHeaderLength)));
+                            var headMem = buffer.Slice(offset, PacketHeaderLength);
+                            actualLen = BitConverter.ToUInt16(headMem.Span);
                             // 如果 receivedLen >= actualLen,那么下一次循环会把这个包处理掉
                             // 如果 receivedLen < actualLen,等下一次大循环接收到足够的数据，再处理
                         }
@@ -341,47 +201,18 @@ namespace Hive.Framework.Networking.Shared
             }
         }
 
-        public virtual ValueTask DoConnect()
-        {
-            ResetCancellationToken(new CancellationTokenSource());
-            ResetSendChannel(Channel.CreateBounded<ReadOnlyMemory<byte>>(new BoundedChannelOptions(1024)
-            {
-                SingleReader = true,
-                SingleWriter = true,
-                FullMode = BoundedChannelFullMode.DropOldest
-            }));
+        public abstract ValueTask<int> SendOnce(ReadOnlyMemory<byte> data, CancellationToken token);
 
-            return default;
-        }
-
-        public virtual ValueTask DoDisconnect()
-        {
-            ResetCancellationToken();
-            ResetSendChannel();
-
-            return default;
-        }
-
-        protected void ResetCancellationToken(CancellationTokenSource? cancellationToken = null)
-        {
-            CancellationTokenSource?.Cancel();
-            CancellationTokenSource?.Dispose();
-            CancellationTokenSource = cancellationToken;
-        }
-
-        protected void ResetSendChannel(Channel<ReadOnlyMemory<byte>>? channel = null)
-        {
-            SendChannel?.Writer?.TryComplete();
-            SendChannel = channel;
-        }
-
-        public abstract ValueTask SendOnce(ReadOnlyMemory<byte> data);
-
-        public abstract ValueTask<int> ReceiveOnce(Memory<byte> buffer);
+        public abstract ValueTask<int> ReceiveOnce(Memory<byte> buffer, CancellationToken token);
 
         public virtual void Dispose()
         {
-            DoDisconnect();
+            if (SendChannel == null) return;
+            SendChannel.Writer.Complete();
+            while (SendChannel.Reader.TryRead(out var stream))
+            {
+                stream.Dispose();
+            }
         }
     }
 }
