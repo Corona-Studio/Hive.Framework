@@ -11,9 +11,10 @@ namespace Hive.Framework.Networking.Shared;
 /// </summary>
 public abstract class AbstractAcceptor<TSession> : IAcceptor<TSession>, IDisposable where TSession : ISession
 {
-    protected AbstractAcceptor(IPEndPoint endPoint)
+    protected AbstractAcceptor(IPEndPoint endPoint, IServiceProvider serviceProvider)
     {
         EndPoint = endPoint;
+        ServiceProvider = serviceProvider;
     }
 
     public IPEndPoint EndPoint { get; }
@@ -23,6 +24,9 @@ public abstract class AbstractAcceptor<TSession> : IAcceptor<TSession>, IDisposa
     
     public event Func<TSession, ValueTask>? OnSessionAccepted;
     
+    private int _curUsedSessionId = 0;
+    protected IServiceProvider ServiceProvider;
+
     protected async ValueTask FireOnSessionAccepted(TSession session)
     {
         if (OnSessionAccepted != null)
@@ -52,4 +56,10 @@ public abstract class AbstractAcceptor<TSession> : IAcceptor<TSession>, IDisposa
 
     public abstract ValueTask<bool> DoAcceptAsync(CancellationToken token);
     public abstract void Dispose();
+    
+    protected int GetNextSessionId()
+    {
+        Interlocked.Increment(ref _curUsedSessionId);
+        return _curUsedSessionId;
+    }
 }

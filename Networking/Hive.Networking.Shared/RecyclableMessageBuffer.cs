@@ -1,15 +1,17 @@
 ﻿using System;
+using System.IO;
 using System.Threading.Tasks;
 using Hive.Framework.Networking.Abstractions;
 using Microsoft.IO;
 
 namespace Hive.Framework.Networking.Shared;
 
-public class RecyclableMessageStream : IMessageStream, IDisposable, IAsyncDisposable
+public class RecyclableMessageBuffer : IMessageBuffer, IDisposable, IAsyncDisposable
 {
     internal readonly RecyclableMemoryStream Stream;
-
-    public RecyclableMessageStream(RecyclableMemoryStream stream)
+    int _offset = 0;
+    int _length = 0;
+    public RecyclableMessageBuffer(RecyclableMemoryStream stream)
     {
         Stream = stream;
     }
@@ -29,15 +31,20 @@ public class RecyclableMessageStream : IMessageStream, IDisposable, IAsyncDispos
         return Stream.GetSpan(sizeHint);
     }
 
-    public ReadOnlyMemory<byte> GetBufferMemory()
+    public void SetSlice(int offset, int length)
     {
-        return Stream.GetBuffer().AsMemory(0,(int)Stream.Length);
+        _offset = offset;
+        _length = length;
+    }
+
+    public Memory<byte> GetFinalBufferMemory()
+    {
+        return Stream.GetBuffer().AsMemory(_offset,_length);
     }
 
     public ArraySegment<byte> GetArraySegment()
     {
-        Stream.GetBuffer()
-        return new ArraySegment<byte>(Stream.GetBuffer(),0,(int)Stream.Length);
+        return new ArraySegment<byte>(Stream.GetBuffer(),_offset,_length);
     }
 
     public int Length => (int)Stream.Length;

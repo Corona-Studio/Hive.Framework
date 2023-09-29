@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Buffers;
 using System.Net;
-using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Hive.Framework.Networking.Abstractions;
-using Hive.Framework.Networking.Shared.Attributes;
 using Microsoft.Extensions.Logging;
 
 namespace Hive.Framework.Networking.Shared
@@ -17,11 +15,9 @@ namespace Hive.Framework.Networking.Shared
     public abstract class AbstractSession : ISession, IDisposable
     {
         private ILogger<AbstractSession> _logger;
-        public const int DefaultBufferSize = 40960;
-        public const int DefaultSocketBufferSize = 8192 * 4; 
-        protected const int PacketHeaderLength = sizeof(ushort); // 包头长度2Byte
+        protected readonly IMessageBufferPool MessageBufferPool;
         
-        protected virtual Channel<IMessageStream>? SendChannel { get; set; } = Channel.CreateBounded<IMessageStream>(new BoundedChannelOptions(1024)
+        protected virtual Channel<IMessageBuffer>? SendChannel { get; set; } = Channel.CreateBounded<IMessageBuffer>(new BoundedChannelOptions(1024)
         {
             SingleReader = true,
             SingleWriter = true,
@@ -32,9 +28,11 @@ namespace Hive.Framework.Networking.Shared
         protected bool ReceivingLoopRunning;
         protected bool SendingLoopRunning;
 
-        protected AbstractSession(ILogger<AbstractSession> logger)
+        protected AbstractSession(int id, ILogger<AbstractSession> logger, IMessageBufferPool messageBufferPool)
         {
             _logger = logger;
+            MessageBufferPool = messageBufferPool;
+            Id = id;
         }
 
         public int Id { get; } // todo: 用于标识Session的唯一ID
@@ -47,13 +45,13 @@ namespace Hive.Framework.Networking.Shared
             OnMessageReceived?.Invoke(this, data);
         }
 
-        public async ValueTask<bool> SendAsync(IMessageStream stream, CancellationToken token = default)
+        public async ValueTask<bool> SendAsync(IMessageBuffer buffer, CancellationToken token = default)
         {
             if (SendChannel == null)
                 return false;
             
             if (await SendChannel.Writer.WaitToWriteAsync(token))
-                return SendChannel.Writer.TryWrite(stream);
+                return SendChannel.Writer.TryWrite(buffer);
             
             return false;
         }
@@ -63,7 +61,18 @@ namespace Hive.Framework.Networking.Shared
         public bool Running => SendingLoopRunning && ReceivingLoopRunning;
         
         public abstract bool IsConnected { get; }
-
+        public IMessageBuffer CreateStream()
+        {
+            var stream = MessageBufferPool.Rent();
+            
+            // 写入头部
+            var span = stream.GetSpan(NetworkSetting.PacketHeaderLength);
+            BitConverter.TryWriteBytes(span.Slice(2,sizeof(int)), Id);
+            stream.Advance(NetworkSetting.PacketHeaderLength);
+            
+            return stream;
+        }
+        
         public Task StartAsync(CancellationToken token)
         {
             var sendTask = Task.Run(()=>SendLoop(token), token);
@@ -76,7 +85,7 @@ namespace Hive.Framework.Networking.Shared
         {
             try
             {
-                var headBuffer = new Memory<byte>(new byte[PacketHeaderLength]);
+                //var headBuffer = new Memory<byte>(new byte[PacketHeaderLength]);
                 SendingLoopRunning = true;
                 while (!token.IsCancellationRequested)
                 {
@@ -88,16 +97,16 @@ namespace Hive.Framework.Networking.Shared
                     }
 
                     var stream = await SendChannel.Reader.ReadAsync(token);
-                    var data = stream.GetBufferMemory();
+                    var data = stream.GetFinalBufferMemory();
                     
 
                     var totalLen = data.Length;
                     
-                    BitConverter.TryWriteBytes(headBuffer.Span, (ushort)totalLen);
+                    // 写入头部包体长度字段
+                    BitConverter.TryWriteBytes(data.Span[..2], (ushort)totalLen);
                     
                     var sentLen = 0;
                     
-                    await SendOnce(headBuffer, token);
                     while (sentLen < totalLen)
                     {
                         var sendThisTime = await SendOnce(data[sentLen..], token);
@@ -114,19 +123,12 @@ namespace Hive.Framework.Networking.Shared
             }
         }
 
-        [IgnoreException(typeof(ObjectDisposedException))]
-        [IgnoreSocketException(SocketError.OperationAborted)]
+        
         protected virtual async Task ReceiveLoop(CancellationToken token)
         {
-            var bufferOwner = MemoryPool<byte>.Shared.Rent(DefaultBufferSize);
+            var bufferOwner = MemoryPool<byte>.Shared.Rent(NetworkSetting.DefaultBufferSize);
             var buffer = bufferOwner.Memory;
-
-            var receivedLen = 0; //当前共接受了多少数据
-            var actualLen = 0;
-            var isNewPacket = true;
-
-            var offset = 0; //当前接受到的数据在buffer中的偏移量，buffer中的有效数据：buffer[offset..offset+receivedLen]
-
+            
             try
             {
                 while (!token.IsCancellationRequested)
@@ -137,7 +139,7 @@ namespace Hive.Framework.Networking.Shared
                         continue;
                     }
 
-                    var lenThisTime = await ReceiveOnce(buffer[(offset + receivedLen)..], token);
+                    var lenThisTime = await ReceiveOnce(buffer, token);
 
                     if (lenThisTime == 0)
                     {
@@ -145,53 +147,8 @@ namespace Hive.Framework.Networking.Shared
                         break;
                     }
 
-                    receivedLen += lenThisTime;
-                    if (isNewPacket && receivedLen >= PacketHeaderLength)
-                    {
-                        actualLen = BitConverter.ToUInt16(buffer.Span.Slice(offset, PacketHeaderLength)); // 获取实际长度(负载长度)
-                        isNewPacket = false;
-                    }
-
-                    if (actualLen == 0) continue;
-
-                    /*
-#if TRACE
-                    if (RemoteEndPoint is IPEndPoint remoteEndPoint)
-                        Logger.LogTrace("接收 {RemoteIP}:{RemotePort} 发来的 [{LenThisTime}/{ActualLen}] 字节",
-                            remoteEndPoint.Address, remoteEndPoint.Port, lenThisTime, actualLen);
-#endif
-                    */
-
-                    while (receivedLen >= actualLen) //解决粘包
-                    {
-                        /*
-#if TRACE
-                        Logger.LogTrace("集齐 {ActualLen} 字节 开始处理处理数据包", actualLen);
-#endif
-                        */
-                        
-                        OnMessageReceived?.Invoke(this, buffer.Slice(offset+PacketHeaderLength, actualLen));
-
-                        offset += actualLen;
-                        receivedLen -= actualLen;
-                        if (receivedLen >= PacketHeaderLength) //还有超过4字节的数据
-                        {
-                            var headMem = buffer.Slice(offset, PacketHeaderLength);
-                            actualLen = BitConverter.ToUInt16(headMem.Span);
-                            // 如果 receivedLen >= actualLen,那么下一次循环会把这个包处理掉
-                            // 如果 receivedLen < actualLen,等下一次大循环接收到足够的数据，再处理
-                        }
-                        else
-                        {
-                            isNewPacket = true;
-                            break;
-                        }
-                    }
-
-                    if (receivedLen > 0) //没有超过4字节的数据,offset不变，等到下一次Receive的时候继续接收
-                        buffer.Slice(offset, receivedLen).CopyTo(buffer);
-
-                    offset = 0;
+                    var data = buffer.Slice(0, lenThisTime);
+                    FireMessageReceived(data);
                 }
             }
             finally

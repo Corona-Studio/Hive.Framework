@@ -4,9 +4,10 @@ using System.Buffers;
 namespace Hive.Framework.Networking.Abstractions;
 
 
-public interface IMessageStream: IBufferWriter<byte>, IDisposable
+public interface IMessageBuffer: IBufferWriter<byte>, IDisposable
 {
-    ReadOnlyMemory<byte> GetBufferMemory();
+    void SetSlice(int offset, int length);
+    Memory<byte> GetFinalBufferMemory();
     
     ArraySegment<byte> GetArraySegment();
     

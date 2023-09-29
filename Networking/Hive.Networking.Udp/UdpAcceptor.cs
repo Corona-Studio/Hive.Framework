@@ -20,13 +20,13 @@ namespace Hive.Framework.Networking.Udp
         private readonly ReaderWriterLockSlim _dictLock = new ReaderWriterLockSlim();
         private readonly Dictionary<int, UdpSession> _udpSessions = new Dictionary<int, UdpSession>();
         
-        private readonly IMessageStreamPool _messageStreamPool;
-        private readonly Channel<IMessageStream> _messageStreamChannel = Channel.CreateUnbounded<IMessageStream>();
-
-        public UdpAcceptor(IPEndPoint endPoint, IMessageStreamPool messageStreamPool) : base(endPoint)
+        private readonly IMessageBufferPool _messageBufferPool;
+        private readonly Channel<IMessageBuffer> _messageStreamChannel = Channel.CreateUnbounded<IMessageBuffer>();
+        
+        public UdpAcceptor(IPEndPoint endPoint, IMessageBufferPool messageBufferPool, IServiceProvider serviceProvider) : base(endPoint, serviceProvider)
         {
-            _messageStreamPool = messageStreamPool;
-            _sessionFactory = ActivatorUtilities.CreateFactory<UdpSession>(new[] {typeof(IPEndPoint), typeof(UdpAcceptor)});
+            _messageBufferPool = messageBufferPool;
+            _sessionFactory = ActivatorUtilities.CreateFactory<UdpSession>(new[] {typeof(int), typeof(IPEndPoint), typeof(UdpAcceptor)});
         }
         
         private void InitSocket()
@@ -44,7 +44,7 @@ namespace Hive.Framework.Networking.Udp
                 throw new NullReferenceException("ServerSocket is null and InitSocket failed.");
             }
             
-            _serverSocket.ReceiveBufferSize = UdpSession<int>.DefaultSocketBufferSize;
+            _serverSocket.ReceiveBufferSize = NetworkSetting.DefaultSocketBufferSize;
             _serverSocket.Bind(EndPoint);
             
             return Task.FromResult(true);
@@ -61,9 +61,8 @@ namespace Hive.Framework.Networking.Udp
             return Task.FromResult(true);
         }
         
-        internal async ValueTask<int> SendAsync(IPEndPoint endPoint,IMessageStream messageStream, CancellationToken token)
+        internal async ValueTask<int> SendAsync(IPEndPoint endPoint,ArraySegment<byte> segment, CancellationToken token)
         {
-            var segment = messageStream.GetArraySegment();
             var len = await _serverSocket.SendToAsync(segment, SocketFlags.None, endPoint);
             return len;
         }
@@ -80,11 +79,54 @@ namespace Hive.Framework.Networking.Udp
             {
                 EndPoint? endPoint = new IPEndPoint(IPAddress.Any, 0);
                 var received = _serverSocket.ReceiveFrom(buffer, ref endPoint);
-
-                if (received == 0) return false;
-
                 
-                return true;
+                var headMem = buffer.AsMemory(0, NetworkSetting.PacketHeaderLength);
+                var length = BitConverter.ToUInt16(headMem.Span[NetworkSetting.PacketLengthOffset..]);
+                var sessionId = BitConverter.ToInt32(headMem.Span[NetworkSetting.PacketIdOffset..]);
+                if (length != received)
+                    return false;
+
+                if (sessionId == NetworkSetting.HandshakeSessionId)
+                {
+                    var id = GetNextSessionId();
+                    var session = _sessionFactory.Invoke(ServiceProvider,new object[]{id, (IPEndPoint) endPoint, this});
+                    session.OnSend += SendAsync;
+                    
+                    _dictLock.EnterWriteLock();
+                    try
+                    {
+                        _udpSessions.Add(id, session);
+                    }
+                    finally
+                    {
+                        _dictLock.ExitWriteLock();
+                    }
+                }
+                else
+                {
+                    if (!_dictLock.TryEnterReadLock(10))
+                    {
+                        return false;
+                    }
+
+                    try
+                    {
+                        if (_udpSessions.TryGetValue(sessionId, out var session))
+                        {
+                            session.OnReceivedAsync(buffer.AsMemory().Slice(0,length), token);
+                        }
+                        else
+                        {
+                            return false;
+                        }
+                    }
+                    finally
+                    {
+                        _dictLock.ExitReadLock();
+                    }
+                }
+
+                return received != 0;
             }
             finally
             {
@@ -100,7 +142,7 @@ namespace Hive.Framework.Networking.Udp
             _messageStreamChannel.Writer.TryComplete();
             while (_messageStreamChannel.Reader.TryRead(out var stream))
             {
-                _messageStreamPool.Free(stream);
+                _messageBufferPool.Free(stream);
             }
         }
     }

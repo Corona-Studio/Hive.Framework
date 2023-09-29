@@ -3,19 +3,19 @@ using Microsoft.IO;
 
 namespace Hive.Framework.Networking.Shared;
 
-public class RecyclableMessageStreamPool : IMessageStreamPool
+public class RecyclableMessageBufferPool : IMessageBufferPool
 {
     private static RecyclableMemoryStreamManager Manager { get; } = new();
 
-    public void Free(IMessageStream buffer)
+    public void Free(IMessageBuffer buffer)
     {
-        if(buffer is RecyclableMessageStream rms)
+        if(buffer is RecyclableMessageBuffer rms)
             rms.Dispose();
     }
 
-    public IMessageStream Alloc(string? tag)
+    public IMessageBuffer Rent(string? tag)
     {
         var stream = (RecyclableMemoryStream)Manager.GetStream(tag);
-        return new RecyclableMessageStream(stream);
+        return new RecyclableMessageBuffer(stream);
     }
 }

@@ -19,6 +19,12 @@ namespace Hive.Framework.Networking.Abstractions
         /// 收到数据后的回调，不需要IO，无需异步
         /// </summary>
         event Action<ISession, ReadOnlyMemory<byte>> OnMessageReceived;
+        
+        /// <summary>
+        /// 创建一个数据流，用于发送数据
+        /// </summary>
+        /// <returns></returns>
+        IMessageBuffer CreateStream();
 
         public Task StartAsync(CancellationToken token);
         
@@ -26,9 +32,9 @@ namespace Hive.Framework.Networking.Abstractions
         /// <summary>
         /// 发送数据
         /// </summary>
-        /// <param name="stream"></param>
+        /// <param name="buffer"></param>
         /// <param name="token"></param>
         /// <returns></returns>
-        ValueTask<bool> SendAsync(IMessageStream stream, CancellationToken token=default);
+        ValueTask<bool> SendAsync(IMessageBuffer buffer, CancellationToken token=default);
     }
 }

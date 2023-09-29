@@ -15,13 +15,11 @@ namespace Hive.Framework.Networking.Tcp
 
         public override bool IsValid => _serverSocket != null;
 
-        private readonly IServiceProvider _serviceProvider;
         private readonly ObjectFactory<TcpSession> _sessionFactory;
 
-        public TcpAcceptor(IPEndPoint endPoint, IServiceProvider serviceProvider) : base(endPoint)
+        public TcpAcceptor(IPEndPoint endPoint, IServiceProvider serviceProvider) : base(endPoint,serviceProvider)
         {
-            _serviceProvider = serviceProvider;
-            _sessionFactory = ActivatorUtilities.CreateFactory<TcpSession>(new[] {typeof(Socket)});
+            _sessionFactory = ActivatorUtilities.CreateFactory<TcpSession>(new[] {typeof(int), typeof(Socket)});
         }
 
         private void InitSocket()
@@ -68,11 +66,17 @@ namespace Hive.Framework.Networking.Tcp
                 return false;
 
             var acceptSocket = await _serverSocket.AcceptAsync();
-            var clientSession = _sessionFactory.Invoke(_serviceProvider, new object[] {acceptSocket});
+            var sessionId = GetNextSessionId();
+            var clientSession = _sessionFactory.Invoke(ServiceProvider, new object[] {sessionId, acceptSocket});
             
             await FireOnSessionAccepted(clientSession);
 
             return true;
+        }
+
+        public override void Dispose()
+        {
+            _serverSocket?.Dispose();
         }
     }
 }
