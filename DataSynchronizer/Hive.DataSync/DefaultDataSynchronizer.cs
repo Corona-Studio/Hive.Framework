@@ -9,14 +9,13 @@ using Hive.DataSync.Abstraction;
 using Hive.DataSync.Abstraction.Interfaces;
 using Hive.DataSync.Shared.Attributes;
 using Hive.DataSync.Shared.Helpers;
-using Hive.Framework.Networking.Abstractions;
 using Hive.Framework.Shared.Helpers;
 
 namespace DataSync
 {
-    public class DefaultDataSynchronizer : IDataSynchronizer<ISyncObject>
+    public class DefaultDataSynchronizer /*: IDataSynchronizer<ISyncObject>*/
     {
-        const int MinSyncInterval = 5;
+        /*const int MinSyncInterval = 5;
 
         private readonly ISender _packetSender;
         private readonly ConcurrentDictionary<ushort, Type> _syncObjectTypeMappings = new();
@@ -129,6 +128,6 @@ namespace DataSync
 
             foreach (var syncObject in list)
                 syncObject.PerformUpdate(syncPacket);
-        }
+        }*/
     }
 }

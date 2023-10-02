@@ -11,7 +11,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Codecs", "Codecs", "{8B7F1F
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{B821F9BF-F447-4406-971F-6DA307812FAD}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Networking", "Networking", "{4C77F938-4CBF-45D6-BE8C-4DA9C0F10DD0}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Network", "Network", "{4C77F938-4CBF-45D6-BE8C-4DA9C0F10DD0}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "BenchmarksAndTests", "BenchmarksAndTests", "{498D73F4-FA45-4447-844C-388967A86013}"
 EndProject
@@ -25,21 +25,21 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.Codec.Protobuf", "Code
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.Codec.Shared", "Codecs\Hive.Codec.Shared\Hive.Codec.Shared.csproj", "{69E763AC-C31B-4256-8223-840F24316B4C}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.Networking.Abstractions", "Networking\Hive.Networking.Abstractions\Hive.Networking.Abstractions.csproj", "{5A36F4CC-4FBC-44D0-96B8-DDEC15F74DC8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.Network.Abstractions", "Networking\Hive.Network.Abstractions\Hive.Network.Abstractions.csproj", "{5A36F4CC-4FBC-44D0-96B8-DDEC15F74DC8}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.Networking.Kcp", "Networking\Hive.Networking.Kcp\Hive.Networking.Kcp.csproj", "{708FB0F1-DE87-4D73-8026-550701575FAE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.Network.Kcp", "Networking\Hive.Network.Kcp\Hive.Network.Kcp.csproj", "{708FB0F1-DE87-4D73-8026-550701575FAE}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.Networking.Quic", "Networking\Hive.Networking.Quic\Hive.Networking.Quic.csproj", "{D65EBF03-A7A2-43C8-9683-C1FF1164C624}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.Network.Quic", "Networking\Hive.Network.Quic\Hive.Network.Quic.csproj", "{D65EBF03-A7A2-43C8-9683-C1FF1164C624}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.Networking.Shared", "Networking\Hive.Networking.Shared\Hive.Networking.Shared.csproj", "{730457A4-22AC-44A6-AE79-D0D2F19BBE95}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.Network.Shared", "Networking\Hive.Network.Shared\Hive.Network.Shared.csproj", "{730457A4-22AC-44A6-AE79-D0D2F19BBE95}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.Networking.Tcp", "Networking\Hive.Networking.Tcp\Hive.Networking.Tcp.csproj", "{FAE1A5BD-17DA-4D19-A440-777F1F72C5C8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.Network.Tcp", "Networking\Hive.Network.Tcp\Hive.Network.Tcp.csproj", "{FAE1A5BD-17DA-4D19-A440-777F1F72C5C8}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.Networking.Udp", "Networking\Hive.Networking.Udp\Hive.Networking.Udp.csproj", "{23AF5605-9215-4F9A-8F81-E23F5EBC069E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.Network.Udp", "Networking\Hive.Network.Udp\Hive.Network.Udp.csproj", "{23AF5605-9215-4F9A-8F81-E23F5EBC069E}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.Benchmark", "BenchmarksAndTests\Hive.Benchmark\Hive.Benchmark.csproj", "{AF59120C-D3B7-4006-87DC-47BC31C2DA8E}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.Networking.Tests", "BenchmarksAndTests\Hive.Networking.Tests\Hive.Networking.Tests.csproj", "{8048B197-F7A2-4067-8370-A02D0EB9F01A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.Network.Tests", "BenchmarksAndTests\Hive.Network.Tests\Hive.Network.Tests.csproj", "{8048B197-F7A2-4067-8370-A02D0EB9F01A}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Unity.Mathematics", "Common\Unity.Mathematics\src\Unity.Mathematics\Unity.Mathematics.csproj", "{19810344-7387-4155-935F-BDD5CC61F0BF}"
 EndProject
@@ -66,6 +66,16 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hive.Server.Default", "Hive.Server.Default\Hive.Server.Default.csproj", "{354CA6CE-1468-4A5D-AB01-C9BFC0555ECD}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hive.Server.Cluster", "Cluster\Hive.Server.Cluster\Hive.Server.Cluster.csproj", "{B76A4565-FA13-47B0-B468-3042B187DD65}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hive.Server.Abstract", "Server\Hive.Server.Abstract\Hive.Server.Abstract.csproj", "{1153790B-CF9D-4D2D-9FDD-7EF4E1117322}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hive.Both.Messages", "Common\Hive.Both.Messages\Hive.Both.Messages.csproj", "{A9D31F57-17FE-40D3-84E4-917612E5F926}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Both", "Both", "{43614B35-7802-4B4D-8653-05E5AD73E267}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hive.Both.General", "Hive.Both.General\Hive.Both.General.csproj", "{9087347C-E481-47FD-9E8B-CD9006143AEE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hive.Application.Test", "BenchmarksAndTests\Hive.Application.Test\Hive.Application.Test.csproj", "{16FBD9EF-CB6D-4A39-9093-9B675242A327}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -275,6 +285,38 @@ Global
 		{B76A4565-FA13-47B0-B468-3042B187DD65}.Release|Any CPU.Build.0 = Release|Any CPU
 		{B76A4565-FA13-47B0-B468-3042B187DD65}.Release|x64.ActiveCfg = Release|Any CPU
 		{B76A4565-FA13-47B0-B468-3042B187DD65}.Release|x64.Build.0 = Release|Any CPU
+		{1153790B-CF9D-4D2D-9FDD-7EF4E1117322}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1153790B-CF9D-4D2D-9FDD-7EF4E1117322}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1153790B-CF9D-4D2D-9FDD-7EF4E1117322}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{1153790B-CF9D-4D2D-9FDD-7EF4E1117322}.Debug|x64.Build.0 = Debug|Any CPU
+		{1153790B-CF9D-4D2D-9FDD-7EF4E1117322}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1153790B-CF9D-4D2D-9FDD-7EF4E1117322}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1153790B-CF9D-4D2D-9FDD-7EF4E1117322}.Release|x64.ActiveCfg = Release|Any CPU
+		{1153790B-CF9D-4D2D-9FDD-7EF4E1117322}.Release|x64.Build.0 = Release|Any CPU
+		{A9D31F57-17FE-40D3-84E4-917612E5F926}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A9D31F57-17FE-40D3-84E4-917612E5F926}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A9D31F57-17FE-40D3-84E4-917612E5F926}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{A9D31F57-17FE-40D3-84E4-917612E5F926}.Debug|x64.Build.0 = Debug|Any CPU
+		{A9D31F57-17FE-40D3-84E4-917612E5F926}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A9D31F57-17FE-40D3-84E4-917612E5F926}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A9D31F57-17FE-40D3-84E4-917612E5F926}.Release|x64.ActiveCfg = Release|Any CPU
+		{A9D31F57-17FE-40D3-84E4-917612E5F926}.Release|x64.Build.0 = Release|Any CPU
+		{9087347C-E481-47FD-9E8B-CD9006143AEE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9087347C-E481-47FD-9E8B-CD9006143AEE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9087347C-E481-47FD-9E8B-CD9006143AEE}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{9087347C-E481-47FD-9E8B-CD9006143AEE}.Debug|x64.Build.0 = Debug|Any CPU
+		{9087347C-E481-47FD-9E8B-CD9006143AEE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9087347C-E481-47FD-9E8B-CD9006143AEE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9087347C-E481-47FD-9E8B-CD9006143AEE}.Release|x64.ActiveCfg = Release|Any CPU
+		{9087347C-E481-47FD-9E8B-CD9006143AEE}.Release|x64.Build.0 = Release|Any CPU
+		{16FBD9EF-CB6D-4A39-9093-9B675242A327}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{16FBD9EF-CB6D-4A39-9093-9B675242A327}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{16FBD9EF-CB6D-4A39-9093-9B675242A327}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{16FBD9EF-CB6D-4A39-9093-9B675242A327}.Debug|x64.Build.0 = Debug|Any CPU
+		{16FBD9EF-CB6D-4A39-9093-9B675242A327}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{16FBD9EF-CB6D-4A39-9093-9B675242A327}.Release|Any CPU.Build.0 = Release|Any CPU
+		{16FBD9EF-CB6D-4A39-9093-9B675242A327}.Release|x64.ActiveCfg = Release|Any CPU
+		{16FBD9EF-CB6D-4A39-9093-9B675242A327}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -305,6 +347,12 @@ Global
 		{8E735E5E-AD1C-4C06-8981-491E2D3DC1C4} = {19C34F0A-0FC6-41A0-80AB-44922096A893}
 		{354CA6CE-1468-4A5D-AB01-C9BFC0555ECD} = {19C34F0A-0FC6-41A0-80AB-44922096A893}
 		{B76A4565-FA13-47B0-B468-3042B187DD65} = {19C34F0A-0FC6-41A0-80AB-44922096A893}
+		{1153790B-CF9D-4D2D-9FDD-7EF4E1117322} = {19C34F0A-0FC6-41A0-80AB-44922096A893}
+		{8B7F1FE5-0214-43B4-B698-58BF5D2C4CAE} = {B821F9BF-F447-4406-971F-6DA307812FAD}
+		{4C77F938-4CBF-45D6-BE8C-4DA9C0F10DD0} = {B821F9BF-F447-4406-971F-6DA307812FAD}
+		{A9D31F57-17FE-40D3-84E4-917612E5F926} = {43614B35-7802-4B4D-8653-05E5AD73E267}
+		{9087347C-E481-47FD-9E8B-CD9006143AEE} = {43614B35-7802-4B4D-8653-05E5AD73E267}
+		{16FBD9EF-CB6D-4A39-9093-9B675242A327} = {498D73F4-FA45-4447-844C-388967A86013}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F2F9E22D-2C90-425D-86FF-62DCA2D66872}

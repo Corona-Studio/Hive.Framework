@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Hive.Codec.Abstractions\Hive.Codec.Abstractions.csproj" />
+    <ProjectReference Include="..\Hive.Codec.Shared\Hive.Codec.Shared.csproj" />
   </ItemGroup>
 
 </Project>

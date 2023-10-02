@@ -7,8 +7,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\..\Networking\Hive.Networking.Shared\Hive.Networking.Shared.csproj" />
-      <ProjectReference Include="..\..\Networking\Hive.Networking.Tcp\Hive.Networking.Tcp.csproj" />
+      <ProjectReference Include="..\..\Networking\Hive.Network.Shared\Hive.Network.Shared.csproj" />
+      <ProjectReference Include="..\..\Networking\Hive.Network.Tcp\Hive.Network.Tcp.csproj" />
     </ItemGroup>
 
     <ItemGroup>

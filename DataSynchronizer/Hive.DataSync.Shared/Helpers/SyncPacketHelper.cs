@@ -1,13 +1,12 @@
 ﻿using Hive.DataSync.Abstraction.Interfaces;
 using Hive.DataSync.Shared.ObjectSyncPacket;
 using Hive.Framework.Codec.Abstractions;
-using Hive.Framework.Networking.Abstractions;
 
 namespace Hive.DataSync.Shared.Helpers
 {
     public static class SyncPacketHelper
     {
-        public static void RegisterSyncPacketPacketIds<TId>(this IPacketIdMapper<TId> mapper) where TId : unmanaged
+        /*public static void RegisterSyncPacketPacketIds<TId>(this IPacketIdMapper<TId> mapper) where TId : unmanaged
         {
             mapper.Register<BooleanSyncPacket>();
             mapper.Register<CharSyncPacket>();
@@ -20,9 +19,9 @@ namespace Hive.DataSync.Shared.Helpers
             mapper.Register<UInt16SyncPacket>();
             mapper.Register<UInt32SyncPacket>();
             mapper.Register<UInt64SyncPacket>();
-        }
+        }*/
         
-        public static void RegisterSyncPacketCodecs<TId>(this IPacketCodec<TId> codec, bool configPacketIdMapper = true) where TId : unmanaged
+        /*public static void RegisterSyncPacketCodecs<TId>(this IPacketCodec<TId> codec, bool configPacketIdMapper = true) where TId : unmanaged
         {
             if (configPacketIdMapper)
                 codec.PacketIdMapper.RegisterSyncPacketPacketIds();
@@ -38,9 +37,9 @@ namespace Hive.DataSync.Shared.Helpers
             codec.RegisterCustomSerializer(packet => packet.Serialize(), UInt16SyncPacket.Deserialize);
             codec.RegisterCustomSerializer(packet => packet.Serialize(), UInt32SyncPacket.Deserialize);
             codec.RegisterCustomSerializer(packet => packet.Serialize(), UInt64SyncPacket.Deserialize);
-        }
+        }*/
 
-        public static void RegisterSyncPacketRoutes<TSession>(this IDataDispatcher<TSession> dispatcher) where TSession : ISession<TSession>
+        /*public static void RegisterSyncPacketRoutes<TSession>(this IDataDispatcher<TSession> dispatcher) where TSession : ISession<TSession>
         {
             dispatcher.AddCustomPacketRoute(packet =>
             {
@@ -64,6 +63,6 @@ namespace Hive.DataSync.Shared.Helpers
                     _ => null
                 };
             });
-        }
+        }*/
     }
 }

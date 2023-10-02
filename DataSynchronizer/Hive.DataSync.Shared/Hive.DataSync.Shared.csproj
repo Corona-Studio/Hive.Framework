@@ -7,7 +7,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Hive.DataSync.Abstraction\Hive.DataSync.Abstraction.csproj" />
-    <ProjectReference Include="..\..\Networking\Hive.Networking.Abstractions\Hive.Networking.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Networking\Hive.Network.Abstractions\Hive.Network.Abstractions.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,0 +1,91 @@
+﻿using System;
+using System.Net;
+using System.Net.Sockets;
+using System.Threading;
+using System.Threading.Tasks;
+using Hive.Network.Shared.Session;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+
+namespace Hive.Network.Tcp
+{
+    public sealed class TcpAcceptor : AbstractAcceptor<TcpSession>
+    {
+        private Socket? _serverSocket;
+
+        public override IPEndPoint? EndPoint => _serverSocket?.LocalEndPoint as IPEndPoint;
+        public override bool IsValid => _serverSocket != null;
+
+        private readonly ObjectFactory<TcpSession> _sessionFactory;
+
+        public TcpAcceptor(IServiceProvider serviceProvider, ILogger<TcpAcceptor> logger) : base(serviceProvider, logger)
+        {
+            _sessionFactory = ActivatorUtilities.CreateFactory<TcpSession>(new[] {typeof(int), typeof(Socket)});
+        }
+
+        private void InitSocket(IPEndPoint listenEndPoint)
+        {
+            _serverSocket = new Socket(listenEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+        }
+
+        public override Task<bool> SetupAsync(IPEndPoint listenEndPoint, CancellationToken token)
+        {
+            if (_serverSocket == null)
+                InitSocket(listenEndPoint);
+
+            if (_serverSocket == null)
+            {
+                throw new NullReferenceException("ServerSocket is null and InitSocket failed.");
+            }
+            _serverSocket.Bind(listenEndPoint);
+            _serverSocket.Listen(listenEndPoint.Port);
+            return Task.FromResult(true);
+        }
+
+        public override Task<bool> CloseAsync(CancellationToken token)
+        {
+            if (_serverSocket == null) return Task.FromResult(false);
+
+            _serverSocket.Close();
+            _serverSocket.Dispose();
+            _serverSocket = null;
+            
+            return Task.FromResult(true);
+        }
+
+
+        public override async ValueTask<bool> DoOnceAcceptAsync(CancellationToken token)
+        {
+            if (_serverSocket == null)
+                return false;
+
+            var acceptSocket = await _serverSocket.AcceptAsync();
+            CreateSession(acceptSocket);
+
+            return true;
+        }
+        
+        private void CreateSession(Socket acceptSocket)
+        {
+            var sessionId = GetNextSessionId();
+            var clientSession = _sessionFactory.Invoke(ServiceProvider, new object[] {sessionId, acceptSocket});
+            clientSession.OnSocketError += OnSocketError;
+            FireOnSessionCreate(clientSession);
+        }
+
+        private void OnSocketError(object sender, SocketError e)
+        {
+            if (sender is TcpSession session)
+            {
+                logger.LogDebug("Session {sessionId} socket error: {socketError}", session.Id, e);
+                session.Close();
+                FireOnSessionClosed(session);
+            }
+        }
+
+        public override void Dispose()
+        {
+            _serverSocket?.Dispose();
+        }
+    }
+}

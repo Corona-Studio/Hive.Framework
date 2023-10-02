@@ -9,8 +9,11 @@
     <ItemGroup>
       <ProjectReference Include="..\Codecs\Hive.Codec.MemoryPack\Hive.Codec.MemoryPack.csproj" />
       <ProjectReference Include="..\Codecs\Hive.Codec.Protobuf\Hive.Codec.Protobuf.csproj" />
-      <ProjectReference Include="..\Networking\Hive.Networking.Shared\Hive.Networking.Shared.csproj" />
-      <ProjectReference Include="..\Networking\Hive.Networking.Tcp\Hive.Networking.Tcp.csproj" />
+      <ProjectReference Include="..\Common\Hive.Both.Messages\Hive.Both.Messages.csproj" />
+      <ProjectReference Include="..\Hive.Both.General\Hive.Both.General.csproj" />
+      <ProjectReference Include="..\Networking\Hive.Network.Shared\Hive.Network.Shared.csproj" />
+      <ProjectReference Include="..\Networking\Hive.Network.Tcp\Hive.Network.Tcp.csproj" />
+      <ProjectReference Include="..\Server\Hive.Server.Abstract\Hive.Server.Abstract.csproj" />
     </ItemGroup>
 
     <ItemGroup>
@@ -20,7 +23,8 @@
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       </PackageReference>
-      <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="7.0.0" />
+      <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.0-rc.1.23419.4" />
+      <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0-rc.1.23419.4" />
       <PackageReference Include="protobuf-net.Core" Version="3.2.26" />
     </ItemGroup>
 
