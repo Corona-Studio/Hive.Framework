@@ -9,7 +9,6 @@ public partial class ComplexMessage : IEquatable<ComplexMessage>, IEqualityCompa
 {
     public ComplexMessage()
     {
-        Random rnd = new Random();
         Id = 0;
         Name = "ComplexMessage";
         Numbers = new int[10];
@@ -17,16 +16,16 @@ public partial class ComplexMessage : IEquatable<ComplexMessage>, IEqualityCompa
         Messages = new ComplexMessage[10];
         NullNumbers = new int[5];
 
-        for (int i = 0; i < 10; i++)
+        for (var i = 0; i < 10; i++)
         {
-            Numbers[i] = rnd.Next();
+            Numbers[i] = Random.Shared.Next();
         }
     }
     public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public int[] Numbers { get; set; } = new int[0];
-    public string[] Names { get; set; } = new string[0];
-    public ComplexMessage[] Messages { get; set; } = new ComplexMessage[0];
+    public string Name { get; set; }
+    public int[] Numbers { get; set; }
+    public string[] Names { get; set; }
+    public ComplexMessage[] Messages { get; set; }
     public ComplexMessage? Message { get; set; }
     public int[]? NullNumbers { get; set; }
     public string[]? NullNames { get; set; }
@@ -46,7 +45,7 @@ public partial class ComplexMessage : IEquatable<ComplexMessage>, IEqualityCompa
     {
         if (ReferenceEquals(null, obj)) return false;
         if (ReferenceEquals(this, obj)) return true;
-        if (obj.GetType() != this.GetType()) return false;
+        if (obj.GetType() != GetType()) return false;
         return Equals((ComplexMessage)obj);
     }
 

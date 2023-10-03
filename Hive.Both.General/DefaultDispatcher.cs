@@ -34,6 +34,7 @@ namespace Hive.Both.General
             using var stream = RecycleMemoryStreamManagerHolder.Shared.GetStream();
             stream.Write(rawMessage.Span);
             stream.Seek(0, SeekOrigin.Begin);
+
             var message = _packetCodec.Decode(stream);
             if (message == null)
             {

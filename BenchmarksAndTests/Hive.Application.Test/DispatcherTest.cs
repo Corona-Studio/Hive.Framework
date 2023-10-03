@@ -1,9 +1,7 @@
-﻿using System.Net;
-using Hive.Application.Test.TestMessage;
+﻿using Hive.Application.Test.TestMessage;
 using Hive.Both.General;
 using Hive.Codec.MemoryPack;
 using Hive.Framework.Codec.Abstractions;
-using Hive.Network.Abstractions;
 using Hive.Network.Abstractions.Session;
 using Hive.Network.Tcp;
 using Microsoft.Extensions.DependencyInjection;
@@ -31,7 +29,7 @@ public class DispatcherTest
 
         int cnt = 0;
         dispatcher.Dispatch(dummySession,mem);
-        dispatcher.AddHandler<ComplexMessage>(Dispatcher,null);
+        dispatcher.AddHandler<ComplexMessage>(Dispatcher);
         dispatcher.Dispatch(dummySession,mem);
         dispatcher.Dispatch(dummySession,mem);
         dispatcher.Dispatch(dummySession,mem);

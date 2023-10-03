@@ -13,6 +13,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="BasicNetworking\Kcp\**" />
+    <EmbeddedResource Remove="BasicNetworking\Kcp\**" />
+    <None Remove="BasicNetworking\Kcp\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.0-rc.1.23419.4" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.7.2" />
     <PackageReference Include="NUnit" Version="3.13.3" />
@@ -30,7 +36,6 @@
 
   <ItemGroup>
     <Folder Include="ECS" />
-    <Folder Include="BasicNetworking\Kcp\" />
     <Folder Include="Messages\BidirectionalPacket\" />
   </ItemGroup>
 
@@ -41,6 +46,7 @@
     <ProjectReference Include="..\..\Codecs\Hive.Codec.Shared\Hive.Codec.Shared.csproj" />
     <ProjectReference Include="..\..\Common\Hive.Common.ECS\Hive.Common.ECS.csproj" />
     <ProjectReference Include="..\..\DataSynchronizer\Hive.DataSync.Shared\Hive.DataSync.Shared.csproj" />
+    <ProjectReference Include="..\..\Networking\Hive.Network.Kcp\Hive.Network.Kcp.csproj" />
     <!--<ProjectReference Include="..\..\Networking\Hive.Network.Kcp\Hive.Network.Kcp.csproj" />-->
     <!--<ProjectReference Include="..\..\Networking\Hive.Network.Quic\Hive.Network.Quic.csproj" />-->
     <ProjectReference Include="..\..\Networking\Hive.Network.Shared\Hive.Network.Shared.csproj" />

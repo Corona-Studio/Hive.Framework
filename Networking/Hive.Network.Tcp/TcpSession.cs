@@ -16,10 +16,15 @@ namespace Hive.Network.Tcp
     /// </summary>
     public sealed class TcpSession : AbstractSession
     {
-        public TcpSession(int sessionId, Socket socket, ILogger<TcpSession> logger, IMessageBufferPool messageBufferPool) : base(sessionId, logger, messageBufferPool)
+        public TcpSession(
+            int sessionId,
+            Socket socket,
+            ILogger<TcpSession> logger,
+            IMessageBufferPool messageBufferPool)
+            : base(sessionId, logger, messageBufferPool)
         {
             Socket = socket;
-            socket.ReceiveBufferSize = NetworkSetting.DefaultSocketBufferSize;
+            socket.ReceiveBufferSize = NetworkSettings.DefaultSocketBufferSize;
         }
         
         public Socket? Socket { get; private set; }
@@ -51,7 +56,7 @@ namespace Hive.Network.Tcp
         /// </summary>
         protected override async Task ReceiveLoop(CancellationToken stoppingToken)
         {
-            var receiveBuffer = ArrayPool<byte>.Shared.Rent(NetworkSetting.DefaultBufferSize);
+            var receiveBuffer = ArrayPool<byte>.Shared.Rent(NetworkSettings.DefaultBufferSize);
             var segment = new ArraySegment<byte>(receiveBuffer);
 
             var receivedLen = 0; //当前共接受了多少数据
@@ -79,10 +84,10 @@ namespace Hive.Network.Tcp
                     }
 
                     receivedLen += lenThisTime;
-                    if (isNewPacket && receivedLen >= NetworkSetting.PacketHeaderLength)
+                    if (isNewPacket && receivedLen >= NetworkSettings.PacketHeaderLength)
                     {
                         actualLen = BitConverter.ToUInt16(
-                            segment.Slice(offset + NetworkSetting.PacketLengthOffset)); // 获取实际长度(负载长度)
+                            segment[(offset + NetworkSettings.PacketLengthOffset)..]); // 获取实际长度(负载长度)
                         isNewPacket = false;
                     }
 
@@ -103,14 +108,14 @@ namespace Hive.Network.Tcp
                         Logger.LogTrace("集齐 {ActualLen} 字节 开始处理处理数据包", actualLen);
 #endif
                         */
-                        var bodyLength = actualLen - NetworkSetting.PacketBodyOffset;
-                        FireMessageReceived(segment.Slice(offset + NetworkSetting.PacketBodyOffset, bodyLength));
+                        var bodyLength = actualLen - NetworkSettings.PacketBodyOffset;
+                        FireMessageReceived(segment.Slice(offset + NetworkSettings.PacketBodyOffset, bodyLength));
 
                         offset += actualLen;
                         receivedLen -= actualLen;
-                        if (receivedLen >= NetworkSetting.PacketHeaderLength) //还有超过4字节的数据
+                        if (receivedLen >= NetworkSettings.PacketHeaderLength) //还有超过4字节的数据
                         {
-                            var headMem = segment.Slice(offset, NetworkSetting.PacketHeaderLength);
+                            var headMem = segment.Slice(offset, NetworkSettings.PacketHeaderLength);
                             actualLen = BitConverter.ToUInt16(headMem);
                             // 如果 receivedLen >= actualLen,那么下一次循环会把这个包处理掉
                             // 如果 receivedLen < actualLen,等下一次大循环接收到足够的数据，再处理
@@ -128,11 +133,11 @@ namespace Hive.Network.Tcp
                     offset = 0;
                 }
             }
-            catch (TaskCanceledException e)
+            catch (TaskCanceledException)
             {
                 Logger.LogInformation("Receive loop canceled, SessionId:{sessionId}",Id);
             }
-            catch (OperationCanceledException e)
+            catch (OperationCanceledException)
             {
                 Logger.LogInformation("Receive loop canceled, SessionId:{sessionId}",Id);
             }
@@ -150,6 +155,7 @@ namespace Hive.Network.Tcp
         
         public override void Close()
         {
+            IsConnected = false;
             Socket?.Close();
             Socket?.Dispose();
             Socket = null;

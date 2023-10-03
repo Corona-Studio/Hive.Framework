@@ -7,6 +7,7 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using Hive.Network.Abstractions;
 using Hive.Network.Shared;
+using Hive.Network.Shared.HandShake;
 using Hive.Network.Shared.Session;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -18,12 +19,15 @@ namespace Hive.Network.Udp
         private Socket? _serverSocket;
         private readonly ObjectFactory<UdpServerSession> _sessionFactory;
 
-        private readonly ReaderWriterLockSlim _dictLock = new ReaderWriterLockSlim();
-        private readonly Dictionary<int, UdpServerSession> _udpSessions = new Dictionary<int, UdpServerSession>();
+        private readonly ReaderWriterLockSlim _dictLock = new ();
+        private readonly Dictionary<int, UdpServerSession> _udpSessions = new ();
 
         private readonly Channel<IMessageBuffer> _messageStreamChannel = Channel.CreateUnbounded<IMessageBuffer>();
 
-        public UdpAcceptor(IServiceProvider serviceProvider, ILogger<UdpAcceptor> logger) : base(serviceProvider, logger)
+        public UdpAcceptor(
+            IServiceProvider serviceProvider,
+            ILogger<UdpAcceptor> logger)
+            : base(serviceProvider, logger)
         {
             _sessionFactory =
                 ActivatorUtilities.CreateFactory<UdpServerSession>(new[]
@@ -47,7 +51,7 @@ namespace Hive.Network.Udp
                 throw new NullReferenceException("ServerSocket is null and InitSocket failed.");
             }
 
-            _serverSocket.ReceiveBufferSize = NetworkSetting.DefaultSocketBufferSize;
+            _serverSocket.ReceiveBufferSize = NetworkSettings.DefaultSocketBufferSize;
             _serverSocket.Bind(listenEndPoint);
 
             return Task.FromResult(true);
@@ -71,7 +75,7 @@ namespace Hive.Network.Udp
             return len;
         }
 
-        private readonly byte[] _receiveBuffer = new byte[NetworkSetting.DefaultBufferSize];
+        private readonly byte[] _receiveBuffer = new byte[NetworkSettings.DefaultBufferSize];
 
         public override async ValueTask<bool> DoOnceAcceptAsync(CancellationToken token)
         {
@@ -80,28 +84,29 @@ namespace Hive.Network.Udp
             
             try
             {
-                IPEndPoint? endPoint = new IPEndPoint(IPAddress.Any, 0);
+                var endPoint = new IPEndPoint(IPAddress.Any, 0);
                 var arraySegment = new ArraySegment<byte>(_receiveBuffer, 0, _receiveBuffer.Length);
                 var receivedArg = await _serverSocket.ReceiveFromAsync(arraySegment, SocketFlags.None, endPoint);
 
                 var received = receivedArg.ReceivedBytes;
                 endPoint = (IPEndPoint)receivedArg.RemoteEndPoint;
                 
-                var headMem = _receiveBuffer.AsMemory(0, NetworkSetting.PacketHeaderLength);
-                var length = BitConverter.ToUInt16(headMem.Span[NetworkSetting.PacketLengthOffset..]);
-                var sessionId = BitConverter.ToInt32(headMem.Span[NetworkSetting.SessionIdOffset..]);
+                var headMem = _receiveBuffer.AsMemory(0, NetworkSettings.PacketHeaderLength);
+                // ReSharper disable once RedundantRangeBound
+                var length = BitConverter.ToUInt16(headMem.Span[NetworkSettings.PacketLengthOffset..]);
+                var sessionId = BitConverter.ToInt32(headMem.Span[NetworkSettings.SessionIdOffset..]);
+
                 if (length != received)
                     return false;
 
-                if (sessionId == NetworkSetting.HandshakeSessionId)
+                if (sessionId == NetworkSettings.HandshakeSessionId)
                 {
-                    var handshake = HandShakePacket.ReadFrom(
-                        _receiveBuffer.AsSpan()[NetworkSetting.PacketBodyOffset..]);
-                    HandShakePacket next = default;
+                    var handshake = HandShakePacket.ReadFrom(_receiveBuffer.AsSpan()[NetworkSettings.PacketBodyOffset..]);
+                    HandShakePacket next;
                     if (handshake.IsServerFinished())
                     {
                         var id = GetNextSessionId();
-                        var session = CreateUdpSession(id, endPoint,(IPEndPoint)_serverSocket.LocalEndPoint);
+                        var session = CreateUdpSession(id, endPoint, (IPEndPoint)_serverSocket.LocalEndPoint);
                         next = handshake.CreateFinal(id);
                         if (_dictLock.TryEnterWriteLock(10))
                         {
@@ -117,7 +122,7 @@ namespace Hive.Network.Udp
                         }
                         else
                         {
-                            logger.LogError("Enter write lock failed.");
+                            Logger.LogError("Enter write lock failed.");
                             return false;
                         }
                     }
@@ -125,10 +130,10 @@ namespace Hive.Network.Udp
                     {
                         next = handshake.Next();
                     }
-                    next.WriteTo(_receiveBuffer.AsSpan()[NetworkSetting.PacketBodyOffset..]);
+                    next.WriteTo(_receiveBuffer.AsSpan()[NetworkSettings.PacketBodyOffset..]);
                     await SendAsync(
-                        new ArraySegment<byte>(_receiveBuffer, 0, NetworkSetting.PacketBodyOffset + HandShakePacket.Size), 
-                        (IPEndPoint)endPoint, 
+                        new ArraySegment<byte>(_receiveBuffer, 0, NetworkSettings.PacketBodyOffset + HandShakePacket.Size), 
+                        endPoint, 
                         token);
                 }
                 else
@@ -154,15 +159,16 @@ namespace Hive.Network.Udp
                     }
                     else
                     {
-                        logger.LogError("Enter read lock failed.");
+                        Logger.LogError("Enter read lock failed.");
                         return false;
                     }
                 }
+
                 return received != 0;
             }
             catch (Exception e)
             {
-                logger.LogError(e, "Accept failed.");
+                Logger.LogError(e, "Accept failed.");
                 throw;
             }
         }
@@ -173,9 +179,10 @@ namespace Hive.Network.Udp
             {
                 id,
                 remoteEndPoint,
-                localEndPoint,
+                localEndPoint
             });
             session.OnSendAsync += SendAsync;
+
             return session;
         }
 

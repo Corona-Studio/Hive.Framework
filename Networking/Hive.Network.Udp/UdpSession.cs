@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Net;
-using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using Hive.Network.Abstractions;
@@ -14,7 +13,13 @@ namespace Hive.Network.Udp
     /// </summary>
     public class UdpSession : AbstractSession
     {
-        public UdpSession(int sessionId, IPEndPoint remoteEndPoint, IPEndPoint localEndPoint, ILogger<UdpSession> logger, IMessageBufferPool messageBufferPool) : base(sessionId, logger, messageBufferPool)
+        public UdpSession(
+            int sessionId,
+            IPEndPoint remoteEndPoint,
+            IPEndPoint localEndPoint,
+            ILogger<UdpSession> logger,
+            IMessageBufferPool messageBufferPool)
+            : base(sessionId, logger, messageBufferPool)
         {
             LocalEndPoint = localEndPoint;
             RemoteEndPoint = remoteEndPoint;
@@ -28,7 +33,6 @@ namespace Hive.Network.Udp
 
         public override bool CanReceive => IsConnected;
 
-        public override bool IsConnected => _isConnected;
         public override ValueTask<int> SendOnce(ArraySegment<byte> data, CancellationToken token)
         {
             throw new NotImplementedException();
@@ -38,13 +42,10 @@ namespace Hive.Network.Udp
         {
             throw new NotImplementedException();
         }
-
-
-        private bool _isConnected = true;
         
         public override void Close()
         {
-            _isConnected = false;
+            IsConnected = false;
         }
     }
 }

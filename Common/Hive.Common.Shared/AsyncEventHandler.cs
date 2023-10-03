@@ -22,7 +22,7 @@ namespace Hive.Framework.Shared
 
             //Note: Thread safety issue- if two threads register to the same event (on the first time, i.e when it is null)
             //they could get a different instance, so whoever was first will be overridden.
-            //A solution for that would be to switch to a public constructor and use it, but then we'll 'lose' the similar syntax to c# events             
+            //A solution for that would be to switch to a public constructor and use it, but then we'll 'lose' the similar syntax to c# events
             e ??= new AsyncEventHandler<TEventArgs>();
 
             lock (e._locker)

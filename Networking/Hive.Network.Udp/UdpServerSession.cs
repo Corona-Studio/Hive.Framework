@@ -1,13 +1,10 @@
 ﻿using System;
 using System.Buffers;
 using System.Net;
-using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Hive.Network.Abstractions;
-using Hive.Network.Shared;
-using Hive.Network.Shared.Session;
 using Microsoft.Extensions.Logging;
 
 namespace Hive.Network.Udp
@@ -17,7 +14,12 @@ namespace Hive.Network.Udp
     /// </summary>
     public class UdpServerSession : UdpSession
     {
-        public UdpServerSession(int sessionId,IPEndPoint remoteEndPoint, IPEndPoint localEndPoint, ILogger<UdpSession> logger, IMessageBufferPool messageBufferPool) 
+        public UdpServerSession(
+            int sessionId,
+            IPEndPoint remoteEndPoint,
+            IPEndPoint localEndPoint,
+            ILogger<UdpSession> logger,
+            IMessageBufferPool messageBufferPool) 
             : base(sessionId, remoteEndPoint, localEndPoint, logger, messageBufferPool)
         {
         }
@@ -33,11 +35,10 @@ namespace Hive.Network.Udp
         }
 
         private readonly Channel<ArraySegment<byte>> _messageStreamChannel = Channel.CreateUnbounded<ArraySegment<byte>>();
-        private bool _isConnected = true;
 
         internal void OnReceived(Memory<byte> memory, CancellationToken token)
         {
-            if (!_isConnected) return;
+            if (!IsConnected) return;
 
             var bytes = ArrayPool<byte>.Shared.Rent(memory.Length);
             memory.CopyTo(bytes);
@@ -45,13 +46,13 @@ namespace Hive.Network.Udp
             if (!_messageStreamChannel.Writer.TryWrite(segment))
             {
                 ArrayPool<byte>.Shared.Return(bytes);
-                _isConnected = false;
+                IsConnected = false;
             }
         }
 
         public override async ValueTask<int> ReceiveOnce(ArraySegment<byte> buffer, CancellationToken token)
         {
-            if (!_isConnected) return 0;
+            if (!IsConnected) return 0;
 
             await _messageStreamChannel.Reader.WaitToReadAsync(token);
             
@@ -61,11 +62,6 @@ namespace Hive.Network.Udp
             var len = stream.Count;
             ArrayPool<byte>.Shared.Return(stream.Array);
             return len;
-        }
-        
-        public override void Close()
-        {
-            _isConnected = false;
         }
     }
 }

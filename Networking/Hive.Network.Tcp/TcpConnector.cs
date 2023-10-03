@@ -3,7 +3,6 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
-using Hive.Network.Abstractions;
 using Hive.Network.Abstractions.Session;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -16,13 +15,15 @@ namespace Hive.Network.Tcp
         private readonly ILogger<TcpConnector> _logger;
         private readonly IServiceProvider _serviceProvider;
 
-        public TcpConnector(ILogger<TcpConnector> logger, IServiceProvider serviceProvider)
+        public TcpConnector(
+            ILogger<TcpConnector> logger,
+            IServiceProvider serviceProvider)
         {
             _logger = logger;
             _serviceProvider = serviceProvider;
         }
 
-        public async ValueTask<TcpSession> ConnectAsync(IPEndPoint remoteEndPoint, CancellationToken token = default)
+        public async ValueTask<TcpSession?> ConnectAsync(IPEndPoint remoteEndPoint, CancellationToken token = default)
         {
             try
             {
@@ -36,7 +37,6 @@ namespace Hive.Network.Tcp
                 _logger.LogError(e,"Connect to {0} failed", remoteEndPoint);
                 throw;
             }
-
         }
         
         public int GetNextSessionId()

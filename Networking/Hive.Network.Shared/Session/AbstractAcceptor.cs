@@ -17,16 +17,16 @@ namespace Hive.Network.Shared.Session
     public abstract class AbstractAcceptor<TSession> : IAcceptor<TSession> where TSession : ISession
     {
         private readonly ConcurrentDictionary<SessionId, TSession> _idToSessionDict = new();
-        protected readonly ILogger<AbstractAcceptor<TSession>> logger;
+        protected readonly ILogger<AbstractAcceptor<TSession>> Logger;
         private readonly List<TSession> _sessionsToClose = new();
         protected readonly IServiceProvider ServiceProvider;
 
-        private int _curUsedSessionId;
+        private int _curUsedSessionId = int.MinValue;
 
         protected AbstractAcceptor(IServiceProvider serviceProvider, ILogger<AbstractAcceptor<TSession>> logger)
         {
             ServiceProvider = serviceProvider;
-            this.logger = logger;
+            Logger = logger;
         }
 
         public abstract IPEndPoint? EndPoint { get; }
@@ -53,11 +53,11 @@ namespace Hive.Network.Shared.Session
             }
             catch (TaskCanceledException e)
             {
-                logger.LogInformation(e, "Accept loop canceled.");
+                Logger.LogInformation(e, "Accept loop canceled.");
             }
             catch (Exception e)
             {
-                logger.LogError(e, "Accept loop error.");
+                Logger.LogError(e, "Accept loop error.");
             }
         }
 
@@ -82,9 +82,9 @@ namespace Hive.Network.Shared.Session
         {
             var now = DateTimeOffset.Now.ToUnixTimeMilliseconds();
             foreach (var (sessionId, session) in _idToSessionDict)
-                if (session.LastHeartBeatTime + NetworkSetting.MaxHeartBeatTimeout < now)
+                if (session.LastHeartBeatTime + NetworkSettings.MaxHeartBeatTimeout < now)
                 {
-                    logger.LogDebug("Session {sessionId} heartbeat timeout.", sessionId);
+                    Logger.LogDebug("Session {sessionId} heartbeat timeout.", sessionId);
                     session.Close();
                     _sessionsToClose.Add(session);
                 }
@@ -97,7 +97,7 @@ namespace Hive.Network.Shared.Session
 
         protected void FireOnSessionCreate(TSession session)
         {
-            logger.LogInformation("Session {sessionId} accepted.", session.Id);
+            Logger.LogInformation("Session {sessionId} accepted.", session.Id);
             _idToSessionDict.TryAdd(session.Id, session);
 
             OnSessionCreated?.Invoke(this,new OnClientCreatedArgs<TSession>(session.Id,session));
@@ -109,14 +109,14 @@ namespace Hive.Network.Shared.Session
                 }
                 catch (Exception e)
                 {
-                    logger.LogError(e,"OnSessionCreateAsync error");
+                    Logger.LogError(e,"OnSessionCreateAsync error");
                 }
             }
         }
     
         protected void FireOnSessionClosed(TSession session)
         {
-            logger.LogInformation("Session {sessionId} closed.", session.Id);
+            Logger.LogInformation("Session {sessionId} closed.", session.Id);
             _idToSessionDict.TryRemove(session.Id, out _);
             OnSessionClosed?.Invoke(this,new OnClientClosedArgs<TSession>(session.Id,session));
         }

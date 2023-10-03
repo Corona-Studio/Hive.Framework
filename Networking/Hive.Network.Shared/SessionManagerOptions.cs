@@ -4,6 +4,6 @@ namespace Hive.Network.Shared
 {
     public sealed class SessionManagerOptions
     {
-        public IPEndPoint listenEndPoint { get; set; } = new(IPAddress.Any, 0);
+        public IPEndPoint ListenEndPoint { get; set; } = new(IPAddress.Any, 0);
     }
 }

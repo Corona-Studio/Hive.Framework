@@ -1,69 +1,60 @@
 ﻿using System;
-using Hive.Framework.Codec.Abstractions;
-using System.Buffers;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
-using Hive.Framework.Shared.Collections;
+using Hive.Network.Abstractions;
+using Hive.Network.Shared.HandShake;
+using Hive.Network.Shared;
+using Hive.Network.Shared.Session;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
-namespace Hive.Framework.Networking.Kcp
+namespace Hive.Network.Kcp
 {
-    public sealed class KcpAcceptor<TId, TSessionId> : AbstractAcceptor<Socket, KcpSession<TId>, TId, TSessionId>
-        where TId : unmanaged
-        where TSessionId : unmanaged
+    public sealed class KcpAcceptor : AbstractAcceptor<KcpSession>
     {
-        
-        private readonly BiDictionary<EndPoint, uint> _convDictionary = new BiDictionary<EndPoint, uint>();
-        private readonly BiDictionary<uint, KcpSession<TId>> _convSessionDictionary =
-            new BiDictionary<uint, KcpSession<TId>>();
-
         private Socket? _serverSocket;
+        private readonly ObjectFactory<KcpServerSession> _sessionFactory;
 
-        private uint GetNewClientConv()
+        private readonly ReaderWriterLockSlim _dictLock = new();
+        private readonly Dictionary<int, KcpServerSession> _kcpSessions = new();
+
+        private readonly Channel<IMessageBuffer> _messageStreamChannel = Channel.CreateUnbounded<IMessageBuffer>();
+
+        public KcpAcceptor(
+            IServiceProvider serviceProvider,
+            ILogger<KcpAcceptor> logger)
+            : base(serviceProvider, logger)
         {
-            var conv = 0u;
-
-            lock (_convDictionary)
-            {
-                while (true)
-                {
-                    ++conv;
-
-                    if (conv == uint.MaxValue)
-                        conv = 1;
-
-                    if (conv == KcpSession<int>.UnsetConv)
-                        conv++;
-
-                    if (!_convDictionary.ContainsValue(conv))
-                        break;
-                }
-            }
-
-            return conv;
+            _sessionFactory =
+                ActivatorUtilities.CreateFactory<KcpServerSession>(new[]
+                    { typeof(int), typeof(IPEndPoint), typeof(IPEndPoint) });
         }
 
-        public KcpAcceptor(IPEndPoint endPoint, IPacketCodec<TId> codec, IDataDispatcher<KcpSession<TId>> dataDispatcher, ISessionManager<TSessionId, KcpSession<TId>> sessionManager, ISessionCreator<KcpSession<TId>, Socket> sessionCreator) : base(endPoint, codec, dataDispatcher, sessionManager, sessionCreator)
+        private void InitSocket(IPEndPoint listenEndPoint)
         {
+            _serverSocket = new Socket(listenEndPoint.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
         }
 
-        public override Task<bool> SetupAsync(CancellationToken token)
-        {
-            try
-            {
-                _serverSocket = new Socket(EndPoint.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
-                _serverSocket.ReceiveBufferSize = KcpSession<int>.DefaultSocketBufferSize;
-                _serverSocket.Bind(EndPoint);
+        public override IPEndPoint? EndPoint => _serverSocket?.LocalEndPoint as IPEndPoint;
 
-                return Task.FromResult(true);
-            }
-            catch
+        public override Task<bool> SetupAsync(IPEndPoint listenEndPoint, CancellationToken token)
+        {
+            if (_serverSocket == null)
+                InitSocket(listenEndPoint);
+
+            if (_serverSocket == null)
             {
-                _serverSocket?.Dispose();
-                _serverSocket = null;
+                throw new NullReferenceException("ServerSocket is null and InitSocket failed.");
             }
-            return Task.FromResult(false);
+
+            _serverSocket.ReceiveBufferSize = NetworkSettings.DefaultSocketBufferSize;
+            _serverSocket.Bind(listenEndPoint);
+
+            return Task.FromResult(true);
         }
 
         public override Task<bool> CloseAsync(CancellationToken token)
@@ -73,96 +64,137 @@ namespace Hive.Framework.Networking.Kcp
             _serverSocket.Close();
             _serverSocket.Dispose();
             _serverSocket = null;
-            
+
             return Task.FromResult(true);
         }
 
+        internal async ValueTask<int> SendAsync(ArraySegment<byte> segment, IPEndPoint endPoint,
+            CancellationToken token)
+        {
+            var len = await _serverSocket.SendToAsync(segment, SocketFlags.None, endPoint);
+            return len;
+        }
+
+        private readonly byte[] _receiveBuffer = new byte[NetworkSettings.DefaultBufferSize];
+
         public override async ValueTask<bool> DoOnceAcceptAsync(CancellationToken token)
         {
-            if (_serverSocket == null) return false;
-            if (_serverSocket.Available <= 0) return false;
-            
-            var buffer = ArrayPool<byte>.Shared.Rent(1024);
+            if (_serverSocket == null)
+                return false;
+
             try
             {
-                EndPoint? endPoint = new IPEndPoint(IPAddress.Any, 0);
-                var received = _serverSocket.ReceiveFrom(buffer, ref endPoint);
+                var endPoint = new IPEndPoint(IPAddress.Any, 0);
+                var arraySegment = new ArraySegment<byte>(_receiveBuffer, 0, _receiveBuffer.Length);
+                var receivedArg = await _serverSocket.ReceiveFromAsync(arraySegment, SocketFlags.None, endPoint);
 
-                if (received == 0) return false;
+                var received = receivedArg.ReceivedBytes;
+                endPoint = (IPEndPoint)receivedArg.RemoteEndPoint;
 
-                lock (_convSessionDictionary)
-                {
-                    if (ClientManager.TryGetSession((IPEndPoint)endPoint, out var session))
-                    {
-                        // 删除临时转发
-                        _convSessionDictionary.RemoveByValue(session!);
-                        session!.Kcp!.Input(buffer[..received]);
-                        return false;
-                    }
-                }
+                var headMem = _receiveBuffer.AsMemory(0, NetworkSettings.PacketHeaderLength);
+                // ReSharper disable once RedundantRangeBound
+                var length = BitConverter.ToUInt16(headMem.Span[NetworkSettings.PacketLengthOffset..]);
+                var sessionId = BitConverter.ToInt32(headMem.Span[NetworkSettings.SessionIdOffset..]);
 
-                // 如果接收到的字节小于 Conv（uint）的长度，则忽略这个连接请求
-                if(received < sizeof(uint)) return false;
-
-                var receivedConv = BitConverter.ToUInt32(buffer);
-
-                // 如果接收到的 Conv 是未初始化的 Conv，则服务器返回一个新的 Conv 来建立链接
-                if (receivedConv == KcpSession<int>.UnsetConv ||
-                    receivedConv == 0)
-                {
-                    var newConv = GetNewClientConv();
-                    var convBytes = BitConverter.GetBytes(newConv);
-
-                    await _serverSocket!.RawSendTo(convBytes, endPoint);
-
-                    // 将暂时生成的 Conv 保存到字典中，以备客户端发起真正连接时验证
-                    lock(_convDictionary)
-                        _convDictionary.Add(endPoint, newConv);
-
+                if (length != received)
                     return false;
+
+                if (sessionId == NetworkSettings.HandshakeSessionId)
+                {
+                    var handshake = HandShakePacket.ReadFrom(_receiveBuffer.AsSpan()[NetworkSettings.PacketBodyOffset..]);
+                    HandShakePacket next;
+                    if (handshake.IsServerFinished())
+                    {
+                        var id = GetNextSessionId();
+                        var session = CreateKcpSession(id, endPoint, (IPEndPoint)_serverSocket.LocalEndPoint);
+                        next = handshake.CreateFinal(id);
+                        if (_dictLock.TryEnterWriteLock(10))
+                        {
+                            try
+                            {
+                                _kcpSessions.Add(id, session);
+                                FireOnSessionCreate(session);
+                            }
+                            finally
+                            {
+                                _dictLock.ExitWriteLock();
+                            }
+                        }
+                        else
+                        {
+                            Logger.LogError("Enter write lock failed.");
+                            return false;
+                        }
+                    }
+                    else
+                    {
+                        next = handshake.Next();
+                    }
+                    next.WriteTo(_receiveBuffer.AsSpan()[NetworkSettings.PacketBodyOffset..]);
+                    await SendAsync(
+                        new ArraySegment<byte>(_receiveBuffer, 0, NetworkSettings.PacketBodyOffset + HandShakePacket.Size),
+                        endPoint,
+                        token);
                 }
                 else
                 {
-                    // 如果接收到的 Conv 是可用的 Conv，则尝试连接客户端
-                    // 判断在服务器预存的 Conv 是否和客户端送达的一致，如果不一致则无视该连接
-                    lock (_convDictionary)
+                    if (_dictLock.TryEnterReadLock(10))
                     {
-                        // 如果没有查询到记录，则忽略
-                        if (!_convDictionary.TryGetKeyByValue(receivedConv, out var savedEndPoint))
-                            return false;
-                        // 如果终结点不匹配，则忽略
-                        if (!savedEndPoint.Equals(endPoint)) return false;
+                        try
+                        {
+                            if (_kcpSessions.TryGetValue(sessionId, out var session))
+                            {
+                                // Copy one time
+                                session.OnReceived(_receiveBuffer.AsMemory()[..length], token);
+                            }
+                            else
+                            {
+                                return false;
+                            }
+                        }
+                        finally
+                        {
+                            _dictLock.ExitReadLock();
+                        }
                     }
-
-                    var convBytes = BitConverter.GetBytes(receivedConv);
-
-                    await _serverSocket!.RawSendTo(convBytes, endPoint);
-                }
-
-                // 如果在字典中发现了这个会话，说明 Conv 已经协商成功但是客户端管理器还没有接收到登录报文
-                // 在客户端管理器还没有接受该会话时，需要将收到的数据临时转发至 Session
-                lock (_convSessionDictionary)
-                {
-                    if (_convSessionDictionary.TryGetValueByKey(receivedConv, out var savedSession))
+                    else
                     {
-                        savedSession.Kcp!.Input(buffer[..received]);
+                        Logger.LogError("Enter read lock failed.");
                         return false;
                     }
                 }
 
-                var clientSession = new KcpSession<TId>(_serverSocket, (IPEndPoint)endPoint, receivedConv, Codec,
-                    DataDispatcher); // todo SessionCreator.CreateSession(_serverSocket,(IPEndPoint)endPoint);
-
-                lock (_convSessionDictionary)
-                    _convSessionDictionary.Add(receivedConv, clientSession);
-                ClientManager.AddSession(clientSession);
-
-                await Task.Delay(10, token);
-                return true;
+                return received != 0;
             }
-            finally
+            catch (Exception e)
             {
-                ArrayPool<byte>.Shared.Return(buffer);
+                Logger.LogError(e, "Accept failed.");
+                throw;
+            }
+        }
+
+        private KcpServerSession CreateKcpSession(int id, IPEndPoint remoteEndPoint, IPEndPoint localEndPoint)
+        {
+            var session = _sessionFactory.Invoke(ServiceProvider, new object[]
+            {
+                id,
+                remoteEndPoint,
+                localEndPoint
+            });
+            session.OnSendAsync += SendAsync;
+
+            return session;
+        }
+
+        public override void Dispose()
+        {
+            _serverSocket?.Dispose();
+            _dictLock.Dispose();
+
+            _messageStreamChannel.Writer.TryComplete();
+            while (_messageStreamChannel.Reader.TryRead(out var stream))
+            {
+                stream.Dispose();
             }
         }
     }

@@ -18,7 +18,10 @@ namespace Hive.Network.Tcp
 
         private readonly ObjectFactory<TcpSession> _sessionFactory;
 
-        public TcpAcceptor(IServiceProvider serviceProvider, ILogger<TcpAcceptor> logger) : base(serviceProvider, logger)
+        public TcpAcceptor(
+            IServiceProvider serviceProvider,
+            ILogger<TcpAcceptor> logger)
+            : base(serviceProvider, logger)
         {
             _sessionFactory = ActivatorUtilities.CreateFactory<TcpSession>(new[] {typeof(int), typeof(Socket)});
         }
@@ -34,9 +37,8 @@ namespace Hive.Network.Tcp
                 InitSocket(listenEndPoint);
 
             if (_serverSocket == null)
-            {
                 throw new NullReferenceException("ServerSocket is null and InitSocket failed.");
-            }
+
             _serverSocket.Bind(listenEndPoint);
             _serverSocket.Listen(listenEndPoint.Port);
             return Task.FromResult(true);
@@ -77,7 +79,7 @@ namespace Hive.Network.Tcp
         {
             if (sender is TcpSession session)
             {
-                logger.LogDebug("Session {sessionId} socket error: {socketError}", session.Id, e);
+                Logger.LogDebug("Session {sessionId} socket error: {socketError}", session.Id, e);
                 session.Close();
                 FireOnSessionClosed(session);
             }

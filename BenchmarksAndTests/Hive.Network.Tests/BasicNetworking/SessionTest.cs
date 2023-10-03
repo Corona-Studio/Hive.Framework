@@ -3,6 +3,7 @@ using System.Text;
 using Hive.Codec.MemoryPack;
 using Hive.Framework.Shared.Helpers;
 using Hive.Network.Abstractions.Session;
+using Hive.Network.Kcp;
 using Hive.Network.Shared;
 using Hive.Network.Tcp;
 using Hive.Network.Udp;
@@ -11,39 +12,51 @@ using Microsoft.IO;
 
 namespace Hive.Network.Tests.BasicNetworking;
 
-public class SessionTestUDP : SessionTest<UdpSession>
+public class SessionTestUdp : SessionTest<UdpSession>
 {
-    public SessionTestUDP()
+    public SessionTestUdp()
     {
-        lossRate = 0.95;
+        LossRate = 0.95;
     }
-    public override IServiceProvider GetServiceProvider()
+
+    protected override IServiceProvider GetServiceProvider()
     {
-        return ServiceProviderHelper.GetServiceProvider<
-            UdpSession, UdpAcceptor, UdpConnector, MemoryPackPacketCodec>();
+        return ServiceProviderHelper.GetServiceProvider<UdpSession, UdpAcceptor, UdpConnector, MemoryPackPacketCodec>();
     }
 }
 
-public class SessionTestTCP : SessionTest<TcpSession>
+public class SessionTestKcp : SessionTest<KcpSession>
 {
-    public override IServiceProvider GetServiceProvider()
+    public SessionTestKcp()
     {
-        return ServiceProviderHelper.GetServiceProvider<
-            TcpSession, TcpAcceptor, TcpConnector, MemoryPackPacketCodec>();
+        LossRate = 0.95;
+    }
+
+    protected override IServiceProvider GetServiceProvider()
+    {
+        return ServiceProviderHelper.GetServiceProvider<KcpSession, KcpAcceptor, KcpConnector, MemoryPackPacketCodec>();
+    }
+}
+
+public class SessionTestTcp : SessionTest<TcpSession>
+{
+    protected override IServiceProvider GetServiceProvider()
+    {
+        return ServiceProviderHelper.GetServiceProvider<TcpSession, TcpAcceptor, TcpConnector, MemoryPackPacketCodec>();
     }
 }
 
 public abstract class SessionTest<T> where T : class, ISession
 {
-    public abstract IServiceProvider GetServiceProvider();
-    private CancellationTokenSource _cts;
-    private IServiceProvider _serviceProvider;
-    private IAcceptor<T> _acceptor;
+    protected abstract IServiceProvider GetServiceProvider();
+    private CancellationTokenSource _cts = null!;
+    private IServiceProvider _serviceProvider = null!;
+    private IAcceptor<T> _acceptor = null!;
     private readonly List<T> _clientSideSessions = new();
     private readonly List<T> _serverSideSessions = new();
 
-    protected int sendInterval = 0;
-    protected double lossRate = 1;
+    protected const int SendInterval = 0;
+    protected double LossRate = 1;
     
     [OneTimeSetUp]
     public void OneTimeSetUp()
@@ -70,10 +83,10 @@ public abstract class SessionTest<T> where T : class, ISession
     
     [Test]
     [Author("Leon")]
-    [Description("测试会话创建，会话数量为200个")]
+    [Description("测试会话创建，会话数量为 5000 个")]
     public async Task TestSessionCreate()
     {
-        int randomClientNum = 5000;//new Random(DateTimeOffset.Now.Millisecond).Next(2000, 10000);
+        var randomClientNum = 5000;
 
         _acceptor = _serviceProvider.GetRequiredService<IAcceptor<T>>();
 
@@ -86,19 +99,19 @@ public abstract class SessionTest<T> where T : class, ISession
                 tcs.SetCanceled(_cts.Token);
         });
         
-        _acceptor.OnSessionCreated += ((sender, args) =>
+        _acceptor.OnSessionCreated += (_, args) =>
         {
             sessionCount++;
             _serverSideSessions.Add(args.Session);
             
             if(sessionCount == randomClientNum)
                 tcs.SetResult(true);
-        });
-        var port = 11451;
+        };
+        const int port = 11451;
         await _acceptor.SetupAsync(new IPEndPoint(IPAddress.Any, port),_cts.Token);
         _acceptor.StartAcceptLoop(_cts.Token);
 
-        for (int i = 0; i < randomClientNum; i++)
+        for (var i = 0; i < randomClientNum; i++)
         {
             var connector = _serviceProvider.GetRequiredService<IConnector<T>>();
             var session = await connector.ConnectAsync(new IPEndPoint(IPAddress.Loopback, port),
@@ -121,13 +134,13 @@ public abstract class SessionTest<T> where T : class, ISession
 
     private string GenerateLargeText()
     {
-        var random = new Random(DateTimeOffset.Now.Millisecond);
-        int len = random.Next(512,1520);
+        var len = Random.Shared.Next(512,1520);
         var sb = new StringBuilder();
-        for (int i = 0; i < len; i++)
+
+        for (var i = 0; i < len; i++)
         {
             //random
-            sb.Append((char) random.Next(1, 255));
+            sb.Append((char)Random.Shared.Next(1, 255));
         }
 
         return sb.ToString();
@@ -136,18 +149,20 @@ public abstract class SessionTest<T> where T : class, ISession
     [Test]
     public async Task TestSessionSendAndReceive()
     {
-        Dictionary<int,string> clientSentText = new();
-        Dictionary<int,string> serverSentText = new();
-        int c2sCorrectCount = 0;
-        int s2cCorrectCount = 0;
+        var clientSentText = new Dictionary<int, string>();
+        var serverSentText = new Dictionary<int, string>();
+
+        var c2sCorrectCount = 0;
+        var s2cCorrectCount = 0;
+
         foreach (var session in _serverSideSessions)
         {
-            session.OnMessageReceived += (sender, mem) =>
+            session.OnMessageReceived += (_, mem) =>
             {
                 var text = Encoding.UTF8.GetString(mem.Span);
-                if(clientSentText.TryGetValue(session.RemoteEndPoint.Port,out var sentText))
+                if(clientSentText.TryGetValue(session.RemoteEndPoint.Port, out var sentText))
                 {
-                    if(sentText==text)
+                    if(sentText == text)
                         Interlocked.Increment(ref c2sCorrectCount);
                 }
             };
@@ -156,7 +171,7 @@ public abstract class SessionTest<T> where T : class, ISession
 
         foreach (var session in _clientSideSessions)
         {
-            session.OnMessageReceived += (sender, mem) =>
+            session.OnMessageReceived += (_, mem) =>
             {
                 var text = Encoding.UTF8.GetString(mem.Span);
                 if(serverSentText.TryGetValue(session.LocalEndPoint.Port,out var sentText))
@@ -176,8 +191,8 @@ public abstract class SessionTest<T> where T : class, ISession
             var ms = RecycleMemoryStreamManagerHolder.Shared.GetStream();
             Encoding.UTF8.GetBytes(text,((RecyclableMemoryStream)ms));
             
-            if(sendInterval>0)
-                await Task.Delay(sendInterval);// 防止UDP丢包
+            if (SendInterval > 0)
+                await Task.Delay(SendInterval);// 防止UDP丢包
             await session.SendAsync(ms);
         }
 
@@ -189,8 +204,8 @@ public abstract class SessionTest<T> where T : class, ISession
             var ms = RecycleMemoryStreamManagerHolder.Shared.GetStream();
             Encoding.UTF8.GetBytes(text,((RecyclableMemoryStream)ms));
 
-            if(sendInterval>0)
-                await Task.Delay(sendInterval);// 防止UDP丢包
+            if (SendInterval>0)
+                await Task.Delay(SendInterval);// 防止UDP丢包
             await session.SendAsync(ms);
         }
         
@@ -198,8 +213,8 @@ public abstract class SessionTest<T> where T : class, ISession
         
         Assert.Multiple(() =>
         {
-            Assert.That(c2sCorrectCount, Is.GreaterThanOrEqualTo(_clientSideSessions.Count*lossRate));
-            Assert.That(s2cCorrectCount, Is.GreaterThanOrEqualTo(_serverSideSessions.Count*lossRate));
+            Assert.That(c2sCorrectCount, Is.GreaterThanOrEqualTo(_clientSideSessions.Count * LossRate));
+            Assert.That(s2cCorrectCount, Is.GreaterThanOrEqualTo(_serverSideSessions.Count * LossRate));
         });
     }
 }

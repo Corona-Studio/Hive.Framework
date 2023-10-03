@@ -1,188 +1,75 @@
-﻿using System.Collections.Generic;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Threading;
 using System;
-using System.Collections.Concurrent;
 using System.Linq;
-using System.Reflection;
-using Hive.Framework.Shared.Attributes;
 
 namespace Hive.Framework.Shared.Helpers
 {
     /// <summary>
-///     管理Task和CancellationTokenSource
-/// </summary>
-public static class TaskHelper
-{
-    public const int OptimalMaxSpinWaitsPerSpinIteration = 12;
-
-    private static readonly ConcurrentDictionary<Task, CancellationToken> AllTasks = new();
-    private static readonly ConcurrentDictionary<CancellationToken, List<Task>> CancelTokenToTask = new();
-
-    private static void ManagedRun(Task task, CancellationToken ct, IEnumerable<AbstractIgnoreExceptionAttribute>? exceptionsToIgnore)
-    {
-        // 无法抛出异常
-        AllTasks.AddOrUpdate(task, ct, (_, _) => ct);
-
-        CancelTokenToTask.AddOrUpdate(
-            ct,
-            new List<Task> { task },
-            (_, list) =>
-            {
-                list.Add(task);
-
-                return list;
-            });
-
-        task.CatchException(exceptionsToIgnore);
-    }
-
-    public static void ManagedRun(Func<Task?> function, CancellationToken ct)
-    {
-        var task = Task.Run(function, ct);
-        ManagedRun(
-            task,
-            ct,
-            function.GetMethodInfo().GetCustomAttributes<AbstractIgnoreExceptionAttribute>());
-    }
-
-    public static void ManagedRun(Action function, CancellationToken ct)
-    {
-        var task = Task.Run(function, ct);
-
-        AllTasks.AddOrUpdate(task, ct, (_, _) => ct);
-
-        CancelTokenToTask.AddOrUpdate(
-            ct,
-            new List<Task> { task },
-            (_, list) =>
-            {
-                list.Add(task);
-
-                return list;
-            });
-
-        task.CatchException(function.GetMethodInfo().GetCustomAttributes<AbstractIgnoreExceptionAttribute>());
-    }
-
-    public static async Task CancelAfterAndWaitAllTaskAsync(this CancellationTokenSource cts, TimeSpan timeSpan)
-    {
-        CancellationToken token;
-        try
-        {
-            token = cts.Token;
-        }
-        catch (ObjectDisposedException)
-        {
-            return;
-        }
-
-        cts.CancelAfter(timeSpan);
-
-        if (!CancelTokenToTask.TryRemove(token, out var tasks))
-            return;
-
-        await Task.WhenAll(tasks);
-    }
-
-    public static void CancelAndWaitTaskComplete(this CancellationTokenSource cts, int timeoutMillisecond = 20000)
-    {
-        CancellationToken token;
-        try
-        {
-            token = cts.Token;
-        }
-        catch (ObjectDisposedException)
-        {
-            return;
-        }
-
-        cts.Cancel();
-
-        if (!CancelTokenToTask.TryRemove(token, out var tasks))
-            return;
-
-        Task.WaitAll(tasks.ToArray(), timeoutMillisecond);
-    }
-
-    public static async Task CancelAndWaitAllTaskAsync(this CancellationTokenSource cts)
-    {
-        CancellationToken token;
-        try
-        {
-            token = cts.Token;
-        }
-        catch (ObjectDisposedException)
-        {
-            return;
-        }
-
-        cts.Cancel();
-
-        if (!CancelTokenToTask.TryRemove(token, out var tasks))
-            return;
-
-        await Task.WhenAll(tasks);
-    }
-
-    public static async Task WaitUtil(Func<bool> condition, int interval = 5)
-    {
-        while (!condition()) await Task.Delay(interval);
-    }
-
-    public static async Task WaitUtil(Func<bool> condition, CancellationToken ct, int interval = 5)
-    {
-        try
-        {
-            while (!ct.IsCancellationRequested && !condition()) await Task.Delay(interval, ct);
-        }
-        catch (TaskCanceledException)
-        {
-            Console.WriteLine("Task canceled");
-        }
-    }
-
-    public static async Task WaitWhile(Func<bool> condition, CancellationToken ct, int interval = 5)
-    {
-        try
-        {
-            while (!ct.IsCancellationRequested && condition()) await Task.Delay(interval, ct);
-        }
-        catch (TaskCanceledException)
-        {
-            Console.WriteLine("Task canceled");
-        }
-    }
-
-    /// <summary>
-    ///     await一个task，可以抛出其中的异常
+    ///     管理Task和CancellationTokenSource
     /// </summary>
-    /// <param name="task"></param>
-    /// <param name="exceptionsToIgnore"></param>
-    public static async void CatchException(
-        this Task task,
-        IEnumerable<AbstractIgnoreExceptionAttribute>? exceptionsToIgnore)
+    public static class TaskHelper
     {
-        try
-        {
-            await task;
-        }
-        catch (TaskCanceledException)
-        {
-            Console.WriteLine("Task canceled");
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine(e);
+        public const int OptimalMaxSpinWaitsPerSpinIteration = 12;
 
-            if (exceptionsToIgnore?.Any(a => a.IsMatch(e)) ?? false)
-                return;
+        public static async Task WaitUtil(Func<bool> condition, int interval = 5)
+        {
+            while (!condition()) await Task.Delay(interval);
+        }
 
-            throw;
+        public static async Task WaitUtil(Func<bool> condition, CancellationToken ct, int interval = 5)
+        {
+            try
+            {
+                while (!ct.IsCancellationRequested && !condition()) await Task.Delay(interval, ct);
+            }
+            catch (TaskCanceledException)
+            {
+                Console.WriteLine("Task canceled");
+            }
+        }
+
+        public static async Task WaitWhile(Func<bool> condition, CancellationToken ct, int interval = 5)
+        {
+            try
+            {
+                while (!ct.IsCancellationRequested && condition()) await Task.Delay(interval, ct);
+            }
+            catch (TaskCanceledException)
+            {
+                Console.WriteLine("Task canceled");
+            }
+        }
+
+        /// <summary>
+        /// await一个task，可以抛出其中的异常
+        /// </summary>
+        /// <param name="task"></param>
+        /// <param name="exceptionTypes"></param>
+        public static async void CatchException(
+            this Task task,
+            params Type[] exceptionTypes)
+        {
+            try
+            {
+                await task;
+            }
+            catch (TaskCanceledException)
+            {
+                Console.WriteLine("Task canceled");
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+
+                if (exceptionTypes?.Any(a => a == e.GetType()) ?? false)
+                    return;
+
+                throw;
+            }
         }
     }
-}
 
 /// <summary>
 ///     直接从SpinWait里复制的，把Thread.yield之类的修改为Task.Yield

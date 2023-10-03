@@ -1,38 +1,46 @@
-﻿using Hive.Framework.Codec.Abstractions;
-using Hive.Framework.Networking.Abstractions;
-using Hive.Framework.Networking.Shared;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System.Net;
+using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
+using Hive.Framework.Networking.Quic;
+using Hive.Network.Shared.Session;
 using System.Net.Quic;
 using System.Net.Security;
-using System.Runtime.Versioning;
 using System.Security.Cryptography.X509Certificates;
 
-namespace Hive.Framework.Networking.Quic;
+namespace Hive.Network.Quic;
 
 [RequiresPreviewFeatures]
-[SupportedOSPlatform("windows")]
-[SupportedOSPlatform("linux")]
-[SupportedOSPlatform("macos")]
-public sealed class QuicAcceptor<TId, TSessionId> : AbstractAcceptor<QuicConnection, QuicSession<TId>, TId, TSessionId>
-    where TId : unmanaged
-    where TSessionId : unmanaged
+[SupportedOSPlatform(nameof(OSPlatform.Windows))]
+[SupportedOSPlatform(nameof(OSPlatform.Linux))]
+[SupportedOSPlatform(nameof(OSPlatform.OSX))]
+public sealed class QuicAcceptor : AbstractAcceptor<QuicSession>
 {
-    public QuicAcceptor(IPEndPoint endPoint, IPacketCodec<TId> packetCodec, IDataDispatcher<QuicSession<TId>> dataDispatcher, ISessionManager<TSessionId, QuicSession<TId>> sessionManager, ISessionCreator<QuicSession<TId>, QuicConnection> sessionCreator, X509Certificate2 serverCertificate) : base(endPoint, packetCodec, dataDispatcher, sessionManager, sessionCreator)
+    private QuicListener? _listener;
+    private readonly X509Certificate2 _certificate;
+
+    public override IPEndPoint? EndPoint => _listener?.LocalEndPoint;
+    public override bool IsValid => _listener != null;
+
+    private readonly ObjectFactory<QuicSession> _sessionFactory;
+
+    public QuicAcceptor(
+        X509Certificate2 serverCertificate,
+        IServiceProvider serviceProvider,
+        ILogger<QuicAcceptor> logger)
+        : base(serviceProvider, logger)
     {
-        ServerCertificate = serverCertificate;
+        _certificate = serverCertificate;
+        _sessionFactory = ActivatorUtilities.CreateFactory<QuicSession>(new[] { typeof(int), typeof(QuicConnection), typeof(QuicStream) });
     }
-    
-    public QuicListener? QuicListener { get; private set; }
 
-    public override bool IsValid => QuicListener != null;
-    public X509Certificate2 ServerCertificate { get; }
-
-    private async ValueTask InitListener()
+    private async ValueTask InitListener(IPEndPoint listenEndPoint)
     {
         var listenerOptions = new QuicListenerOptions
         {
             ApplicationProtocols = new List<SslApplicationProtocol> { SslApplicationProtocol.Http3 },
-            ListenEndPoint = EndPoint,
+            ListenEndPoint = listenEndPoint,
             ConnectionOptionsCallback = (_, _, _) => ValueTask.FromResult(new QuicServerConnectionOptions
             {
                 DefaultStreamErrorCode = 0,
@@ -41,45 +49,71 @@ public sealed class QuicAcceptor<TId, TSessionId> : AbstractAcceptor<QuicConnect
                 ServerAuthenticationOptions = new SslServerAuthenticationOptions
                 {
                     ApplicationProtocols = new List<SslApplicationProtocol> { SslApplicationProtocol.Http3 },
-                    ServerCertificate = ServerCertificate
+                    ServerCertificate = _certificate
                 }
             })
         };
 
         var listener = await QuicListener.ListenAsync(listenerOptions);
-
-        QuicListener = listener;
+        _listener = listener;
     }
 
-    public override async Task<bool> SetupAsync(CancellationToken token)
+    public override async Task<bool> SetupAsync(IPEndPoint listenEndPoint, CancellationToken token)
     {
-        await InitListener();
-        if (QuicListener == null)
-            return false;
+        if (_listener == null)
+            await InitListener(listenEndPoint);
+
+        if (_listener == null)
+            throw new NullReferenceException("ServerSocket is null and InitSocket failed.");
 
         return true;
     }
 
     public override async Task<bool> CloseAsync(CancellationToken token)
     {
-        if(QuicListener == null)
-            return false;
-        
-        await QuicListener.DisposeAsync();
-        QuicListener = null;
+        if (_listener != null)
+        {
+            await _listener.DisposeAsync();
+            _listener = null;
+        }
+
         return true;
     }
 
+
     public override async ValueTask<bool> DoOnceAcceptAsync(CancellationToken token)
     {
-        if(QuicListener == null)
+        if (_listener == null)
             return false;
-        
-        var connection = await QuicListener.AcceptConnectionAsync(token);
-        //var stream = await connection.AcceptInboundStreamAsync(token);
-        var clientSession = SessionCreator.CreateSession(connection, connection.RemoteEndPoint);
 
-        ClientManager.AddSession(clientSession);
+        var conn = await _listener.AcceptConnectionAsync(token);
+        var stream = await conn.AcceptInboundStreamAsync(token);
+
+        CreateSession(conn, stream);
+
         return true;
+    }
+
+    private void CreateSession(QuicConnection conn, QuicStream stream)
+    {
+        var sessionId = GetNextSessionId();
+        var clientSession = _sessionFactory.Invoke(ServiceProvider, new object[] { sessionId, conn, stream });
+        clientSession.OnQuicError += OnQuicError;
+        FireOnSessionCreate(clientSession);
+    }
+
+    private void OnQuicError(object sender, QuicError e)
+    {
+        if (sender is QuicSession session)
+        {
+            Logger.LogDebug("Session {sessionId} QUIC error: {quicError}", session.Id, e);
+            session.Close();
+            FireOnSessionClosed(session);
+        }
+    }
+
+    public override void Dispose()
+    {
+        CloseAsync(CancellationToken.None).Wait();
     }
 }

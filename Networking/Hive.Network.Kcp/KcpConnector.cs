@@ -1,33 +1,32 @@
-﻿using System;
-using System.Net;
-using System.Net.Sockets;
-using System.Threading;
-using System.Threading.Tasks;
-using Hive.Network.Abstractions.Session;
-using Hive.Network.Shared;
-using Hive.Network.Shared.HandShake;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.Net.Sockets;
+using System.Net;
+using System.Threading.Tasks;
+using System.Threading;
+using System;
+using Hive.Network.Shared.HandShake;
+using Hive.Network.Abstractions.Session;
 
-namespace Hive.Network.Udp
+namespace Hive.Network.Kcp
 {
-    public class UdpConnector : IConnector<UdpSession>
+    public class KcpConnector : IConnector<KcpSession>
     {
-        private readonly ILogger<UdpConnector> _logger;
+        private readonly ILogger<KcpConnector> _logger;
         private readonly IServiceProvider _serviceProvider;
-        private readonly ObjectFactory<UdpClientSession> _sessionFactory;
+        private readonly ObjectFactory<KcpClientSession> _sessionFactory;
 
-        public UdpConnector(
-            ILogger<UdpConnector> logger,
+        public KcpConnector(
+            ILogger<KcpConnector> logger,
             IServiceProvider serviceProvider)
         {
             _logger = logger;
             _serviceProvider = serviceProvider;
-            _sessionFactory = ActivatorUtilities.CreateFactory<UdpClientSession>(new []{typeof(int),
+            _sessionFactory = ActivatorUtilities.CreateFactory<KcpClientSession>(new[]{typeof(int),
                 typeof(Socket), typeof(IPEndPoint)});
         }
 
-        public async ValueTask<UdpSession?> ConnectAsync(IPEndPoint remoteEndPoint, CancellationToken token = default)
+        public async ValueTask<KcpSession?> ConnectAsync(IPEndPoint remoteEndPoint, CancellationToken token = default)
         {
             try
             {
@@ -37,7 +36,7 @@ namespace Hive.Network.Udp
                 if (!shakeResult.HasValue) return null;
 
                 var sessionId = shakeResult.Value.SessionId;
-                return _sessionFactory.Invoke(_serviceProvider,new object[]
+                return _sessionFactory.Invoke(_serviceProvider, new object[]
                 {
                     (int)sessionId,
                     socket,
@@ -46,7 +45,7 @@ namespace Hive.Network.Udp
             }
             catch (Exception e)
             {
-                _logger.LogError(e,"Connect to {0} failed", remoteEndPoint);
+                _logger.LogError(e, "Connect to {0} failed", remoteEndPoint);
                 throw;
             }
         }

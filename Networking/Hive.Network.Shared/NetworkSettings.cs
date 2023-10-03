@@ -1,6 +1,6 @@
 ﻿namespace Hive.Network.Shared
 {
-    public static class NetworkSetting
+    public static class NetworkSettings
     {
         public const int MaxMessageSize = 1024 * 1024 * 10;
         public const int DefaultBufferSize = 40960;
