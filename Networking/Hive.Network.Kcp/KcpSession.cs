@@ -6,10 +6,8 @@ using System.Threading.Tasks;
 using System.Threading;
 using System.Threading.Channels;
 using Hive.Network.Shared.Session;
-using Hive.Network.Abstractions;
 using Microsoft.Extensions.Logging;
 using Hive.Network.Shared;
-using System.Buffers;
 
 namespace Hive.Network.Kcp
 {
@@ -19,11 +17,12 @@ namespace Hive.Network.Kcp
             int sessionId,
             IPEndPoint remoteEndPoint,
             IPEndPoint localEndPoint,
-            ILogger<KcpSession> logger,
-            IMessageBufferPool messageBufferPool)
-            : base(Convert.ToInt32(sessionId), logger, messageBufferPool)
+            ILogger<KcpSession> logger)
+            : base(Convert.ToInt32(sessionId), logger)
         {
             var conv = (uint)(1u + int.MaxValue + sessionId);
+
+            Logger.LogInformation("Conv [{conv}]", conv);
 
             Conv = conv;
 
@@ -42,20 +41,19 @@ namespace Hive.Network.Kcp
         public override bool CanReceive => IsConnected;
         protected override Channel<MemoryStream> SendChannel => throw new NotImplementedException();
 
-        public override Task StartAsync(CancellationToken token)
+        public virtual Task StartKcpLogicAsync(CancellationToken token)
         {
-            var baseTask = base.StartAsync(token);
             var updateTask = Task.Run(() => KcpRawUpdateLoop(token), token);
 
-            return Task.WhenAll(baseTask, updateTask);
+            return updateTask;
         }
 
         public override async ValueTask<bool> SendAsync(MemoryStream ms, CancellationToken token = default)
         {
-            var sendBuffer = ArrayPool<byte>.Shared.Rent(NetworkSettings.DefaultBufferSize);
-
             ms.Seek(0, SeekOrigin.Begin);
 
+            var totalLen = ms.Length + NetworkSettings.PacketBodyOffset;
+            var sendBuffer = new byte[totalLen];
             // ReSharper disable once MethodHasAsyncOverloadWithCancellation
             var readLen = await ms.ReadAsync(sendBuffer, NetworkSettings.PacketBodyOffset, (int)ms.Length, token);
 
@@ -70,8 +68,6 @@ namespace Hive.Network.Kcp
                 return false;
             }
 
-            var totalLen = readLen + NetworkSettings.PacketBodyOffset;
-
             // 写入头部包体长度字段
             // ReSharper disable once RedundantRangeBound
             BitConverter.TryWriteBytes(
@@ -81,7 +77,7 @@ namespace Hive.Network.Kcp
                 sendBuffer.AsSpan()[NetworkSettings.SessionIdOffset..],
                 Id);
 
-            var segment = new ArraySegment<byte>(sendBuffer, 0, totalLen);
+            var segment = new ArraySegment<byte>(sendBuffer);
             var sentLen = 0;
 
             while (sentLen < segment.Count)
@@ -105,9 +101,10 @@ namespace Hive.Network.Kcp
             {
                 SendingLoopRunning = true;
 
-                while (!token.IsCancellationRequested)
+                while (!token.IsCancellationRequested && IsConnected)
                 {
                     await SendOnce(ArraySegment<byte>.Empty, token);
+                    await Task.Delay(1, token);
                 }
             }
             catch (TaskCanceledException)
@@ -152,11 +149,14 @@ namespace Hive.Network.Kcp
                 if (Kcp == null)
                     throw new NullReferenceException("Kcp Init Failed!");
 
-                while (!token.IsCancellationRequested)
+                while (!token.IsCancellationRequested && IsConnected)
                 {
-                    Kcp.Update(DateTimeOffset.UtcNow);
+                    var timeToWait = Kcp.Check(DateTimeOffset.UtcNow);
+                    var waitMs = timeToWait.Millisecond < 10 ? 10 : timeToWait.Millisecond;
 
-                    await Task.Delay(10, token);
+                    await Task.Delay(waitMs, token);
+
+                    Kcp.Update(DateTimeOffset.UtcNow);
                 }
             }
             catch (ObjectDisposedException)

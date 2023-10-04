@@ -3,9 +3,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
-using System.Threading.Channels;
 using System.Threading.Tasks;
-using Hive.Network.Abstractions;
 using Hive.Network.Shared;
 using Hive.Network.Shared.HandShake;
 using Hive.Network.Shared.Session;
@@ -21,8 +19,6 @@ namespace Hive.Network.Udp
 
         private readonly ReaderWriterLockSlim _dictLock = new ();
         private readonly Dictionary<int, UdpServerSession> _udpSessions = new ();
-
-        private readonly Channel<IMessageBuffer> _messageStreamChannel = Channel.CreateUnbounded<IMessageBuffer>();
 
         public UdpAcceptor(
             IServiceProvider serviceProvider,
@@ -190,12 +186,6 @@ namespace Hive.Network.Udp
         {
             _serverSocket?.Dispose();
             _dictLock.Dispose();
-
-            _messageStreamChannel.Writer.TryComplete();
-            while (_messageStreamChannel.Reader.TryRead(out var stream))
-            {
-                stream.Dispose();
-            }
         }
     }
 }

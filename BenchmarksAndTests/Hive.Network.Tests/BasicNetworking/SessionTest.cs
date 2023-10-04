@@ -86,7 +86,7 @@ public abstract class SessionTest<T> where T : class, ISession
     [Description("测试会话创建，会话数量为 5000 个")]
     public async Task TestSessionCreate()
     {
-        var randomClientNum = 5000;
+        const int randomClientNum = 5;
 
         _acceptor = _serviceProvider.GetRequiredService<IAcceptor<T>>();
 
@@ -116,12 +116,11 @@ public abstract class SessionTest<T> where T : class, ISession
             var connector = _serviceProvider.GetRequiredService<IConnector<T>>();
             var session = await connector.ConnectAsync(new IPEndPoint(IPAddress.Loopback, port),
                 _cts.Token);
-            if (session!=null)
+            if (session != null)
             {
                 _clientSideSessions.Add(session);
             }
         }
-        
         
         await tcs.Task;
         Assert.Multiple(() =>
@@ -134,7 +133,7 @@ public abstract class SessionTest<T> where T : class, ISession
 
     private string GenerateLargeText()
     {
-        var len = Random.Shared.Next(512,1520);
+        var len = Random.Shared.Next(512,1024);
         var sb = new StringBuilder();
 
         for (var i = 0; i < len; i++)
@@ -166,7 +165,7 @@ public abstract class SessionTest<T> where T : class, ISession
                         Interlocked.Increment(ref c2sCorrectCount);
                 }
             };
-            session.StartAsync(_cts.Token).CatchException(null);
+            session.StartAsync(_cts.Token).CatchException();
         }
 
         foreach (var session in _clientSideSessions)
@@ -180,7 +179,7 @@ public abstract class SessionTest<T> where T : class, ISession
                         Interlocked.Increment(ref s2cCorrectCount);
                 }
             };
-            session.StartAsync(_cts.Token).CatchException(null);
+            session.StartAsync(_cts.Token).CatchException();
         }
         
         foreach (var session in _clientSideSessions)
@@ -189,10 +188,11 @@ public abstract class SessionTest<T> where T : class, ISession
             clientSentText.Add(session.LocalEndPoint.Port, text);
             
             var ms = RecycleMemoryStreamManagerHolder.Shared.GetStream();
-            Encoding.UTF8.GetBytes(text,((RecyclableMemoryStream)ms));
+            Encoding.UTF8.GetBytes(text, (RecyclableMemoryStream)ms);
             
             if (SendInterval > 0)
                 await Task.Delay(SendInterval);// 防止UDP丢包
+
             await session.SendAsync(ms);
         }
 

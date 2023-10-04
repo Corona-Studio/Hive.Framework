@@ -3,9 +3,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
-using System.Threading.Channels;
 using System.Threading.Tasks;
-using Hive.Network.Abstractions;
 using Hive.Network.Shared.HandShake;
 using Hive.Network.Shared;
 using Hive.Network.Shared.Session;
@@ -21,8 +19,6 @@ namespace Hive.Network.Kcp
 
         private readonly ReaderWriterLockSlim _dictLock = new();
         private readonly Dictionary<int, KcpServerSession> _kcpSessions = new();
-
-        private readonly Channel<IMessageBuffer> _messageStreamChannel = Channel.CreateUnbounded<IMessageBuffer>();
 
         public KcpAcceptor(
             IServiceProvider serviceProvider,
@@ -90,6 +86,8 @@ namespace Hive.Network.Kcp
 
                 var received = receivedArg.ReceivedBytes;
                 endPoint = (IPEndPoint)receivedArg.RemoteEndPoint;
+
+                Logger.LogInformation("RECV [{recv}]", received);
 
                 var headMem = _receiveBuffer.AsMemory(0, NetworkSettings.PacketHeaderLength);
                 // ReSharper disable once RedundantRangeBound
@@ -190,12 +188,6 @@ namespace Hive.Network.Kcp
         {
             _serverSocket?.Dispose();
             _dictLock.Dispose();
-
-            _messageStreamChannel.Writer.TryComplete();
-            while (_messageStreamChannel.Reader.TryRead(out var stream))
-            {
-                stream.Dispose();
-            }
         }
     }
 }

@@ -3,7 +3,6 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
-using Hive.Network.Abstractions;
 using Microsoft.Extensions.Logging;
 
 namespace Hive.Network.Udp
@@ -19,9 +18,8 @@ namespace Hive.Network.Udp
             int sessionId,
             Socket socket,
             IPEndPoint remoteEndPoint,
-            ILogger<UdpClientSession> logger,
-            IMessageBufferPool messageBufferPool) 
-            : base(sessionId, remoteEndPoint, (IPEndPoint)socket.LocalEndPoint, logger, messageBufferPool)
+            ILogger<UdpClientSession> logger) 
+            : base(sessionId, remoteEndPoint, (IPEndPoint)socket.LocalEndPoint, logger)
         {
             _socket = socket;
         }

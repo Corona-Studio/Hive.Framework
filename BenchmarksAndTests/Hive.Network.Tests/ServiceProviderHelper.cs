@@ -1,7 +1,5 @@
 ﻿using Hive.Framework.Codec.Abstractions;
-using Hive.Network.Abstractions;
 using Hive.Network.Abstractions.Session;
-using Hive.Network.Shared;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -16,12 +14,12 @@ public class ServiceProviderHelper
         where TCodec : class, IPacketCodec
     {
         var services = new ServiceCollection();
+
         services.AddLogging(builder =>
         {
             builder.AddConsole();
             builder.SetMinimumLevel(LogLevel.Trace);
         });
-        services.AddSingleton<IMessageBufferPool, RecyclableMessageBufferPool>();
         services.AddSingleton<IPacketCodec,TCodec>();
         services.AddTransient<ISession,TSession>();
         services.AddSingleton<IAcceptor<TSession>,TAcceptor>();

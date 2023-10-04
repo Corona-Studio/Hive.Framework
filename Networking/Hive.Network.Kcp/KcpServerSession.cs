@@ -3,33 +3,44 @@ using System.Buffers;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using Hive.Network.Abstractions;
+using Hive.Network.Shared;
 using Microsoft.Extensions.Logging;
 
 namespace Hive.Network.Kcp
 {
     public class KcpServerSession : KcpSession
     {
-        private readonly ArrayBufferWriter<byte> _receiveBuffer = new();
+        private readonly ArrayBufferWriter<byte> _receiveBuffer = new(NetworkSettings.DefaultBufferSize);
+        private readonly ArrayBufferWriter<byte> _sendBuffer = new(NetworkSettings.DefaultBufferSize);
 
         public KcpServerSession(
             int sessionId,
             IPEndPoint remoteEndPoint,
             IPEndPoint localEndPoint,
-            ILogger<KcpSession> logger,
-            IMessageBufferPool messageBufferPool)
-            : base(sessionId, remoteEndPoint, localEndPoint, logger, messageBufferPool)
+            ILogger<KcpSession> logger)
+            : base(sessionId, remoteEndPoint, localEndPoint, logger)
         {
+            StartKcpLogicAsync(CancellationToken.None);
         }
 
         public event Func<ArraySegment<byte>, IPEndPoint, CancellationToken, ValueTask<int>>? OnSendAsync;
 
-        public override ValueTask<int> SendOnce(ArraySegment<byte> data, CancellationToken token)
+        public override async ValueTask<int> SendOnce(ArraySegment<byte> data, CancellationToken token)
         {
             if (!IsConnected)
-                return new ValueTask<int>(0);
+                return 0;
 
-            return OnSendAsync?.Invoke(data, RemoteEndPoint, token) ?? new ValueTask<int>(0);
+            _sendBuffer.Clear();
+
+            await Kcp!.OutputAsync(_sendBuffer);
+
+            if (_sendBuffer.WrittenCount == 0) return 0;
+            if (OnSendAsync == null) return 0;
+
+            var result = new ArraySegment<byte>(new byte[_sendBuffer.WrittenCount]);
+            _sendBuffer.WrittenSpan.CopyTo(result);
+
+            return await OnSendAsync.Invoke(result, RemoteEndPoint, token);
         }
 
         internal void OnReceived(Memory<byte> memory, CancellationToken token)

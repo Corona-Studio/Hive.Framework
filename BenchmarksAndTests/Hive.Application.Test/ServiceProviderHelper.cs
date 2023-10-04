@@ -32,12 +32,12 @@ public static class ServiceProviderHelper
         where TCodec : class, IPacketCodec
     {
         var services = new ServiceCollection();
+
         services.AddLogging(builder =>
         {
             builder.AddConsole();
             builder.SetMinimumLevel(LogLevel.Trace);
         });
-        services.AddSingleton<IMessageBufferPool, RecyclableMessageBufferPool>();
         
         services.BuildSession<TSession,TAcceptor,TConnector,TCodec>();
 

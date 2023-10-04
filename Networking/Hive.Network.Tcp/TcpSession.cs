@@ -4,7 +4,6 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
-using Hive.Network.Abstractions;
 using Hive.Network.Shared;
 using Hive.Network.Shared.Session;
 using Microsoft.Extensions.Logging;
@@ -19,9 +18,8 @@ namespace Hive.Network.Tcp
         public TcpSession(
             int sessionId,
             Socket socket,
-            ILogger<TcpSession> logger,
-            IMessageBufferPool messageBufferPool)
-            : base(sessionId, logger, messageBufferPool)
+            ILogger<TcpSession> logger)
+            : base(sessionId, logger)
         {
             Socket = socket;
             socket.ReceiveBufferSize = NetworkSettings.DefaultSocketBufferSize;

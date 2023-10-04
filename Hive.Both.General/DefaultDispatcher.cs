@@ -4,7 +4,6 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Hive.Framework.Codec.Abstractions;
-using Hive.Network.Abstractions;
 using Hive.Network.Abstractions.Session;
 using Hive.Network.Shared;
 using Microsoft.Extensions.Logging;
@@ -13,20 +12,20 @@ namespace Hive.Both.General
 {
     public class DefaultDispatcher : IDispatcher
     {
-        private IMessageBufferPool _messageBufferPool;
         private readonly ILogger<DefaultDispatcher> _logger;
         private readonly IPacketCodec _packetCodec;
         private readonly ConcurrentDictionary<Type, ConcurrentBag<HandlerId>> _typeToHandlerIds = new();
         private readonly ConcurrentDictionary<HandlerId, IHandleWarp> _idToTypes = new();
         private readonly ConcurrentDictionary<Delegate, HandlerId> _delegateToId = new();
 
-        private int _idCounter = 0;
+        private int _idCounter;
 
-        public DefaultDispatcher(IPacketCodec packetCodec, ILogger<DefaultDispatcher> logger, IMessageBufferPool messageBufferPool)
+        public DefaultDispatcher(
+            IPacketCodec packetCodec,
+            ILogger<DefaultDispatcher> logger)
         {
             _packetCodec = packetCodec;
             _logger = logger;
-            _messageBufferPool = messageBufferPool;
         }
 
         public void Dispatch(ISession session, ReadOnlyMemory<byte> rawMessage)

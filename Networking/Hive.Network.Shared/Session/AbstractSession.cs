@@ -17,7 +17,6 @@ namespace Hive.Network.Shared.Session
     public abstract class AbstractSession : ISession, IDisposable
     {
         protected readonly ILogger<AbstractSession> Logger;
-        protected readonly IMessageBufferPool MessageBufferPool;
         
         protected virtual Channel<MemoryStream>? SendChannel { get; set; } = Channel.CreateBounded<MemoryStream>(new BoundedChannelOptions(1024)
         {
@@ -30,10 +29,12 @@ namespace Hive.Network.Shared.Session
         protected bool ReceivingLoopRunning;
         protected bool SendingLoopRunning;
 
-        protected AbstractSession(int id, ILogger<AbstractSession> logger, IMessageBufferPool messageBufferPool)
+        protected AbstractSession(
+            int id,
+            ILogger<AbstractSession> logger)
         {
             Logger = logger;
-            MessageBufferPool = messageBufferPool;
+
             Id = id;
             LastHeartBeatTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         }
@@ -82,7 +83,6 @@ namespace Hive.Network.Shared.Session
 
             try
             {
-                //var headBuffer = new Memory<byte>(new byte[PacketHeaderLength]);
                 SendingLoopRunning = true;
 
                 while (!token.IsCancellationRequested)
@@ -176,20 +176,24 @@ namespace Hive.Network.Shared.Session
                     
                     // ReSharper disable once RedundantRangeBound
                     var totalLen = BitConverter.ToUInt16(segment[NetworkSettings.PacketLengthOffset..]);
+
                     if (totalLen > lenThisTime)
                     {
                         Logger.LogError("Received {0} bytes, but the packet length is {1}", lenThisTime, totalLen);
                         continue;
                     }
+
                     var bodyLen = totalLen - NetworkSettings.PacketBodyOffset;
                     var data = segment.Slice(NetworkSettings.PacketBodyOffset, bodyLen);
+
                     FireMessageReceived(data);
                 }
             }
             catch (TaskCanceledException)
             {
                 Logger.LogInformation("Receive loop canceled, SessionId:{SessionId}", Id);
-            }catch (OperationCanceledException)
+            }
+            catch (OperationCanceledException)
             {
                 Logger.LogInformation("Receive loop canceled, SessionId:{SessionId}", Id);
             }

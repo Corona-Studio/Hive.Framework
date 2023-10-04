@@ -17,9 +17,8 @@ namespace Hive.Network.Udp
             int sessionId,
             IPEndPoint remoteEndPoint,
             IPEndPoint localEndPoint,
-            ILogger<UdpSession> logger,
-            IMessageBufferPool messageBufferPool)
-            : base(sessionId, logger, messageBufferPool)
+            ILogger<UdpSession> logger)
+            : base(sessionId, logger)
         {
             LocalEndPoint = localEndPoint;
             RemoteEndPoint = remoteEndPoint;

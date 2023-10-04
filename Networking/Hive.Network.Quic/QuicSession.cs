@@ -1,9 +1,7 @@
 ﻿using System.Net;
 using System.Net.Quic;
-using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
-using Hive.Network.Abstractions;
 using Hive.Network.Shared.Session;
 using Microsoft.Extensions.Logging;
 
@@ -19,9 +17,8 @@ public sealed class QuicSession : AbstractSession
         int sessionId,
         QuicConnection connection,
         QuicStream stream,
-        ILogger<QuicSession> logger,
-        IMessageBufferPool messageBufferPool)
-        : base(sessionId, logger, messageBufferPool)
+        ILogger<QuicSession> logger)
+        : base(sessionId, logger)
     {
         QuicConnection = connection;
         QuicStream = stream;

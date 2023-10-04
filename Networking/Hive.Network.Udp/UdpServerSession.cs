@@ -4,7 +4,6 @@ using System.Net;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using Hive.Network.Abstractions;
 using Microsoft.Extensions.Logging;
 
 namespace Hive.Network.Udp
@@ -18,9 +17,8 @@ namespace Hive.Network.Udp
             int sessionId,
             IPEndPoint remoteEndPoint,
             IPEndPoint localEndPoint,
-            ILogger<UdpSession> logger,
-            IMessageBufferPool messageBufferPool) 
-            : base(sessionId, remoteEndPoint, localEndPoint, logger, messageBufferPool)
+            ILogger<UdpSession> logger) 
+            : base(sessionId, remoteEndPoint, localEndPoint, logger)
         {
         }
         

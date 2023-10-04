@@ -1,5 +1,4 @@
-﻿using Hive.Network.Abstractions;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using System.Net.Sockets;
 using System.Net;
 using System.Threading.Tasks;
@@ -21,19 +20,19 @@ namespace Hive.Network.Kcp
             int sessionId,
             Socket socket,
             IPEndPoint remoteEndPoint,
-            ILogger<KcpClientSession> logger,
-            IMessageBufferPool messageBufferPool)
-            : base(sessionId, remoteEndPoint, (IPEndPoint)socket.LocalEndPoint, logger, messageBufferPool)
+            ILogger<KcpClientSession> logger)
+            : base(sessionId, remoteEndPoint, (IPEndPoint)socket.LocalEndPoint, logger)
         {
             _socket = socket;
+            StartKcpLogicAsync(CancellationToken.None);
         }
 
-        public override Task StartAsync(CancellationToken token)
+        public override Task StartKcpLogicAsync(CancellationToken token)
         {
-            var baseTask = base.StartAsync(token);
-            var updateTask = Task.Run(() => KcpRawReceiveLoop(token), token);
+            var baseTask = base.StartKcpLogicAsync(token);
+            var receiveTask = Task.Run(() => KcpRawReceiveLoop(token), token);
 
-            return Task.WhenAll(baseTask, updateTask);
+            return Task.WhenAll(baseTask, receiveTask);
         }
 
         public override async ValueTask<int> SendOnce(ArraySegment<byte> data, CancellationToken token)
@@ -45,7 +44,7 @@ namespace Hive.Network.Kcp
             var sendData = _sendBuffer.Buffer;
             var segment = new ArraySegment<byte>(sendData, 0, _sendBuffer.WrittenCount);
 
-            while (sentLen < sendData.Length)
+            while (sentLen < segment.Count)
             {
                 var sendThisTime = await _socket.SendToAsync(
                     segment[sentLen..],
@@ -77,28 +76,23 @@ namespace Hive.Network.Kcp
 
         private async Task KcpRawReceiveLoop(CancellationToken token)
         {
-            var buffer = ArrayPool<byte>.Shared.Rent(NetworkSettings.DefaultBufferSize);
+            var buffer = ArrayPool<byte>.Shared.Rent(1024);
 
             try
             {
                 while (!token.IsCancellationRequested)
                 {
-                    if (_socket!.Available <= 0)
+                    var segment = new ArraySegment<byte>(buffer);
+                    var receivedResult = await _socket!.ReceiveFromAsync(segment, SocketFlags.None, RemoteEndPoint);
+                    var received = receivedResult.ReceivedBytes;
+
+                    if (received == 0)
                     {
                         await Task.Delay(1, token);
                         continue;
                     }
 
-                    EndPoint? endPoint = new IPEndPoint(IPAddress.Any, 0);
-                    var received = _socket.ReceiveFrom(buffer, ref endPoint);
-
-                    if (received == 0 || !endPoint.Equals(RemoteEndPoint))
-                    {
-                        await Task.Delay(1, token);
-                        continue;
-                    }
-
-                    Kcp!.Input(buffer[..received]);
+                    Kcp!.Input(segment[..received]);
                 }
             }
             catch (Exception ex)
