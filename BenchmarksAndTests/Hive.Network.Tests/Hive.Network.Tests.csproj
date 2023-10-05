@@ -47,6 +47,7 @@
     <ProjectReference Include="..\..\Common\Hive.Common.ECS\Hive.Common.ECS.csproj" />
     <ProjectReference Include="..\..\DataSynchronizer\Hive.DataSync.Shared\Hive.DataSync.Shared.csproj" />
     <ProjectReference Include="..\..\Networking\Hive.Network.Kcp\Hive.Network.Kcp.csproj" />
+    <ProjectReference Include="..\..\Networking\Hive.Network.Quic\Hive.Network.Quic.csproj" />
     <!--<ProjectReference Include="..\..\Networking\Hive.Network.Kcp\Hive.Network.Kcp.csproj" />-->
     <!--<ProjectReference Include="..\..\Networking\Hive.Network.Quic\Hive.Network.Quic.csproj" />-->
     <ProjectReference Include="..\..\Networking\Hive.Network.Shared\Hive.Network.Shared.csproj" />

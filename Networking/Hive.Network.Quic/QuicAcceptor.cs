@@ -8,6 +8,7 @@ using Hive.Network.Shared.Session;
 using System.Net.Quic;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
+using Microsoft.Extensions.Options;
 
 namespace Hive.Network.Quic;
 
@@ -18,43 +19,30 @@ namespace Hive.Network.Quic;
 public sealed class QuicAcceptor : AbstractAcceptor<QuicSession>
 {
     private QuicListener? _listener;
-    private readonly X509Certificate2 _certificate;
+
+    private readonly QuicListenerOptions _listenerOptions;
+    private readonly ObjectFactory<QuicSession> _sessionFactory;
 
     public override IPEndPoint? EndPoint => _listener?.LocalEndPoint;
     public override bool IsValid => _listener != null;
 
-    private readonly ObjectFactory<QuicSession> _sessionFactory;
-
     public QuicAcceptor(
-        X509Certificate2 serverCertificate,
+        IOptions<QuicAcceptorOptions> quicOptions,
         IServiceProvider serviceProvider,
         ILogger<QuicAcceptor> logger)
         : base(serviceProvider, logger)
     {
-        _certificate = serverCertificate;
+        _listenerOptions = quicOptions.Value.QuicListenerOptions ??
+                           throw new NullReferenceException(nameof(quicOptions.Value.QuicListenerOptions));
         _sessionFactory = ActivatorUtilities.CreateFactory<QuicSession>(new[] { typeof(int), typeof(QuicConnection), typeof(QuicStream) });
     }
 
     private async ValueTask InitListener(IPEndPoint listenEndPoint)
     {
-        var listenerOptions = new QuicListenerOptions
-        {
-            ApplicationProtocols = new List<SslApplicationProtocol> { SslApplicationProtocol.Http3 },
-            ListenEndPoint = listenEndPoint,
-            ConnectionOptionsCallback = (_, _, _) => ValueTask.FromResult(new QuicServerConnectionOptions
-            {
-                DefaultStreamErrorCode = 0,
-                DefaultCloseErrorCode = 0,
-                IdleTimeout = TimeSpan.FromMinutes(5),
-                ServerAuthenticationOptions = new SslServerAuthenticationOptions
-                {
-                    ApplicationProtocols = new List<SslApplicationProtocol> { SslApplicationProtocol.Http3 },
-                    ServerCertificate = _certificate
-                }
-            })
-        };
+        if (_listenerOptions.ListenEndPoint.Equals(QuicNetworkSettings.FallBackEndPoint))
+            _listenerOptions.ListenEndPoint = listenEndPoint;
 
-        var listener = await QuicListener.ListenAsync(listenerOptions);
+        var listener = await QuicListener.ListenAsync(_listenerOptions);
         _listener = listener;
     }
 

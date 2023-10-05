@@ -47,6 +47,8 @@ namespace Hive.Network.Kcp
         {
             if (!IsConnected) return;
 
+            Logger.LogInformation("UDP raw packet received [length: {len}]", memory.Length);
+
             Kcp!.Input(memory.Span);
         }
 
@@ -60,7 +62,7 @@ namespace Hive.Network.Kcp
 
             if (_receiveBuffer.WrittenCount > buffer.Count) return 0;
 
-            _receiveBuffer.WrittenMemory.CopyTo(buffer);
+            _receiveBuffer.WrittenSpan.CopyTo(buffer);
 
             return _receiveBuffer.WrittenCount;
         }

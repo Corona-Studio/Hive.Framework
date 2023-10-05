@@ -1,9 +1,15 @@
 ﻿using System.Net;
+using System.Net.Quic;
+using System.Net.Security;
+using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using System.Text;
 using Hive.Codec.MemoryPack;
+using Hive.Framework.Networking.Quic;
 using Hive.Framework.Shared.Helpers;
 using Hive.Network.Abstractions.Session;
 using Hive.Network.Kcp;
+using Hive.Network.Quic;
 using Hive.Network.Shared;
 using Hive.Network.Tcp;
 using Hive.Network.Udp;
@@ -43,6 +49,59 @@ public class SessionTestTcp : SessionTest<TcpSession>
     protected override IServiceProvider GetServiceProvider()
     {
         return ServiceProviderHelper.GetServiceProvider<TcpSession, TcpAcceptor, TcpConnector, MemoryPackPacketCodec>();
+    }
+}
+
+[RequiresPreviewFeatures]
+[SupportedOSPlatform(nameof(OSPlatform.Windows))]
+[SupportedOSPlatform(nameof(OSPlatform.Linux))]
+[SupportedOSPlatform(nameof(OSPlatform.OSX))]
+public class SessionTestQuic : SessionTest<QuicSession>
+{
+    [RequiresPreviewFeatures]
+    protected override IServiceProvider GetServiceProvider()
+    {
+        var serviceProvider = ServiceProviderHelper.GetServiceProvider<QuicSession, QuicAcceptor, QuicConnector, MemoryPackPacketCodec>(
+            setter =>
+            {
+                setter.Configure<QuicAcceptorOptions>(options =>
+                {
+                    options.QuicListenerOptions = new QuicListenerOptions
+                    {
+                        ApplicationProtocols = new List<SslApplicationProtocol> { SslApplicationProtocol.Http3 },
+                        ListenEndPoint = QuicNetworkSettings.FallBackEndPoint,
+                        ConnectionOptionsCallback = (_, _, _) => ValueTask.FromResult(new QuicServerConnectionOptions
+                        {
+                            DefaultStreamErrorCode = 0,
+                            DefaultCloseErrorCode = 0,
+                            IdleTimeout = TimeSpan.FromMinutes(5),
+                            ServerAuthenticationOptions = new SslServerAuthenticationOptions
+                            {
+                                ApplicationProtocols = new List<SslApplicationProtocol> { SslApplicationProtocol.Http3, SslApplicationProtocol.Http2 },
+                                ServerCertificate = QuicCertHelper.GenerateTestCertificate()
+                            }
+                        })
+                    };
+                });
+
+                setter.Configure<QuicConnectorOptions>(options =>
+                {
+                    options.ClientConnectionOptions = new QuicClientConnectionOptions
+                    {
+                        RemoteEndPoint = QuicNetworkSettings.FallBackEndPoint,
+                        DefaultStreamErrorCode = 0,
+                        DefaultCloseErrorCode = 0,
+                        IdleTimeout = TimeSpan.FromMinutes(5),
+                        ClientAuthenticationOptions = new SslClientAuthenticationOptions
+                        {
+                            ApplicationProtocols = new List<SslApplicationProtocol> { SslApplicationProtocol.Http3, SslApplicationProtocol.Http2 },
+                            RemoteCertificateValidationCallback = (_, _, _, _) => true
+                        }
+                    };
+                });
+            });
+
+        return serviceProvider;
     }
 }
 
@@ -86,7 +145,7 @@ public abstract class SessionTest<T> where T : class, ISession
     [Description("测试会话创建，会话数量为 5000 个")]
     public async Task TestSessionCreate()
     {
-        const int randomClientNum = 5;
+        const int randomClientNum = 5000;
 
         _acceptor = _serviceProvider.GetRequiredService<IAcceptor<T>>();
 
@@ -139,7 +198,7 @@ public abstract class SessionTest<T> where T : class, ISession
         for (var i = 0; i < len; i++)
         {
             //random
-            sb.Append((char)Random.Shared.Next(1, 255));
+            sb.Append((char)Random.Shared.Next(32, 126));
         }
 
         return sb.ToString();

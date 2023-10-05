@@ -18,7 +18,7 @@ namespace Hive.Network.Kcp
         private readonly ObjectFactory<KcpServerSession> _sessionFactory;
 
         private readonly ReaderWriterLockSlim _dictLock = new();
-        private readonly Dictionary<int, KcpServerSession> _kcpSessions = new();
+        private readonly Dictionary<IPEndPoint, KcpServerSession> _kcpSessions = new();
 
         public KcpAcceptor(
             IServiceProvider serviceProvider,
@@ -67,8 +67,15 @@ namespace Hive.Network.Kcp
         internal async ValueTask<int> SendAsync(ArraySegment<byte> segment, IPEndPoint endPoint,
             CancellationToken token)
         {
-            var len = await _serverSocket.SendToAsync(segment, SocketFlags.None, endPoint);
-            return len;
+            var sentLen = 0;
+
+            while (sentLen < segment.Count)
+            {
+                var len = await _serverSocket.SendToAsync(segment[sentLen..], SocketFlags.None, endPoint);
+                sentLen += len;
+            }
+            
+            return sentLen;
         }
 
         private readonly byte[] _receiveBuffer = new byte[NetworkSettings.DefaultBufferSize];
@@ -81,23 +88,26 @@ namespace Hive.Network.Kcp
             try
             {
                 var endPoint = new IPEndPoint(IPAddress.Any, 0);
-                var arraySegment = new ArraySegment<byte>(_receiveBuffer, 0, _receiveBuffer.Length);
+                var arraySegment = new ArraySegment<byte>(_receiveBuffer);
                 var receivedArg = await _serverSocket.ReceiveFromAsync(arraySegment, SocketFlags.None, endPoint);
 
                 var received = receivedArg.ReceivedBytes;
                 endPoint = (IPEndPoint)receivedArg.RemoteEndPoint;
 
-                Logger.LogInformation("RECV [{recv}]", received);
-
                 var headMem = _receiveBuffer.AsMemory(0, NetworkSettings.PacketHeaderLength);
                 // ReSharper disable once RedundantRangeBound
                 var length = BitConverter.ToUInt16(headMem.Span[NetworkSettings.PacketLengthOffset..]);
                 var sessionId = BitConverter.ToInt32(headMem.Span[NetworkSettings.SessionIdOffset..]);
+                var isPendingHandShake = sessionId == NetworkSettings.HandshakeSessionId;
 
-                if (length != received)
+                if (isPendingHandShake && length != received)
+                {
+                    Logger.LogWarning("Packet length is not equal to the received length!");
+                    Logger.LogWarning("Received: [{recv}] Actual: [{actual}]", received, length);
                     return false;
+                }
 
-                if (sessionId == NetworkSettings.HandshakeSessionId)
+                if (isPendingHandShake)
                 {
                     var handshake = HandShakePacket.ReadFrom(_receiveBuffer.AsSpan()[NetworkSettings.PacketBodyOffset..]);
                     HandShakePacket next;
@@ -105,12 +115,14 @@ namespace Hive.Network.Kcp
                     {
                         var id = GetNextSessionId();
                         var session = CreateKcpSession(id, endPoint, (IPEndPoint)_serverSocket.LocalEndPoint);
+
                         next = handshake.CreateFinal(id);
+
                         if (_dictLock.TryEnterWriteLock(10))
                         {
                             try
                             {
-                                _kcpSessions.Add(id, session);
+                                _kcpSessions.Add(endPoint, session);
                                 FireOnSessionCreate(session);
                             }
                             finally
@@ -128,7 +140,9 @@ namespace Hive.Network.Kcp
                     {
                         next = handshake.Next();
                     }
+
                     next.WriteTo(_receiveBuffer.AsSpan()[NetworkSettings.PacketBodyOffset..]);
+
                     await SendAsync(
                         new ArraySegment<byte>(_receiveBuffer, 0, NetworkSettings.PacketBodyOffset + HandShakePacket.Size),
                         endPoint,
@@ -140,10 +154,10 @@ namespace Hive.Network.Kcp
                     {
                         try
                         {
-                            if (_kcpSessions.TryGetValue(sessionId, out var session))
+                            if (_kcpSessions.TryGetValue(endPoint, out var session))
                             {
                                 // Copy one time
-                                session.OnReceived(_receiveBuffer.AsMemory()[..length], token);
+                                session.OnReceived(_receiveBuffer.AsMemory()[..received], token);
                             }
                             else
                             {

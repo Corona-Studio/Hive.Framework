@@ -5,9 +5,9 @@ using Microsoft.Extensions.Logging;
 
 namespace Hive.Network.Tests;
 
-public class ServiceProviderHelper
+public static class ServiceProviderHelper
 {
-    public static IServiceProvider GetServiceProvider<TSession,TAcceptor,TConnector,TCodec>() 
+    public static IServiceProvider GetServiceProvider<TSession,TAcceptor,TConnector,TCodec>(Action<IServiceCollection>? serviceCollectionSetter = null) 
         where TAcceptor : class, IAcceptor<TSession>
         where TConnector : class, IConnector<TSession>
         where TSession : class, ISession 
@@ -24,6 +24,8 @@ public class ServiceProviderHelper
         services.AddTransient<ISession,TSession>();
         services.AddSingleton<IAcceptor<TSession>,TAcceptor>();
         services.AddSingleton<IConnector<TSession>, TConnector>();
+        
+        serviceCollectionSetter?.Invoke(services);
             
         return services.BuildServiceProvider();
     }

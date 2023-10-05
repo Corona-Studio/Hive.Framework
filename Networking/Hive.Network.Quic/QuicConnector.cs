@@ -4,9 +4,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Net;
 using System.Net.Quic;
-using System.Net.Security;
 using System.Runtime.Versioning;
 using System.Runtime.InteropServices;
+using Microsoft.Extensions.Options;
 
 namespace Hive.Network.Quic;
 
@@ -17,35 +17,32 @@ namespace Hive.Network.Quic;
 public class QuicConnector : IConnector<QuicSession>
 {
     private int _currentSessionId;
+
     private readonly ILogger<QuicConnector> _logger;
     private readonly IServiceProvider _serviceProvider;
+    private readonly QuicConnectorOptions _connectorOptions;
 
     public QuicConnector(
+        IOptions<QuicConnectorOptions> connectorOptions,
         ILogger<QuicConnector> logger,
         IServiceProvider serviceProvider)
     {
+        if (connectorOptions.Value.ClientConnectionOptions == null)
+            throw new ArgumentNullException(nameof(connectorOptions.Value.ClientConnectionOptions));
+
+        _connectorOptions = connectorOptions.Value;
         _logger = logger;
         _serviceProvider = serviceProvider;
     }
 
     public async ValueTask<QuicSession?> ConnectAsync(IPEndPoint remoteEndPoint, CancellationToken token = default)
     {
+        if (_connectorOptions.ClientConnectionOptions!.RemoteEndPoint.Equals(QuicNetworkSettings.FallBackEndPoint))
+            _connectorOptions.ClientConnectionOptions!.RemoteEndPoint = remoteEndPoint;
+
         try
         {
-            var clientConnectionOptions = new QuicClientConnectionOptions
-            {
-                RemoteEndPoint = remoteEndPoint,
-                DefaultStreamErrorCode = 0,
-                DefaultCloseErrorCode = 0,
-                IdleTimeout = TimeSpan.FromMinutes(5),
-                ClientAuthenticationOptions = new SslClientAuthenticationOptions
-                {
-                    ApplicationProtocols = new List<SslApplicationProtocol> { SslApplicationProtocol.Http3 },
-                    RemoteCertificateValidationCallback = (_, _, _, _) => true
-                }
-            };
-
-            var conn = await QuicConnection.ConnectAsync(clientConnectionOptions, token);
+            var conn = await QuicConnection.ConnectAsync(_connectorOptions.ClientConnectionOptions, token);
             var stream = await conn.OpenOutboundStreamAsync(QuicStreamType.Bidirectional, token);
 
             return ActivatorUtilities.CreateInstance<QuicSession>(
@@ -56,7 +53,7 @@ public class QuicConnector : IConnector<QuicSession>
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "Connect to {0} failed", remoteEndPoint);
+            _logger.LogError(e, "Connect to {remote} failed", remoteEndPoint);
             throw;
         }
     }

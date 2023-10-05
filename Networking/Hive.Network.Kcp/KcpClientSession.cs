@@ -67,6 +67,8 @@ namespace Hive.Network.Kcp
 
             await Kcp!.RecvAsync(_receiveBuffer);
 
+            Logger.LogInformation("RECV Client [{recv}]", _receiveBuffer.WrittenCount);
+
             if (_receiveBuffer.WrittenCount > buffer.Count) return 0;
 
             _receiveBuffer.WrittenMemory.CopyTo(buffer);
@@ -76,7 +78,7 @@ namespace Hive.Network.Kcp
 
         private async Task KcpRawReceiveLoop(CancellationToken token)
         {
-            var buffer = ArrayPool<byte>.Shared.Rent(1024);
+            var buffer = ArrayPool<byte>.Shared.Rent(NetworkSettings.DefaultBufferSize);
 
             try
             {

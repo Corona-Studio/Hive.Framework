@@ -67,8 +67,15 @@ namespace Hive.Network.Udp
         internal async ValueTask<int> SendAsync(ArraySegment<byte> segment, IPEndPoint endPoint,
             CancellationToken token)
         {
-            var len = await _serverSocket.SendToAsync(segment, SocketFlags.None, endPoint);
-            return len;
+            var sentLen = 0;
+
+            while (sentLen < segment.Count)
+            {
+                var len = await _serverSocket.SendToAsync(segment[sentLen..], SocketFlags.None, endPoint);
+                sentLen += len;
+            }
+
+            return sentLen;
         }
 
         private readonly byte[] _receiveBuffer = new byte[NetworkSettings.DefaultBufferSize];
@@ -81,7 +88,7 @@ namespace Hive.Network.Udp
             try
             {
                 var endPoint = new IPEndPoint(IPAddress.Any, 0);
-                var arraySegment = new ArraySegment<byte>(_receiveBuffer, 0, _receiveBuffer.Length);
+                var arraySegment = new ArraySegment<byte>(_receiveBuffer);
                 var receivedArg = await _serverSocket.ReceiveFromAsync(arraySegment, SocketFlags.None, endPoint);
 
                 var received = receivedArg.ReceivedBytes;
@@ -93,7 +100,12 @@ namespace Hive.Network.Udp
                 var sessionId = BitConverter.ToInt32(headMem.Span[NetworkSettings.SessionIdOffset..]);
 
                 if (length != received)
+                {
+                    Logger.LogWarning("Packet length is not equal to the received length!");
+                    Logger.LogWarning("Received: [{recv}] Actual: [{actual}]", received, length);
+
                     return false;
+                }
 
                 if (sessionId == NetworkSettings.HandshakeSessionId)
                 {
@@ -126,7 +138,9 @@ namespace Hive.Network.Udp
                     {
                         next = handshake.Next();
                     }
+
                     next.WriteTo(_receiveBuffer.AsSpan()[NetworkSettings.PacketBodyOffset..]);
+
                     await SendAsync(
                         new ArraySegment<byte>(_receiveBuffer, 0, NetworkSettings.PacketBodyOffset + HandShakePacket.Size), 
                         endPoint, 
