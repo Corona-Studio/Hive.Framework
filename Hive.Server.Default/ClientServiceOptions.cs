@@ -1,6 +1,6 @@
 ﻿using System.Net;
 
-namespace Hive.Server.Shared;
+namespace Hive.Server.Default;
 
 public class ClientServiceOptions
 {

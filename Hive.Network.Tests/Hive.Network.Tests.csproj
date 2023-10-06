@@ -1,0 +1,57 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net7.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <IsPackable>false</IsPackable>
+
+    <RootNamespace>$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>
+
+    <AssemblyName>$(MSBuildProjectName)</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="BasicNetworking\Kcp\**" />
+    <EmbeddedResource Remove="BasicNetworking\Kcp\**" />
+    <None Remove="BasicNetworking\Kcp\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.0-rc.1.23419.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.7.2" />
+    <PackageReference Include="NUnit" Version="3.13.3" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.5.0" />
+    <PackageReference Include="NUnit.Analyzers" Version="3.6.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="coverlet.collector" Version="6.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <ProjectReference Include="..\Hive.DataSync.SourceGen\Hive.DataSync.SourceGen.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="ECS" />
+    <Folder Include="Messages\BidirectionalPacket\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Hive.Codec.Bson\Hive.Codec.Bson.csproj" />
+    <ProjectReference Include="..\Hive.Codec.MemoryPack\Hive.Codec.MemoryPack.csproj" />
+    <ProjectReference Include="..\Hive.Codec.Protobuf\Hive.Codec.Protobuf.csproj" />
+    <ProjectReference Include="..\Hive.Codec.Shared\Hive.Codec.Shared.csproj" />
+    <ProjectReference Include="..\Hive.Common.ECS\Hive.Common.ECS.csproj" />
+    <ProjectReference Include="..\Hive.DataSync.Shared\Hive.DataSync.Shared.csproj" />
+    <ProjectReference Include="..\Hive.DataSync\Hive.DataSync.csproj" />
+    <ProjectReference Include="..\Hive.Network.Kcp\Hive.Network.Kcp.csproj" />
+    <ProjectReference Include="..\Hive.Network.Quic\Hive.Network.Quic.csproj" />
+    <ProjectReference Include="..\Hive.Network.Shared\Hive.Network.Shared.csproj" />
+    <ProjectReference Include="..\Hive.Network.Tcp\Hive.Network.Tcp.csproj" />
+    <ProjectReference Include="..\Hive.Network.Udp\Hive.Network.Udp.csproj" />
+  </ItemGroup>
+
+</Project>

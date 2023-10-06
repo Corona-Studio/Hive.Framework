@@ -7,13 +7,13 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Codecs\Hive.Codec.MemoryPack\Hive.Codec.MemoryPack.csproj" />
-      <ProjectReference Include="..\Codecs\Hive.Codec.Protobuf\Hive.Codec.Protobuf.csproj" />
-      <ProjectReference Include="..\Common\Hive.Both.Messages\Hive.Both.Messages.csproj" />
       <ProjectReference Include="..\Hive.Both.General\Hive.Both.General.csproj" />
-      <ProjectReference Include="..\Networking\Hive.Network.Shared\Hive.Network.Shared.csproj" />
-      <ProjectReference Include="..\Networking\Hive.Network.Tcp\Hive.Network.Tcp.csproj" />
-      <ProjectReference Include="..\Server\Hive.Server.Abstract\Hive.Server.Abstract.csproj" />
+      <ProjectReference Include="..\Hive.Both.Messages\Hive.Both.Messages.csproj" />
+      <ProjectReference Include="..\Hive.Codec.MemoryPack\Hive.Codec.MemoryPack.csproj" />
+      <ProjectReference Include="..\Hive.Codec.Protobuf\Hive.Codec.Protobuf.csproj" />
+      <ProjectReference Include="..\Hive.Network.Shared\Hive.Network.Shared.csproj" />
+      <ProjectReference Include="..\Hive.Network.Tcp\Hive.Network.Tcp.csproj" />
+      <ProjectReference Include="..\Hive.Server.Abstractions\Hive.Server.Abstractions.csproj" />
     </ItemGroup>
 
     <ItemGroup>

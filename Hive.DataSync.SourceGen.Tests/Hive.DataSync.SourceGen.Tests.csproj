@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>preview</LangVersion>
+    <RootNamespace>$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Hive.DataSync.Abstractions\Hive.DataSync.Abstractions.csproj" />
+    <ProjectReference Include="..\Hive.DataSync.Shared\Hive.DataSync.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -4,8 +4,7 @@ using Hive.Both.Messages.C2S;
 using Hive.Both.Messages.S2C;
 using Hive.Network.Abstractions;
 using Hive.Network.Abstractions.Session;
-using Hive.Server.Abstract;
-using Hive.Server.Shared;
+using Hive.Server.Abstractions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 

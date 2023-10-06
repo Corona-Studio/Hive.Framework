@@ -12,10 +12,8 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Codecs\Hive.Codec.Abstractions\Hive.Codec.Abstractions.csproj" />
-      <ProjectReference Include="..\Codecs\Hive.Codec.Protobuf\Hive.Codec.Protobuf.csproj" />
-      <ProjectReference Include="..\Networking\Hive.Network.Abstractions\Hive.Network.Abstractions.csproj" />
+      <ProjectReference Include="..\Hive.Codec.Abstractions\Hive.Codec.Abstractions.csproj" />
+      <ProjectReference Include="..\Hive.Codec.Protobuf\Hive.Codec.Protobuf.csproj" />
     </ItemGroup>
-
 
 </Project>

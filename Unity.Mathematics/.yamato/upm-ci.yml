@@ -1,0 +1,217 @@
+build_platforms:
+  - name: windows
+    type: Unity::VM
+    image: sdet/burst-devimage:stable
+    flavor: b1.large
+  - name: linux
+    image: package-ci/ubuntu:stable
+    type: Unity::VM
+    flavor: b1.large
+  - name: macOS
+    image: burst/burst_mac:stable
+    type: Unity::VM::osx
+    flavor: b1.large
+
+upmci_platforms:
+  - name: windows
+    type: Unity::VM
+    image: package-ci/win10:stable
+    flavor: b1.large
+  - name: linux
+    image: package-ci/ubuntu:stable
+    type: Unity::VM
+    flavor: b1.large
+  - name: macOS
+    image: package-ci/mac:stable
+    type: Unity::VM::osx
+    flavor: b1.large
+
+validate_editor_versions:
+  - version: "2018.4"
+    display_name: "2018.4"
+  - version: "2019.4"
+    display_name: "2019.4"
+  - version: "2020.3"
+    display_name: "2020.3"
+  - version: "2021.3"
+    display_name: "2021.3"
+  - version: "2022.3"
+    display_name: "2022.3"
+  - version: "2023.1"
+    display_name: "2023.1"
+  - version: "trunk"
+    display_name: "trunk"
+
+package_tests_editor_versions:
+  # 2018.3 shows up here but not under validate_editor_versions because package validation is no longer
+  # supported on 2018.3 but Mathematics still supports it so we need to be able to test it. CI jobs
+  # from this list will run package tests only instead of the full validation suite.
+  - version: "2018.3"
+    display_name: "2018.3"
+  - version: "2018.4"
+    display_name: "2018.4"
+  - version: "2019.4"
+    display_name: "2019.4"
+  - version: "2020.3"
+    display_name: "2020.3"
+  - version: "2021.3"
+    display_name: "2021.3"
+  - version: "2022.3"
+    display_name: "2022.3"
+  - version: "2023.1"
+    display_name: "2023.1"
+  - version: "trunk"
+    display_name: "trunk"
+---
+
+{% for platform in upmci_platforms %}
+{% for editor in package_tests_editor_versions %}
+package_tests_{{platform.name}}_{{editor.display_name}}:
+  name: Package tests {{platform.name}} {{editor.display_name}}
+  agent:
+    image: {{platform.image}}
+    type: {{platform.type}}
+    flavor: {{platform.flavor}}
+  commands:
+    - npm install upm-ci-utils@stable --registry https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-npm -g
+    - upm-ci package pack --package-path src/
+    - upm-ci package test --type package-tests --package-path src/ --unity-version {{ editor.version }}
+  artifacts:
+    test_results:
+      paths:
+          - "upm-ci~/**/*"
+{% endfor %}
+{% endfor %}
+
+package_tests_all:
+  name: Package tests all
+  dependencies:
+    {% for platform in upmci_platforms %}
+    {% for editor in package_tests_editor_versions %}
+    - .yamato/upm-ci.yml#package_tests_{{platform.name}}_{{editor.display_name}}
+    {% endfor %}
+    {% endfor %}
+
+package_tests_minimal:
+  name: Package tests minimal
+  dependencies:
+  {% for platform in upmci_platforms %}
+    - .yamato/upm-ci.yml#package_tests_{{platform.name}}_2018.3
+  {% endfor %}
+
+validate_package_minimal:
+  name: Validate Package Linux Minimal
+  agent:
+    image: package-ci/ubuntu:stable
+    type: Unity::VM
+    flavor: b1.large
+  commands:
+    - npm install upm-ci-utils@stable --registry https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-npm -g
+    - upm-ci package pack --package-path src/
+    - upm-ci package test --package-path src/ --unity-version 2019.4
+  artifacts:
+    packages:
+      paths:
+        - "upm-ci~/packages/**/*"
+    test_results:
+      paths:
+          - "upm-ci~/**/*"
+
+{% for platform in upmci_platforms %}
+{% for editor in validate_editor_versions %}
+validate_package_{{platform.name}}_{{editor.display_name}}:
+  name: Validate package {{platform.name}} {{editor.display_name}}
+  agent:
+    image: {{platform.image}}
+    type: {{platform.type}}
+    flavor: {{platform.flavor}}
+  commands:
+    - npm install upm-ci-utils@stable --registry https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-npm -g
+    - upm-ci package pack --package-path src/
+    - upm-ci package test --package-path src/ --unity-version {{ editor.version }}
+  artifacts:
+    packages_{{platform.name}}_{{editor.display_name}}:
+      paths:
+        - "upm-ci~/packages/**/*"
+    results_{{platform.name}}_{{editor.display_name}}:
+        paths:
+            - "upm-ci~/**/*"
+{% endfor %}
+{% endfor %}
+
+validate_package_all:
+  name: Validate package all
+  dependencies:
+    {% for platform in upmci_platforms %}
+    {% for editor in validate_editor_versions %}
+    - .yamato/upm-ci.yml#validate_package_{{platform.name}}_{{editor.display_name}}
+    {% endfor %}
+    {% endfor %}
+
+publish:
+  name: Publish
+  agent:
+    type: Unity::VM
+    image: package-ci/win10:stable
+    flavor: b1.large
+  variables:
+    UPMCI_ENABLE_PACKAGE_SIGNING: 1
+  commands:
+    - npm install upm-ci-utils@stable --registry https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-npm -g
+    - upm-ci package publish --package-path src/
+  artifacts:
+    packages:
+      paths:
+        - "upm-ci~/packages/**/*"
+  dependencies:
+    {% for platform in build_platforms %}
+      {% for editor in validate_editor_versions %}
+      - .yamato/upm-ci.yml#validate_package_{{platform.name}}_{{editor.display_name}}
+      {% endfor %}
+    {% endfor %}
+      - .yamato/upm-ci.yml#package_tests_minimal
+
+promote:
+  name: Promote
+  agent:
+    type: Unity::VM
+    image: package-ci/win10:stable
+    flavor: b1.large
+  variables:
+    UPMCI_PROMOTION: 1
+  commands:
+    - npm install upm-ci-utils@stable --registry https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-npm -g
+    - upm-ci package promote --package-path src/
+  artifacts:
+    packages:
+      paths:
+        - "upm-ci~/packages/**/*"
+  dependencies:
+    - .yamato/upm-ci.yml#publish
+
+publish_ci:
+  name: all Publish Pipeline
+  triggers:
+    tags:
+      only:
+        - /^\d+\.\d+\.\d+(-preview(\.\d+)?)?$/
+  dependencies:
+    - .yamato/upm-ci.yml#publish
+
+nightly_ci:
+  name: all Nightly Pipeline
+  triggers:
+    recurring:
+      - branch: master
+        frequency: daily
+  dependencies:
+    - .yamato/upm-ci.yml#validate_package_all
+
+commit_ci:
+  name: Commit CI pipeline
+  triggers:
+    branches:
+      only:
+        - "/.*/"
+  dependencies:
+    - .yamato/upm-ci.yml#package_tests_minimal

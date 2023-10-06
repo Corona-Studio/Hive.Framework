@@ -1,11 +1,10 @@
-﻿using Hive.Codec.MemoryPack;
-using Hive.Framework.Codec.Abstractions;
+﻿using Hive.Codec.Abstractions;
+using Hive.Codec.MemoryPack;
 using Hive.Network.Tcp;
-using Hive.Server.Abstract;
-using Hive.Server.Default;
+using Hive.Server.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Hive.Server.Shared;
+namespace Hive.Server.Default;
 
 public static class AppBuilder
 {

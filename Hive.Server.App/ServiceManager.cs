@@ -1,4 +1,4 @@
-﻿using Hive.Framework.Shared.Collections;
+﻿using Hive.Common.Shared.Collections;
 
 namespace Hive.Server.App;
 

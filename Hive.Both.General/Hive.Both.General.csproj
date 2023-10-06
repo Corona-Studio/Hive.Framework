@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <TargetFramework>netstandard2.1</TargetFramework>
@@ -8,8 +8,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Networking\Hive.Network.Abstractions\Hive.Network.Abstractions.csproj" />
-      <ProjectReference Include="..\Networking\Hive.Network.Shared\Hive.Network.Shared.csproj" />
+      <ProjectReference Include="..\Hive.Codec.Abstractions\Hive.Codec.Abstractions.csproj" />
+      <ProjectReference Include="..\Hive.Network.Shared\Hive.Network.Shared.csproj" />
     </ItemGroup>
 
 </Project>

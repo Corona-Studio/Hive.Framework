@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
@@ -12,10 +12,9 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Codecs\Hive.Codec.Abstractions\Hive.Codec.Abstractions.csproj" />
-      <ProjectReference Include="..\Codecs\Hive.Codec.Protobuf\Hive.Codec.Protobuf.csproj" />
-      <ProjectReference Include="..\Common\Hive.Common.Shared\Hive.Common.Shared.csproj" />
-      <ProjectReference Include="..\Networking\Hive.Network.Abstractions\Hive.Network.Abstractions.csproj" />
+      <ProjectReference Include="..\Hive.Codec.Abstractions\Hive.Codec.Abstractions.csproj" />
+      <ProjectReference Include="..\Hive.Codec.Protobuf\Hive.Codec.Protobuf.csproj" />
+      <ProjectReference Include="..\Hive.Common.Shared\Hive.Common.Shared.csproj" />
     </ItemGroup>
 
 </Project>
