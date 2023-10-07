@@ -18,7 +18,6 @@ namespace Hive.Network.Shared.Session
     {
         protected readonly ILogger<AbstractSession> Logger;
 
-
         protected bool ReceivingLoopRunning;
         protected bool SendingLoopRunning;
 

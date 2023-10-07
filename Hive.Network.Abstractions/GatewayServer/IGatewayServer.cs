@@ -12,13 +12,12 @@ namespace Hive.Network.Abstractions.GatewayServer;
 /// <typeparam name="TSession">会话类型，通常为具体协议的实现</typeparam>
 /// <typeparam name="TSessionId">会话 ID</typeparam>
 /// <typeparam name="TId">封包类型 ID</typeparam>
-public interface IGatewayServer<TSession, TSessionId, TId> : IDisposable
-    where TSession : ISession
-    where TId : unmanaged
-    where TSessionId : unmanaged
+public interface IGatewayServer<TSession> : IDisposable where TSession : ISession
 {
     IPacketCodec PacketCodec { get; }
     IAcceptor<TSession> Acceptor { get; }
+    ILoadBalancer LoadBalancer { get; }
+    ISecureStreamProvider SecureStreamProvider { get; }
 
     Func<TSession, ILoadBalancer<TSession>> LoadBalancerGetter { get; }
 
