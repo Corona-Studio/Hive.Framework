@@ -7,10 +7,11 @@ namespace Hive.Network.Tests;
 
 public static class ServiceProviderHelper
 {
-    public static IServiceProvider GetServiceProvider<TSession,TAcceptor,TConnector,TCodec>(Action<IServiceCollection>? serviceCollectionSetter = null) 
+    public static IServiceProvider GetServiceProvider<TSession, TAcceptor, TConnector, TCodec>(
+        Action<IServiceCollection>? serviceCollectionSetter = null)
         where TAcceptor : class, IAcceptor<TSession>
         where TConnector : class, IConnector<TSession>
-        where TSession : class, ISession 
+        where TSession : class, ISession
         where TCodec : class, IPacketCodec
     {
         var services = new ServiceCollection();
@@ -20,13 +21,13 @@ public static class ServiceProviderHelper
             builder.AddConsole();
             builder.SetMinimumLevel(LogLevel.Trace);
         });
-        services.AddSingleton<IPacketCodec,TCodec>();
-        services.AddTransient<ISession,TSession>();
-        services.AddSingleton<IAcceptor<TSession>,TAcceptor>();
+        services.AddSingleton<IPacketCodec, TCodec>();
+        services.AddTransient<ISession, TSession>();
+        services.AddSingleton<IAcceptor<TSession>, TAcceptor>();
         services.AddSingleton<IConnector<TSession>, TConnector>();
-        
+
         serviceCollectionSetter?.Invoke(services);
-            
+
         return services.BuildServiceProvider();
     }
 }

@@ -11,9 +11,9 @@ namespace Hive.Network.Tcp
 {
     public class TcpConnector : IConnector<TcpSession>
     {
-        private int _currentSessionId;
         private readonly ILogger<TcpConnector> _logger;
         private readonly IServiceProvider _serviceProvider;
+        private int _currentSessionId;
 
         public TcpConnector(
             ILogger<TcpConnector> logger,
@@ -34,11 +34,11 @@ namespace Hive.Network.Tcp
             }
             catch (Exception e)
             {
-                _logger.LogError(e,"Connect to {0} failed", remoteEndPoint);
+                _logger.LogError(e, "Connect to {0} failed", remoteEndPoint);
                 throw;
             }
         }
-        
+
         public int GetNextSessionId()
         {
             return Interlocked.Increment(ref _currentSessionId);

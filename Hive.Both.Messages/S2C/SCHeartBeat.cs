@@ -7,5 +7,4 @@ namespace Hive.Both.Messages.S2C;
 [MemoryPackable]
 public partial class SCHeartBeat
 {
-    
 }

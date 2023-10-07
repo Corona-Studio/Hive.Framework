@@ -1,5 +1,5 @@
-﻿using System.Security.Cryptography.X509Certificates;
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 
 namespace Hive.Network.Quic;
 
@@ -15,11 +15,9 @@ public static class QuicCertHelper
             cert = store.Certificates[^1];
 
             // rotate key after it expires
-            if (DateTime.Parse(cert.GetExpirationDateString(), null) < DateTimeOffset.UtcNow)
-            {
-                cert = null;
-            }
+            if (DateTime.Parse(cert.GetExpirationDateString(), null) < DateTimeOffset.UtcNow) cert = null;
         }
+
         if (cert == null)
         {
             // generate a new cert
@@ -32,19 +30,21 @@ public static class QuicCertHelper
             req.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension(new OidCollection
             {
                 new("1.3.6.1.5.5.7.3.1") // serverAuth
-
             }, false));
             // Adds usage
             req.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, false));
             // Adds subject alternate names
             req.CertificateExtensions.Add(sanBuilder.Build());
             // Sign
-            using var crt = req.CreateSelfSigned(now, now.AddDays(14)); // 14 days is the max duration of a certificate for this
+            using var
+                crt = req.CreateSelfSigned(now,
+                    now.AddDays(14)); // 14 days is the max duration of a certificate for this
             cert = new X509Certificate2(crt.Export(X509ContentType.Pfx));
 
             // Save
             store.Add(cert);
         }
+
         store.Close();
 
         // var hash = SHA256.HashData(cert.RawData);

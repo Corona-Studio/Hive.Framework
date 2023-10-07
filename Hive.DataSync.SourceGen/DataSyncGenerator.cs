@@ -393,7 +393,7 @@ public class DataSyncGenerator : ISourceGenerator
         var classDecl = ClassDeclaration(className).WithAttributeLists(
                 SingletonList(
                     AttributeList(
-                        SingletonSeparatedList<AttributeSyntax>(
+                        SingletonSeparatedList(
                             Attribute(
                                     IdentifierName("GeneratedCode"))
                                 .WithArgumentList(
@@ -412,12 +412,7 @@ public class DataSyncGenerator : ISourceGenerator
                                                         Literal("1.0.0.0")))
                                             })))))))
             .WithModifiers(
-                TokenList(
-                    new[]
-                    {
-                        Token(SyntaxKind.PublicKeyword),
-                        Token(SyntaxKind.PartialKeyword)
-                    }));
+                TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.PartialKeyword)));
         return namespaceDeclaration.AddMembers(classDecl);
     }
 }

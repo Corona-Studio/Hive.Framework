@@ -1,10 +1,10 @@
-﻿using Hive.Network.Abstractions.Session;
+﻿using System.Net;
+using System.Net.Quic;
+using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
+using Hive.Network.Abstractions.Session;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System.Net;
-using System.Net.Quic;
-using System.Runtime.Versioning;
-using System.Runtime.InteropServices;
 using Microsoft.Extensions.Options;
 
 namespace Hive.Network.Quic;
@@ -15,11 +15,11 @@ namespace Hive.Network.Quic;
 [SupportedOSPlatform(nameof(OSPlatform.OSX))]
 public class QuicConnector : IConnector<QuicSession>
 {
-    private int _currentSessionId;
+    private readonly QuicConnectorOptions _connectorOptions;
 
     private readonly ILogger<QuicConnector> _logger;
     private readonly IServiceProvider _serviceProvider;
-    private readonly QuicConnectorOptions _connectorOptions;
+    private int _currentSessionId;
 
     public QuicConnector(
         IOptions<QuicConnectorOptions> connectorOptions,

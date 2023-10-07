@@ -12,11 +12,11 @@ namespace Hive.Both.General
 {
     public class DefaultDispatcher : IDispatcher
     {
+        private readonly ConcurrentDictionary<Delegate, HandlerId> _delegateToId = new();
+        private readonly ConcurrentDictionary<HandlerId, IHandleWarp> _idToTypes = new();
         private readonly ILogger<DefaultDispatcher> _logger;
         private readonly IPacketCodec _packetCodec;
         private readonly ConcurrentDictionary<Type, ConcurrentBag<HandlerId>> _typeToHandlerIds = new();
-        private readonly ConcurrentDictionary<HandlerId, IHandleWarp> _idToTypes = new();
-        private readonly ConcurrentDictionary<Delegate, HandlerId> _delegateToId = new();
 
         private int _idCounter;
 
@@ -57,7 +57,6 @@ namespace Hive.Both.General
         public void Dispatch(ISession session, Type type, object message)
         {
             if (_typeToHandlerIds.TryGetValue(type, out var handlers))
-            {
                 foreach (var id in handlers)
                 {
                     if (!_idToTypes.TryGetValue(id, out var warp))
@@ -65,13 +64,12 @@ namespace Hive.Both.General
                         _logger.LogWarning("Handler id {HandlerId} not found", id);
                         continue;
                     }
-                    
-                    if(warp.BindingSession!=null && warp.BindingSession!=session)
+
+                    if (warp.BindingSession != null && warp.BindingSession != session)
                         continue;
 
                     warp.Call(this, session, message);
                 }
-            }
         }
 
         public HandlerId AddHandler<T>(DispatchHandler<T> handler, TaskScheduler? scheduler = null)
@@ -80,49 +78,16 @@ namespace Hive.Both.General
             AddHandler(warp);
             return warp.Id;
         }
-        
-        private void AddHandler<T>(HandlerWarp<T> warp)
-        {
-            var type = warp.Type;
-
-            var id = warp.Id;
-            if (!_typeToHandlerIds.TryGetValue(type, out var handlers))
-            {
-                handlers = new ConcurrentBag<HandlerId>();
-                if (!_typeToHandlerIds.TryAdd(type, handlers))
-                {
-                    _logger.LogError("Add handler failed, type:{HandlerType}", type);
-                }
-            }
-
-            handlers.Add(id);
-            if (!_delegateToId.TryAdd(warp.HandlerDelegate, id))
-            {
-                _logger.LogError("Add handler failed, id:{HandlerId}", id);
-                return;
-            }
-            if (!_idToTypes.TryAdd(id, warp))
-            {
-                _logger.LogError("Add handler failed, id:{HandlerId}", id);
-                return;
-            }
-            
-            _logger.LogTrace("Add handler succeed, id:{HandlerId}, message type:{type}", id, type);
-        }
 
         public bool RemoveHandler<T>(DispatchHandler<T> handler)
         {
             if (_delegateToId.TryRemove(handler, out var id))
-            {
                 if (_idToTypes.TryRemove(id, out var warp))
-                {
                     if (_typeToHandlerIds.TryGetValue(warp.Type, out var handlers))
                     {
                         handlers.TryTake(out id);
                         return true;
                     }
-                }
-            }
 
             _logger.LogWarning("Remove handler failed, handler:{Handler}", handler);
             return false;
@@ -131,16 +96,11 @@ namespace Hive.Both.General
         public bool RemoveHandler(HandlerId id)
         {
             if (_idToTypes.TryRemove(id, out var warp))
-            {
                 if (_typeToHandlerIds.TryGetValue(warp.Type, out var handlers))
                 {
                     handlers.TryTake(out id);
-                    if (_delegateToId.TryRemove(warp.HandlerDelegate, out _))
-                    {
-                        return true;
-                    }
+                    if (_delegateToId.TryRemove(warp.HandlerDelegate, out _)) return true;
                 }
-            }
 
             _logger.LogWarning("Remove handler failed, id:{HandlerId}", id);
 
@@ -154,8 +114,8 @@ namespace Hive.Both.General
             {
                 BindingSession = session
             };
-            AddHandler<T>(handlerWarp);
-            
+            AddHandler(handlerWarp);
+
             var id = handlerWarp.Id;
 
             cancellationToken.Register(() =>
@@ -163,9 +123,9 @@ namespace Hive.Both.General
                 _logger.LogTrace("Listen once canceled by token, handlerId:{HandlerId}", id);
                 tcs.SetCanceled();
             });
-            
+
             // todo cancel by session close
-            
+
             try
             {
                 if (cancellationToken.IsCancellationRequested)
@@ -199,7 +159,7 @@ namespace Hive.Both.General
                     message);
                 if (cancellationToken.IsCancellationRequested)
                 {
-                    if(tcs.Task.Status!=TaskStatus.Canceled)
+                    if (tcs.Task.Status != TaskStatus.Canceled)
                         tcs.SetCanceled();
                 }
                 else
@@ -234,6 +194,34 @@ namespace Hive.Both.General
             return await session.SendAsync(stream);
         }
 
+        private void AddHandler<T>(HandlerWarp<T> warp)
+        {
+            var type = warp.Type;
+
+            var id = warp.Id;
+            if (!_typeToHandlerIds.TryGetValue(type, out var handlers))
+            {
+                handlers = new ConcurrentBag<HandlerId>();
+                if (!_typeToHandlerIds.TryAdd(type, handlers))
+                    _logger.LogError("Add handler failed, type:{HandlerType}", type);
+            }
+
+            handlers.Add(id);
+            if (!_delegateToId.TryAdd(warp.HandlerDelegate, id))
+            {
+                _logger.LogError("Add handler failed, id:{HandlerId}", id);
+                return;
+            }
+
+            if (!_idToTypes.TryAdd(id, warp))
+            {
+                _logger.LogError("Add handler failed, id:{HandlerId}", id);
+                return;
+            }
+
+            _logger.LogTrace("Add handler succeed, id:{HandlerId}, message type:{type}", id, type);
+        }
+
 
         private HandlerId GetNextId()
         {
@@ -242,11 +230,11 @@ namespace Hive.Both.General
 
         public interface IHandleWarp
         {
-            void Call(IDispatcher dispatcher, ISession sender, object message);
             Type Type { get; }
             Delegate HandlerDelegate { get; }
 
             ISession? BindingSession { get; }
+            void Call(IDispatcher dispatcher, ISession sender, object message);
         }
 
         public class HandlerWarp<T> : IHandleWarp
@@ -258,19 +246,16 @@ namespace Hive.Both.General
             }
 
             public HandlerId Id { get; }
+            public DispatchHandler<T> Handler { get; }
 
             public Type Type => typeof(T);
             public Delegate HandlerDelegate => Handler;
 
             public ISession? BindingSession { get; set; }
-            public DispatchHandler<T> Handler { get; }
 
             public void Call(IDispatcher dispatcher, ISession sender, object message)
             {
-                if (message is T t)
-                {
-                    Handler.Invoke(dispatcher, sender, t);
-                }
+                if (message is T t) Handler.Invoke(dispatcher, sender, t);
             }
         }
     }

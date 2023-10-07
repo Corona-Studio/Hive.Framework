@@ -7,6 +7,5 @@ namespace Hive.Network.Tests.Messages;
 [MemoryPackable]
 public partial class ServerRedirectTestMessage1
 {
-    [ProtoMember(1)]
-    public string? Content { get; set; }
+    [ProtoMember(1)] public string? Content { get; set; }
 }

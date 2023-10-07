@@ -10,8 +10,8 @@ namespace Hive.Network.Shared.LoadBalancers
 {
     public class BasicLoadBalancer<TSession> : ILoadBalancer<TSession> where TSession : ISession
     {
-        private readonly ConcurrentDictionary<TSession, bool> _sessionAvailabilityDic = new ();
-        private readonly List<TSession> _sessions = new ();
+        private readonly ConcurrentDictionary<TSession, bool> _sessionAvailabilityDic = new();
+        private readonly List<TSession> _sessions = new();
         private int _currentIndex;
 
         public int Available
@@ -19,7 +19,9 @@ namespace Hive.Network.Shared.LoadBalancers
             get
             {
                 lock (_sessions)
+                {
                     return _sessions.Count;
+                }
             }
         }
 
@@ -42,7 +44,9 @@ namespace Hive.Network.Shared.LoadBalancers
         {
             _sessionAvailabilityDic.TryRemove(sessionInfo, out _);
             lock (_sessions)
+            {
                 return _sessions.Remove(sessionInfo);
+            }
         }
 
         public bool UpdateSessionAvailability(TSession sessionInfo, bool available)
@@ -62,7 +66,7 @@ namespace Hive.Network.Shared.LoadBalancers
                     result = _sessions[_currentIndex];
                     _currentIndex = (_currentIndex + 1) % _sessions.Count;
 
-                    if(_sessionAvailabilityDic[result] || _currentIndex == 0) break;
+                    if (_sessionAvailabilityDic[result] || _currentIndex == 0) break;
                 }
 
                 return result;
@@ -72,12 +76,14 @@ namespace Hive.Network.Shared.LoadBalancers
         public IReadOnlyList<TSession> GetRawList()
         {
             lock (_sessions)
+            {
                 return new List<TSession>(_sessions).AsReadOnly();
+            }
         }
 
         public IEnumerator<TSession> GetEnumerator()
         {
-            var sessions = 
+            var sessions =
                 _sessionAvailabilityDic
                     .Where(x => x.Value)
                     .Select(x => x.Key)

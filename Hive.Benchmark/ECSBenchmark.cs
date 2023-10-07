@@ -11,6 +11,47 @@ namespace Hive.Benchmark;
 
 public class ECSBenchmark
 {
+    [Params(10000)] public static int EntityCount;
+
+    private readonly List<object> _temp = new();
+    private ECSCore core;
+
+    [GlobalSetup]
+    public void Init()
+    {
+        YitIdHelper.SetIdGenerator(new IdGeneratorOptions(10));
+        core = new ECSCore();
+        for (var i = 0; i < EntityCount; i++)
+        {
+            for (var j = 0; j < Random.Shared.Next(256, 1024); j++) _temp.Add(new string('a', 64));
+            core.Instantiate<NumberEntityCompositor>();
+        }
+
+        core.AddSystem<MinusOneSystem>();
+        core.AddSystem<MultiThreeSystem>();
+        core.AddSystem<AddTwoSystem>();
+        core.AddSystem<MultiTwoSystem>();
+
+        core.SystemManager.RecomputeExecutionOrder();
+        core.EntityManager.UpdateBfsEnumerateList();
+    }
+
+    public void RecomputeExecutionOrder()
+    {
+        core.SystemManager.RecomputeExecutionOrder();
+    }
+
+    public void UpdateBfsEnumerateList()
+    {
+        core.EntityManager.UpdateBfsEnumerateList();
+    }
+
+    [Benchmark]
+    public void ExecuteFixedUpdate()
+    {
+        core.FixedUpdate();
+    }
+
     private class NumberComponent : IEntityComponent
     {
         public NumberComponent(int number)
@@ -25,7 +66,7 @@ public class ECSBenchmark
     {
         protected override void Composite(ObjectEntity entity)
         {
-            entity.AddComponent(new NumberComponent(Random.Shared.Next(2,1024)));
+            entity.AddComponent(new NumberComponent(Random.Shared.Next(2, 1024)));
         }
     }
 
@@ -63,48 +104,5 @@ public class ECSBenchmark
         {
             entity.UpdateComponent((ref NumberComponent component) => { component.Number -= 2; });
         }
-    }
-
-    [Params(10000)]
-    public static int EntityCount;
-    private ECSCore core;
-    private List<object> _temp=new();
-    [GlobalSetup]
-    public void Init()
-    {
-        YitIdHelper.SetIdGenerator(new IdGeneratorOptions(10));
-        core = new ECSCore();
-        for (int i = 0; i < EntityCount; i++)
-        {
-            for (int j = 0; j < Random.Shared.Next(256,1024); j++)
-            {
-                _temp.Add(new string('a', 64));
-            }
-            core.Instantiate<NumberEntityCompositor>();
-        }
-
-        core.AddSystem<MinusOneSystem>();
-        core.AddSystem<MultiThreeSystem>();
-        core.AddSystem<AddTwoSystem>();
-        core.AddSystem<MultiTwoSystem>();
-        
-        core.SystemManager.RecomputeExecutionOrder();
-        core.EntityManager.UpdateBfsEnumerateList();
-    }
-    
-    public void RecomputeExecutionOrder()
-    {
-        core.SystemManager.RecomputeExecutionOrder();
-    }
-    
-    public void UpdateBfsEnumerateList()
-    {
-        core.EntityManager.UpdateBfsEnumerateList();
-    }
-
-    [Benchmark]
-    public void ExecuteFixedUpdate()
-    {
-        core.FixedUpdate();
     }
 }

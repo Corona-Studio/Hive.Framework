@@ -1,7 +1,5 @@
-﻿namespace Hive.Common.ECS.Events
+﻿namespace Hive.Common.ECS.Events;
+
+public class EntityCreate
 {
-    public class EntityCreate
-    {
-        
-    }
 }

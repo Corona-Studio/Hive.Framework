@@ -4,8 +4,8 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
-using Hive.Network.Shared.HandShake;
 using Hive.Network.Shared;
+using Hive.Network.Shared.HandShake;
 using Hive.Network.Shared.Session;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -14,11 +14,12 @@ namespace Hive.Network.Kcp
 {
     public sealed class KcpAcceptor : AbstractAcceptor<KcpSession>
     {
-        private Socket? _serverSocket;
-        private readonly ObjectFactory<KcpServerSession> _sessionFactory;
-
         private readonly ReaderWriterLockSlim _dictLock = new();
         private readonly Dictionary<IPEndPoint, KcpServerSession> _kcpSessions = new();
+
+        private readonly byte[] _receiveBuffer = new byte[NetworkSettings.DefaultBufferSize];
+        private readonly ObjectFactory<KcpServerSession> _sessionFactory;
+        private Socket? _serverSocket;
 
         public KcpAcceptor(
             IServiceProvider serviceProvider,
@@ -30,22 +31,19 @@ namespace Hive.Network.Kcp
                     { typeof(int), typeof(IPEndPoint), typeof(IPEndPoint) });
         }
 
+        public override IPEndPoint? EndPoint => _serverSocket?.LocalEndPoint as IPEndPoint;
+
         private void InitSocket(IPEndPoint listenEndPoint)
         {
             _serverSocket = new Socket(listenEndPoint.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
         }
-
-        public override IPEndPoint? EndPoint => _serverSocket?.LocalEndPoint as IPEndPoint;
 
         public override Task<bool> SetupAsync(IPEndPoint listenEndPoint, CancellationToken token)
         {
             if (_serverSocket == null)
                 InitSocket(listenEndPoint);
 
-            if (_serverSocket == null)
-            {
-                throw new NullReferenceException("ServerSocket is null and InitSocket failed.");
-            }
+            if (_serverSocket == null) throw new NullReferenceException("ServerSocket is null and InitSocket failed.");
 
             _serverSocket.ReceiveBufferSize = NetworkSettings.DefaultSocketBufferSize;
             _serverSocket.Bind(listenEndPoint);
@@ -74,11 +72,9 @@ namespace Hive.Network.Kcp
                 var len = await _serverSocket.SendToAsync(segment[sentLen..], SocketFlags.None, endPoint);
                 sentLen += len;
             }
-            
+
             return sentLen;
         }
-
-        private readonly byte[] _receiveBuffer = new byte[NetworkSettings.DefaultBufferSize];
 
         public override async ValueTask<bool> DoOnceAcceptAsync(CancellationToken token)
         {
@@ -109,7 +105,8 @@ namespace Hive.Network.Kcp
 
                 if (isPendingHandShake)
                 {
-                    var handshake = HandShakePacket.ReadFrom(_receiveBuffer.AsSpan()[NetworkSettings.PacketBodyOffset..]);
+                    var handshake =
+                        HandShakePacket.ReadFrom(_receiveBuffer.AsSpan()[NetworkSettings.PacketBodyOffset..]);
                     HandShakePacket next;
                     if (handshake.IsServerFinished())
                     {
@@ -144,7 +141,8 @@ namespace Hive.Network.Kcp
                     next.WriteTo(_receiveBuffer.AsSpan()[NetworkSettings.PacketBodyOffset..]);
 
                     await SendAsync(
-                        new ArraySegment<byte>(_receiveBuffer, 0, NetworkSettings.PacketBodyOffset + HandShakePacket.Size),
+                        new ArraySegment<byte>(_receiveBuffer, 0,
+                            NetworkSettings.PacketBodyOffset + HandShakePacket.Size),
                         endPoint,
                         token);
                 }
@@ -155,14 +153,10 @@ namespace Hive.Network.Kcp
                         try
                         {
                             if (_kcpSessions.TryGetValue(endPoint, out var session))
-                            {
                                 // Copy one time
                                 session.OnReceived(_receiveBuffer.AsMemory()[..received], token);
-                            }
                             else
-                            {
                                 return false;
-                            }
                         }
                         finally
                         {

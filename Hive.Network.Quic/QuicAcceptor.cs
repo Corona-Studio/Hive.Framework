@@ -1,10 +1,10 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using System.Net;
+﻿using System.Net;
+using System.Net.Quic;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using Hive.Network.Shared.Session;
-using System.Net.Quic;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Hive.Network.Quic;
@@ -15,13 +15,9 @@ namespace Hive.Network.Quic;
 [SupportedOSPlatform(nameof(OSPlatform.OSX))]
 public sealed class QuicAcceptor : AbstractAcceptor<QuicSession>
 {
-    private QuicListener? _listener;
-
     private readonly QuicListenerOptions _listenerOptions;
     private readonly ObjectFactory<QuicSession> _sessionFactory;
-
-    public override IPEndPoint? EndPoint => _listener?.LocalEndPoint;
-    public override bool IsValid => _listener != null;
+    private QuicListener? _listener;
 
     public QuicAcceptor(
         IOptions<QuicAcceptorOptions> quicOptions,
@@ -31,8 +27,13 @@ public sealed class QuicAcceptor : AbstractAcceptor<QuicSession>
     {
         _listenerOptions = quicOptions.Value.QuicListenerOptions ??
                            throw new NullReferenceException(nameof(quicOptions.Value.QuicListenerOptions));
-        _sessionFactory = ActivatorUtilities.CreateFactory<QuicSession>(new[] { typeof(int), typeof(QuicConnection), typeof(QuicStream) });
+        _sessionFactory =
+            ActivatorUtilities.CreateFactory<QuicSession>(new[]
+                { typeof(int), typeof(QuicConnection), typeof(QuicStream) });
     }
+
+    public override IPEndPoint? EndPoint => _listener?.LocalEndPoint;
+    public override bool IsValid => _listener != null;
 
     private async ValueTask InitListener(IPEndPoint listenEndPoint)
     {

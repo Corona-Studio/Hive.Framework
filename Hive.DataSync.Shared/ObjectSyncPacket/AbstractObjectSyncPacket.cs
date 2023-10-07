@@ -6,10 +6,6 @@ namespace Hive.DataSync.Shared.ObjectSyncPacket
 {
     public abstract class AbstractObjectSyncPacket
     {
-        public string PropertyName { get; }
-        public ushort ObjectSyncId { get; }
-        public SyncOptions SyncOptions { get; }
-
         public AbstractObjectSyncPacket(
             string propertyName,
             ushort objectSyncId,
@@ -20,13 +16,15 @@ namespace Hive.DataSync.Shared.ObjectSyncPacket
             SyncOptions = syncOptions;
         }
 
+        public string PropertyName { get; }
+        public ushort ObjectSyncId { get; }
+        public SyncOptions SyncOptions { get; }
+
         public abstract ReadOnlyMemory<byte> Serialize();
     }
 
     public abstract class AbstractObjectSyncPacket<T> : AbstractObjectSyncPacket, ISyncPacket<T>
     {
-        public T NewValue { get; }
-        
         protected AbstractObjectSyncPacket(
             ushort objectSyncId,
             string propertyName,
@@ -35,5 +33,7 @@ namespace Hive.DataSync.Shared.ObjectSyncPacket
         {
             NewValue = newValue;
         }
+
+        public T NewValue { get; }
     }
 }

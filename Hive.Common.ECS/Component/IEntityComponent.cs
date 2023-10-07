@@ -1,7 +1,5 @@
-﻿namespace Hive.Common.ECS.Component
+﻿namespace Hive.Common.ECS.Component;
+
+public interface IEntityComponent
 {
-    public interface IEntityComponent
-    {
-        
-    }
 }

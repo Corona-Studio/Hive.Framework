@@ -4,7 +4,7 @@ using System.IO;
 namespace Hive.Codec.Abstractions
 {
     /// <summary>
-    /// 自定义封包编解码器接口
+    ///     自定义封包编解码器接口
     /// </summary>
     public interface ICustomPacketCodec
     {

@@ -5,4 +5,6 @@ namespace Hive.Network.Tests.Messages;
 
 [ProtoContract]
 [MemoryPackable]
-public partial class HeartBeatMessage { }
+public partial class HeartBeatMessage
+{
+}

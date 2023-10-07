@@ -2,17 +2,19 @@
 using System.IO;
 using System.Net;
 using System.Net.Sockets.Kcp;
-using System.Threading.Tasks;
 using System.Threading;
 using System.Threading.Channels;
+using System.Threading.Tasks;
+using Hive.Network.Shared;
 using Hive.Network.Shared.Session;
 using Microsoft.Extensions.Logging;
-using Hive.Network.Shared;
 
 namespace Hive.Network.Kcp
 {
     public class KcpSession : AbstractSession
     {
+        protected readonly uint Conv;
+
         public KcpSession(
             int sessionId,
             IPEndPoint remoteEndPoint,
@@ -32,8 +34,6 @@ namespace Hive.Network.Kcp
             RemoteEndPoint = remoteEndPoint;
         }
 
-        protected readonly uint Conv;
-        
         public UnSafeSegManager.KcpIO? Kcp { get; protected set; }
         public override IPEndPoint LocalEndPoint { get; }
         public override IPEndPoint RemoteEndPoint { get; }

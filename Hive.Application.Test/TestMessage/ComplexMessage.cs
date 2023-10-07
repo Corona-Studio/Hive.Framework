@@ -16,11 +16,9 @@ public partial class ComplexMessage : IEquatable<ComplexMessage>, IEqualityCompa
         Messages = new ComplexMessage[10];
         NullNumbers = new int[5];
 
-        for (var i = 0; i < 10; i++)
-        {
-            Numbers[i] = Random.Shared.Next();
-        }
+        for (var i = 0; i < 10; i++) Numbers[i] = Random.Shared.Next();
     }
+
     public int Id { get; set; }
     public string Name { get; set; }
     public int[] Numbers { get; set; }
@@ -34,11 +32,45 @@ public partial class ComplexMessage : IEquatable<ComplexMessage>, IEqualityCompa
     public int? NullableId { get; set; }
     public string? NullableName { get; set; }
 
+    public bool Equals(ComplexMessage? x, ComplexMessage? y)
+    {
+        if (ReferenceEquals(x, y)) return true;
+        if (ReferenceEquals(x, null)) return false;
+        if (ReferenceEquals(y, null)) return false;
+        if (x.GetType() != y.GetType()) return false;
+        return x.Id == y.Id && x.Name == y.Name && x.Numbers.Equals(y.Numbers) && x.Names.Equals(y.Names) &&
+               x.Messages.Equals(y.Messages) && Equals(x.Message, y.Message) && Equals(x.NullNumbers, y.NullNumbers) &&
+               Equals(x.NullNames, y.NullNames) && Equals(x.NullMessages, y.NullMessages) &&
+               Equals(x.NullMessage, y.NullMessage) && x.NullableId == y.NullableId && x.NullableName == y.NullableName;
+    }
+
+    public int GetHashCode(ComplexMessage obj)
+    {
+        var hashCode = new HashCode();
+        hashCode.Add(obj.Id);
+        hashCode.Add(obj.Name);
+        hashCode.Add(obj.Numbers);
+        hashCode.Add(obj.Names);
+        hashCode.Add(obj.Messages);
+        hashCode.Add(obj.Message);
+        hashCode.Add(obj.NullNumbers);
+        hashCode.Add(obj.NullNames);
+        hashCode.Add(obj.NullMessages);
+        hashCode.Add(obj.NullMessage);
+        hashCode.Add(obj.NullableId);
+        hashCode.Add(obj.NullableName);
+        return hashCode.ToHashCode();
+    }
+
     public bool Equals(ComplexMessage? other)
     {
         if (ReferenceEquals(null, other)) return false;
         if (ReferenceEquals(this, other)) return true;
-        return Id == other.Id && Name == other.Name && Numbers.Equals(other.Numbers) && Names.Equals(other.Names) && Messages.Equals(other.Messages) && Equals(Message, other.Message) && Equals(NullNumbers, other.NullNumbers) && Equals(NullNames, other.NullNames) && Equals(NullMessages, other.NullMessages) && Equals(NullMessage, other.NullMessage) && NullableId == other.NullableId && NullableName == other.NullableName;
+        return Id == other.Id && Name == other.Name && Numbers.Equals(other.Numbers) && Names.Equals(other.Names) &&
+               Messages.Equals(other.Messages) && Equals(Message, other.Message) &&
+               Equals(NullNumbers, other.NullNumbers) && Equals(NullNames, other.NullNames) &&
+               Equals(NullMessages, other.NullMessages) && Equals(NullMessage, other.NullMessage) &&
+               NullableId == other.NullableId && NullableName == other.NullableName;
     }
 
     public override bool Equals(object? obj)
@@ -64,33 +96,6 @@ public partial class ComplexMessage : IEquatable<ComplexMessage>, IEqualityCompa
         hashCode.Add(NullMessage);
         hashCode.Add(NullableId);
         hashCode.Add(NullableName);
-        return hashCode.ToHashCode();
-    }
-
-    public bool Equals(ComplexMessage? x, ComplexMessage? y)
-    {
-        if (ReferenceEquals(x, y)) return true;
-        if (ReferenceEquals(x, null)) return false;
-        if (ReferenceEquals(y, null)) return false;
-        if (x.GetType() != y.GetType()) return false;
-        return x.Id == y.Id && x.Name == y.Name && x.Numbers.Equals(y.Numbers) && x.Names.Equals(y.Names) && x.Messages.Equals(y.Messages) && Equals(x.Message, y.Message) && Equals(x.NullNumbers, y.NullNumbers) && Equals(x.NullNames, y.NullNames) && Equals(x.NullMessages, y.NullMessages) && Equals(x.NullMessage, y.NullMessage) && x.NullableId == y.NullableId && x.NullableName == y.NullableName;
-    }
-
-    public int GetHashCode(ComplexMessage obj)
-    {
-        var hashCode = new HashCode();
-        hashCode.Add(obj.Id);
-        hashCode.Add(obj.Name);
-        hashCode.Add(obj.Numbers);
-        hashCode.Add(obj.Names);
-        hashCode.Add(obj.Messages);
-        hashCode.Add(obj.Message);
-        hashCode.Add(obj.NullNumbers);
-        hashCode.Add(obj.NullNames);
-        hashCode.Add(obj.NullMessages);
-        hashCode.Add(obj.NullMessage);
-        hashCode.Add(obj.NullableId);
-        hashCode.Add(obj.NullableName);
         return hashCode.ToHashCode();
     }
 }

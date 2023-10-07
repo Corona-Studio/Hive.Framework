@@ -10,7 +10,7 @@ public static class AppBuilder
 {
     public static void ConfigureServices(IServiceCollection services)
     {
-        services.AddSingleton<IPacketCodec,MemoryPackPacketCodec>();
-        services.AddSingleton<IClientService,DefaultClientService<TcpSession>>();
+        services.AddSingleton<IPacketCodec, MemoryPackPacketCodec>();
+        services.AddSingleton<IClientService, DefaultClientService<TcpSession>>();
     }
 }

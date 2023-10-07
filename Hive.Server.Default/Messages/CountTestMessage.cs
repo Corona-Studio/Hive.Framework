@@ -7,6 +7,5 @@ namespace Hive.Server.Default.Messages;
 [MemoryPackable]
 public partial class CountTestMessage
 {
-    [ProtoMember(1)]
-    public int Adder { get; set; }
+    [ProtoMember(1)] public int Adder { get; set; }
 }

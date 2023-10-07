@@ -18,7 +18,7 @@ namespace Hive.DataSync.Shared.ObjectSyncPacket
         public override ReadOnlyMemory<byte> Serialize()
         {
             var propertyNameMemory = Encoding.UTF8.GetBytes(PropertyName).AsSpan();
-            
+
             // [OBJ_SYNC_ID (2) | NEW_VAL | PROPERTY_NAME]
             var totalLength = sizeof(ushort) + sizeof(bool) + propertyNameMemory.Length;
             var result = new Memory<byte>(new byte[totalLength]);

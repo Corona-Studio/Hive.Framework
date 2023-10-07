@@ -1,9 +1,8 @@
 ﻿using Hive.Common.ECS.Entity;
 
-namespace Hive.Common.ECS.System.Phases
+namespace Hive.Common.ECS.System.Phases;
+
+public interface ILogicUpdateSystem : ISystem
 {
-    public interface ILogicUpdateSystem : ISystem
-    {
-        void OnLogicUpdate(IEntity entity);
-    }
+    void OnLogicUpdate(IEntity entity);
 }

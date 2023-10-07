@@ -11,20 +11,19 @@ namespace Hive.Network.Tcp
 {
     public sealed class TcpAcceptor : AbstractAcceptor<TcpSession>
     {
-        private Socket? _serverSocket;
-
-        public override IPEndPoint? EndPoint => _serverSocket?.LocalEndPoint as IPEndPoint;
-        public override bool IsValid => _serverSocket != null;
-
         private readonly ObjectFactory<TcpSession> _sessionFactory;
+        private Socket? _serverSocket;
 
         public TcpAcceptor(
             IServiceProvider serviceProvider,
             ILogger<TcpAcceptor> logger)
             : base(serviceProvider, logger)
         {
-            _sessionFactory = ActivatorUtilities.CreateFactory<TcpSession>(new[] {typeof(int), typeof(Socket)});
+            _sessionFactory = ActivatorUtilities.CreateFactory<TcpSession>(new[] { typeof(int), typeof(Socket) });
         }
+
+        public override IPEndPoint? EndPoint => _serverSocket?.LocalEndPoint as IPEndPoint;
+        public override bool IsValid => _serverSocket != null;
 
         private void InitSocket(IPEndPoint listenEndPoint)
         {
@@ -51,7 +50,7 @@ namespace Hive.Network.Tcp
             _serverSocket.Close();
             _serverSocket.Dispose();
             _serverSocket = null;
-            
+
             return Task.FromResult(true);
         }
 
@@ -66,11 +65,11 @@ namespace Hive.Network.Tcp
 
             return true;
         }
-        
+
         private void CreateSession(Socket acceptSocket)
         {
             var sessionId = GetNextSessionId();
-            var clientSession = _sessionFactory.Invoke(ServiceProvider, new object[] {sessionId, acceptSocket});
+            var clientSession = _sessionFactory.Invoke(ServiceProvider, new object[] { sessionId, acceptSocket });
             clientSession.OnSocketError += OnSocketError;
             FireOnSessionCreate(clientSession);
         }

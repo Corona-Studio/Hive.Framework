@@ -1,18 +1,18 @@
-﻿using System.Net.NetworkInformation;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.NetworkInformation;
 
 namespace Hive.Common.Shared.Helpers
 {
     public static class NetworkHelper
     {
-        private static readonly Random Random = new ((int)DateTime.Now.Ticks);
+        private static readonly Random Random = new((int)DateTime.Now.Ticks);
 
-        /// <summary>        
-        /// 获取操作系统已用的端口号        
-        /// </summary>        
-        /// <returns></returns>        
+        /// <summary>
+        ///     获取操作系统已用的端口号
+        /// </summary>
+        /// <returns></returns>
         public static HashSet<int> PortIsUsed()
         {
             //获取本地计算机的网络连接和通信统计数据的信息            
@@ -30,7 +30,7 @@ namespace Hive.Common.Shared.Helpers
             var allPorts = ipsTCP.Select(ep => ep.Port).ToList();
             allPorts.AddRange(ipsUDP.Select(ep => ep.Port));
             allPorts.AddRange(tcpConnInfoArray.Select(conn => conn.LocalEndPoint.Port));
-            
+
             return new HashSet<int>(allPorts);
         }
 
@@ -45,6 +45,7 @@ namespace Hive.Common.Shared.Helpers
                 port = Random.Next(1024, 65535);
                 isRandomOk = hasUsedPort.Contains(port);
             }
+
             return port;
         }
     }

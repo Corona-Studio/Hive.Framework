@@ -7,6 +7,5 @@ namespace Hive.Network.Tests.Messages.BidirectionalPacket;
 [MemoryPackable]
 public partial class C2STestPacket
 {
-    [ProtoMember(1)]
-    public int RandomNumber { get; set; }
+    [ProtoMember(1)] public int RandomNumber { get; set; }
 }

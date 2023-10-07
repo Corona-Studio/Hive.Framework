@@ -9,30 +9,31 @@ using Microsoft.Extensions.Logging;
 namespace Hive.Network.Udp
 {
     /// <summary>
-    /// 基于 Socket 的 UDP 传输层实现
+    ///     基于 Socket 的 UDP 传输层实现
     /// </summary>
     public class UdpServerSession : UdpSession
     {
+        private readonly Channel<ArraySegment<byte>> _messageStreamChannel =
+            Channel.CreateUnbounded<ArraySegment<byte>>();
+
         public UdpServerSession(
             int sessionId,
             IPEndPoint remoteEndPoint,
             IPEndPoint localEndPoint,
-            ILogger<UdpSession> logger) 
+            ILogger<UdpSession> logger)
             : base(sessionId, remoteEndPoint, localEndPoint, logger)
         {
         }
-        
-        public event Func<ArraySegment<byte>, IPEndPoint, CancellationToken, ValueTask<int>>? OnSendAsync; 
-        
+
+        public event Func<ArraySegment<byte>, IPEndPoint, CancellationToken, ValueTask<int>>? OnSendAsync;
+
         public override ValueTask<int> SendOnce(ArraySegment<byte> data, CancellationToken token)
         {
             if (!IsConnected)
                 return new ValueTask<int>(0);
-            
+
             return OnSendAsync?.Invoke(data, RemoteEndPoint, token) ?? new ValueTask<int>(0);
         }
-
-        private readonly Channel<ArraySegment<byte>> _messageStreamChannel = Channel.CreateUnbounded<ArraySegment<byte>>();
 
         internal void OnReceived(Memory<byte> memory, CancellationToken token)
         {
@@ -53,9 +54,9 @@ namespace Hive.Network.Udp
             if (!IsConnected) return 0;
 
             await _messageStreamChannel.Reader.WaitToReadAsync(token);
-            
+
             if (!_messageStreamChannel.Reader.TryRead(out var stream)) return 0;
-            
+
             stream.CopyTo(buffer);
             var len = stream.Count;
             ArrayPool<byte>.Shared.Return(stream.Array);

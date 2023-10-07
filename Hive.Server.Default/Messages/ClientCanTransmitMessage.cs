@@ -7,5 +7,4 @@ namespace Hive.Server.Default.Messages;
 [MemoryPackable]
 public partial class ClientCanTransmitMessage
 {
-    
 }

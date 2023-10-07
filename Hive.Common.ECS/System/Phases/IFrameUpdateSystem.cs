@@ -1,9 +1,8 @@
 ﻿using Hive.Common.ECS.Entity;
 
-namespace Hive.Common.ECS.System.Phases
+namespace Hive.Common.ECS.System.Phases;
+
+public interface IFrameUpdateSystem : ISystem
 {
-    public interface IFrameUpdateSystem : ISystem
-    {
-        void OnFrameUpdate(IEntity entity);
-    }
+    void OnFrameUpdate(IEntity entity);
 }

@@ -7,6 +7,5 @@ namespace Hive.Network.Tests.Messages;
 [MemoryPackable]
 public partial class ClientStartTransmitMessage
 {
-    [ProtoMember(1)]
-    public ushort[] RedirectPacketIds { get; set; }
+    [ProtoMember(1)] public ushort[] RedirectPacketIds { get; set; }
 }

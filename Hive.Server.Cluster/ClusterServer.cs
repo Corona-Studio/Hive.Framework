@@ -1,5 +1,5 @@
 ﻿namespace Hive.Server.Cluster;
 
-public class ClusterServer 
+public class ClusterServer
 {
 }

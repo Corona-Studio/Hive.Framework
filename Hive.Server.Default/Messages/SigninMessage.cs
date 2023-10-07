@@ -7,6 +7,5 @@ namespace Hive.Server.Default.Messages;
 [MemoryPackable]
 public partial class SigninMessage
 {
-    [ProtoMember(1)]
-    public int Id { get; set; }
+    [ProtoMember(1)] public int Id { get; set; }
 }

@@ -17,17 +17,17 @@ namespace Hive.Network.Shared.HandShake
             BitConverter.TryWriteBytes(span[8..], State);
             BitConverter.TryWriteBytes(span[12..], SessionId);
         }
-        
+
         public readonly bool IsHeaderValid(Span<byte> span)
         {
             return BitConverter.ToInt32(span[4..]) == 0x1140403;
         }
-        
+
         public readonly bool IsServerFinished()
         {
             return State == 2;
         }
-        
+
         public readonly bool IsClientFinished()
         {
             return State == 3;
@@ -44,10 +44,10 @@ namespace Hive.Network.Shared.HandShake
             {
                 Syn = Syn + 1,
                 State = 3,
-                SessionId = sessionId,
+                SessionId = sessionId
             };
         }
-        
+
         public HandShakePacket Next()
         {
             return new HandShakePacket
@@ -56,7 +56,7 @@ namespace Hive.Network.Shared.HandShake
                 State = State + 1
             };
         }
-        
+
         public static HandShakePacket ReadFrom(ReadOnlySpan<byte> span)
         {
             return new HandShakePacket

@@ -46,7 +46,7 @@ namespace Hive.Both.General
         {
             return !(left == right);
         }
-        
+
         public override string ToString()
         {
             return $"(HandleId){Id.ToString()}";

@@ -16,7 +16,7 @@
             mapper.Register<UInt32SyncPacket>();
             mapper.Register<UInt64SyncPacket>();
         }*/
-        
+
         /*public static void RegisterSyncPacketCodecs<TId>(this IPacketCodec<TId> codec, bool configPacketIdMapper = true) where TId : unmanaged
         {
             if (configPacketIdMapper)

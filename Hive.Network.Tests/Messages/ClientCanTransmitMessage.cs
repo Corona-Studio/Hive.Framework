@@ -7,5 +7,4 @@ namespace Hive.Network.Tests.Messages;
 [MemoryPackable]
 public partial class ClientCanTransmitMessage
 {
-    
 }

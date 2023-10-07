@@ -1,31 +1,30 @@
 ﻿using Hive.Common.ECS.Entity;
 
-namespace Hive.Common.ECS.Compositor
+namespace Hive.Common.ECS.Compositor;
+
+public abstract class AbstractCompositor<T> : ICompositor where T : ObjectEntity, new()
 {
-    public abstract class AbstractCompositor<T> : ICompositor where T: ObjectEntity,new()
+    ObjectEntity ICompositor.Composite(long id, IEntity parent)
     {
-        ObjectEntity ICompositor.Composite(long id, IEntity parent)
+        var worldEntity = parent switch
         {
-            var worldEntity = parent switch
-            {
-                WorldEntity entity => entity,
-                ObjectEntity parentObjectEntity => parentObjectEntity.WorldEntity,
-                _ => null
-            };
+            WorldEntity entity => entity,
+            ObjectEntity parentObjectEntity => parentObjectEntity.WorldEntity,
+            _ => null
+        };
 
 
-            var objectEntity = new T
-            {
-                InstanceId = id,
-                Compositor = this,
-                WorldEntity = worldEntity,
-                Parent = parent,
-            };
-            
-            Composite(objectEntity);
-            return objectEntity;
-        }
+        var objectEntity = new T
+        {
+            InstanceId = id,
+            Compositor = this,
+            WorldEntity = worldEntity,
+            Parent = parent
+        };
 
-        protected abstract void Composite(T entity);
+        Composite(objectEntity);
+        return objectEntity;
     }
+
+    protected abstract void Composite(T entity);
 }

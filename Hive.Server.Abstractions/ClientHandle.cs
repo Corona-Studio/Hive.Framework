@@ -13,7 +13,7 @@ public class ClientHandle
 
     public ClientId Id { get; }
     public ISession Session { get; }
-    
+
     public SessionId SessionId => Session.Id;
     public long LastHeartBeatTimeUtc { get; set; }
 }

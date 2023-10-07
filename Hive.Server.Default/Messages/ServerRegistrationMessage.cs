@@ -7,6 +7,5 @@ namespace Hive.Server.Default.Messages;
 [MemoryPackable]
 public partial class ServerRegistrationMessage
 {
-    [ProtoMember(1)]
-    public ushort[] PackagesToReceive { get; set; }
+    [ProtoMember(1)] public ushort[] PackagesToReceive { get; set; }
 }

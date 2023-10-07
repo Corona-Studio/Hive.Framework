@@ -1,11 +1,10 @@
-﻿namespace Hive.Common.ECS.Entity
+﻿namespace Hive.Common.ECS.Entity;
+
+public sealed class RootEntity : Entity
 {
-    public sealed class RootEntity : Entity
+    public RootEntity(IECSArch arch)
     {
-        public RootEntity(IECSArch arch)
-        {
-            ECSArch = arch;
-            Parent = null;
-        }
+        ECSArch = arch;
+        Parent = null;
     }
 }

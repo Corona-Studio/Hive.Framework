@@ -1,7 +1,6 @@
-﻿namespace Hive.Common.ECS
+﻿namespace Hive.Common.ECS;
+
+public interface IBelongToECSArch
 {
-    public interface IBelongToECSArch
-    {
-        IECSArch Arch { get; }
-    }
+    IECSArch Arch { get; }
 }

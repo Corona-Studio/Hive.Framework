@@ -14,11 +14,12 @@ namespace Hive.Network.Udp
 {
     public sealed class UdpAcceptor : AbstractAcceptor<UdpSession>
     {
-        private Socket? _serverSocket;
-        private readonly ObjectFactory<UdpServerSession> _sessionFactory;
+        private readonly ReaderWriterLockSlim _dictLock = new();
 
-        private readonly ReaderWriterLockSlim _dictLock = new ();
-        private readonly Dictionary<int, UdpServerSession> _udpSessions = new ();
+        private readonly byte[] _receiveBuffer = new byte[NetworkSettings.DefaultBufferSize];
+        private readonly ObjectFactory<UdpServerSession> _sessionFactory;
+        private readonly Dictionary<int, UdpServerSession> _udpSessions = new();
+        private Socket? _serverSocket;
 
         public UdpAcceptor(
             IServiceProvider serviceProvider,
@@ -30,22 +31,19 @@ namespace Hive.Network.Udp
                     { typeof(int), typeof(IPEndPoint), typeof(IPEndPoint) });
         }
 
+        public override IPEndPoint? EndPoint => _serverSocket?.LocalEndPoint as IPEndPoint;
+
         private void InitSocket(IPEndPoint listenEndPoint)
         {
             _serverSocket = new Socket(listenEndPoint.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
         }
-
-        public override IPEndPoint? EndPoint => _serverSocket?.LocalEndPoint as IPEndPoint;
 
         public override Task<bool> SetupAsync(IPEndPoint listenEndPoint, CancellationToken token)
         {
             if (_serverSocket == null)
                 InitSocket(listenEndPoint);
 
-            if (_serverSocket == null)
-            {
-                throw new NullReferenceException("ServerSocket is null and InitSocket failed.");
-            }
+            if (_serverSocket == null) throw new NullReferenceException("ServerSocket is null and InitSocket failed.");
 
             _serverSocket.ReceiveBufferSize = NetworkSettings.DefaultSocketBufferSize;
             _serverSocket.Bind(listenEndPoint);
@@ -78,13 +76,11 @@ namespace Hive.Network.Udp
             return sentLen;
         }
 
-        private readonly byte[] _receiveBuffer = new byte[NetworkSettings.DefaultBufferSize];
-
         public override async ValueTask<bool> DoOnceAcceptAsync(CancellationToken token)
         {
             if (_serverSocket == null)
                 return false;
-            
+
             try
             {
                 var endPoint = new IPEndPoint(IPAddress.Any, 0);
@@ -93,7 +89,7 @@ namespace Hive.Network.Udp
 
                 var received = receivedArg.ReceivedBytes;
                 endPoint = (IPEndPoint)receivedArg.RemoteEndPoint;
-                
+
                 var headMem = _receiveBuffer.AsMemory(0, NetworkSettings.PacketHeaderLength);
                 // ReSharper disable once RedundantRangeBound
                 var length = BitConverter.ToUInt16(headMem.Span[NetworkSettings.PacketLengthOffset..]);
@@ -109,7 +105,8 @@ namespace Hive.Network.Udp
 
                 if (sessionId == NetworkSettings.HandshakeSessionId)
                 {
-                    var handshake = HandShakePacket.ReadFrom(_receiveBuffer.AsSpan()[NetworkSettings.PacketBodyOffset..]);
+                    var handshake =
+                        HandShakePacket.ReadFrom(_receiveBuffer.AsSpan()[NetworkSettings.PacketBodyOffset..]);
                     HandShakePacket next;
                     if (handshake.IsServerFinished())
                     {
@@ -142,8 +139,9 @@ namespace Hive.Network.Udp
                     next.WriteTo(_receiveBuffer.AsSpan()[NetworkSettings.PacketBodyOffset..]);
 
                     await SendAsync(
-                        new ArraySegment<byte>(_receiveBuffer, 0, NetworkSettings.PacketBodyOffset + HandShakePacket.Size), 
-                        endPoint, 
+                        new ArraySegment<byte>(_receiveBuffer, 0,
+                            NetworkSettings.PacketBodyOffset + HandShakePacket.Size),
+                        endPoint,
                         token);
                 }
                 else
@@ -153,14 +151,10 @@ namespace Hive.Network.Udp
                         try
                         {
                             if (_udpSessions.TryGetValue(sessionId, out var session))
-                            {
                                 // Copy one time
                                 session.OnReceived(_receiveBuffer.AsMemory()[..length], token);
-                            }
                             else
-                            {
                                 return false;
-                            }
                         }
                         finally
                         {

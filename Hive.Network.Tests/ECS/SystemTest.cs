@@ -6,95 +6,85 @@ using Hive.Common.ECS.Entity;
 using Hive.Common.ECS.System.Phases;
 using Yitter.IdGenerator;
 
-namespace Hive.Network.Tests.ECS
+namespace Hive.Network.Tests.ECS;
+
+public class SystemTest
 {
-    public class SystemTest
+    [OneTimeSetUp]
+    public void OneTimeSetUp()
     {
-        [OneTimeSetUp]
-        public void OneTimeSetUp()
-        {
-            YitIdHelper.SetIdGenerator(new IdGeneratorOptions());
-        }
-        
-        private struct NumberComponent : IEntityComponent
-        {
-            public NumberComponent(int number)
-            {
-                Number = number;
-            }
+        YitIdHelper.SetIdGenerator(new IdGeneratorOptions());
+    }
 
-            public int Number { get; set; }
-        }
+    [Test]
+    public void TestSystemLogicUpdate()
+    {
+        var core = new ECSCore();
+        core.Instantiate<NumberEntityCompositor>();
 
-        private class NumberEntityCompositor : AbstractCompositor<ObjectEntity>
-        {
-            protected override void Composite(ObjectEntity entity)
-            {
-                entity.AddComponent(new NumberComponent(2));
-            }
-        }
+        core.AddSystem<MinusOneSystem>();
+        core.AddSystem<MultiThreeSystem>();
+        core.AddSystem<AddTwoSystem>();
+        core.AddSystem<MultiTwoSystem>();
+        core.SystemManager.RecomputeExecutionOrder();
+        core.EntityManager.UpdateBfsEnumerateList();
+        core.FixedUpdate();
 
-        private class AddTwoSystem : ILogicUpdateSystem
+        var entity = core.EntityManager.EntityBfsEnumerateList.First(entity => entity is ObjectEntity);
+        Assert.That(entity.GetComponent<NumberComponent>().Number == 22, Is.True);
+    }
+
+    private struct NumberComponent : IEntityComponent
+    {
+        public NumberComponent(int number)
         {
-            public void OnLogicUpdate(IEntity entity)
-            {
-                entity.UpdateComponent((ref NumberComponent comp) => { comp.Number += 2; });
-            }
+            Number = number;
         }
 
-        [ExecuteAfter(typeof(AddTwoSystem))]
-        private class MultiTwoSystem : ILogicUpdateSystem
+        public int Number { get; set; }
+    }
+
+    private class NumberEntityCompositor : AbstractCompositor<ObjectEntity>
+    {
+        protected override void Composite(ObjectEntity entity)
         {
-            public void OnLogicUpdate(IEntity entity)
-            {
-                entity.UpdateComponent((ref NumberComponent component) =>
-                {
-                    component.Number *= 2;
-                });
-            }
+            entity.AddComponent(new NumberComponent(2));
         }
+    }
 
-        [ExecuteAfter(typeof(AddTwoSystem))]
-        [ExecuteBefore(typeof(MinusOneSystem))]
-        private class MultiThreeSystem : ILogicUpdateSystem
+    private class AddTwoSystem : ILogicUpdateSystem
+    {
+        public void OnLogicUpdate(IEntity entity)
         {
-            public void OnLogicUpdate(IEntity entity)
-            {
-                entity.UpdateComponent((ref NumberComponent component) =>
-                {
-                    component.Number *= 3;
-                });
-            }
+            entity.UpdateComponent((ref NumberComponent comp) => { comp.Number += 2; });
         }
+    }
 
-        [ExecuteAfter(typeof(MultiTwoSystem))]
-        private class MinusOneSystem : ILogicUpdateSystem
+    [ExecuteAfter(typeof(AddTwoSystem))]
+    private class MultiTwoSystem : ILogicUpdateSystem
+    {
+        public void OnLogicUpdate(IEntity entity)
         {
-            public void OnLogicUpdate(IEntity entity)
-            {
-                entity.UpdateComponent((ref NumberComponent component) =>
-                {
-                    component.Number -= 2;
-                });
-            }
+            entity.UpdateComponent((ref NumberComponent component) => { component.Number *= 2; });
         }
+    }
 
-        [Test]
-        public void TestSystemLogicUpdate()
+    [ExecuteAfter(typeof(AddTwoSystem))]
+    [ExecuteBefore(typeof(MinusOneSystem))]
+    private class MultiThreeSystem : ILogicUpdateSystem
+    {
+        public void OnLogicUpdate(IEntity entity)
         {
-            var core = new ECSCore();
-            core.Instantiate<NumberEntityCompositor>();
+            entity.UpdateComponent((ref NumberComponent component) => { component.Number *= 3; });
+        }
+    }
 
-            core.AddSystem<MinusOneSystem>();
-            core.AddSystem<MultiThreeSystem>();
-            core.AddSystem<AddTwoSystem>();
-            core.AddSystem<MultiTwoSystem>();
-            core.SystemManager.RecomputeExecutionOrder();
-            core.EntityManager.UpdateBfsEnumerateList();
-            core.FixedUpdate();
-
-            var entity = core.EntityManager.EntityBfsEnumerateList.First(entity => entity is ObjectEntity);
-            Assert.That(entity.GetComponent<NumberComponent>().Number == 22, Is.True);
+    [ExecuteAfter(typeof(MultiTwoSystem))]
+    private class MinusOneSystem : ILogicUpdateSystem
+    {
+        public void OnLogicUpdate(IEntity entity)
+        {
+            entity.UpdateComponent((ref NumberComponent component) => { component.Number -= 2; });
         }
     }
 }

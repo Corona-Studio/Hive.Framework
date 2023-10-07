@@ -4,40 +4,39 @@ using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Hive.Network.Abstractions.Session
+namespace Hive.Network.Abstractions.Session;
+
+/// <summary>
+///     代表一个连接，可以是服务端之间的连接，也可以是客户端之间的连接
+///     <para>包含了连接的基本信息，以及收发数据的方法</para>
+/// </summary>
+public interface ISession
 {
+    public SessionId Id { get; }
+
+    IPEndPoint? LocalEndPoint { get; }
+    IPEndPoint? RemoteEndPoint { get; }
+
+    long LastHeartBeatTime { get; }
+
     /// <summary>
-    /// 代表一个连接，可以是服务端之间的连接，也可以是客户端之间的连接
-    /// <para>包含了连接的基本信息，以及收发数据的方法</para>
+    ///     收到数据后的回调，不需要IO，无需异步。
+    ///     拿到后立刻处理，否则数据会被回收。
+    ///     <para>如果要缓存，必须复制一份数据</para>
     /// </summary>
-    public partial interface ISession
-    {
-        public SessionId Id { get; }
-        
-        IPEndPoint? LocalEndPoint { get; }
-        IPEndPoint? RemoteEndPoint { get; }
-        
-        long LastHeartBeatTime { get; }
-        
-        /// <summary>
-        /// 收到数据后的回调，不需要IO，无需异步。
-        /// 拿到后立刻处理，否则数据会被回收。
-        /// <para>如果要缓存，必须复制一份数据</para>
-        /// </summary>
-        event EventHandler<ReadOnlyMemory<byte>> OnMessageReceived;
-        
+    event EventHandler<ReadOnlyMemory<byte>> OnMessageReceived;
 
-        public Task StartAsync(CancellationToken token);
-        
 
-        /// <summary>
-        /// 发送数据
-        /// </summary>
-        /// <param name="ms"></param>
-        /// <param name="token"></param>
-        /// <returns></returns>
-        ValueTask<bool> SendAsync(MemoryStream ms, CancellationToken token=default);
+    public Task StartAsync(CancellationToken token);
 
-        void Close();
-    }
+
+    /// <summary>
+    ///     发送数据
+    /// </summary>
+    /// <param name="ms"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    ValueTask<bool> SendAsync(MemoryStream ms, CancellationToken token = default);
+
+    void Close();
 }

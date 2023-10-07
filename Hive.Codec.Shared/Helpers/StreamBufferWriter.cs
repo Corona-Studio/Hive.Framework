@@ -11,6 +11,7 @@ namespace Hive.Codec.Shared.Helpers
         private readonly byte[] _buffer;
         private int _position;
         public int WrittenCount { get; private set; }
+
         public StreamBufferWriter(Stream stream, int bufferSize = 4096)
         {
             _stream = stream ?? throw new ArgumentNullException(nameof(stream));
@@ -21,29 +22,20 @@ namespace Hive.Codec.Shared.Helpers
 
         public void Advance(int count)
         {
-            if (_position + count > _buffer.Length)
-            {
-                Flush();
-            }
+            if (_position + count > _buffer.Length) Flush();
             _position += count;
             WrittenCount += count;
         }
 
         public Memory<byte> GetMemory(int sizeHint = 0)
         {
-            if (_position + sizeHint > _buffer.Length)
-            {
-                Flush();
-            }
+            if (_position + sizeHint > _buffer.Length) Flush();
             return _buffer.AsMemory(_position);
         }
 
         public Span<byte> GetSpan(int sizeHint = 0)
         {
-            if (_position + sizeHint > _buffer.Length)
-            {
-                Flush();
-            }
+            if (_position + sizeHint > _buffer.Length) Flush();
             return _buffer.AsSpan(_position);
         }
 

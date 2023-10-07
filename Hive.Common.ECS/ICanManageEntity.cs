@@ -1,11 +1,10 @@
 ﻿using Hive.Common.ECS.Compositor;
 using Hive.Common.ECS.Entity;
 
-namespace Hive.Common.ECS
+namespace Hive.Common.ECS;
+
+public interface ICanManageEntity
 {
-    public interface ICanManageEntity
-    {
-        void Instantiate<TCompositor>(IEntity? parent = null) where TCompositor : ICompositor;
-        void Destroy(IEntity entity);
-    }
+    void Instantiate<TCompositor>(IEntity? parent = null) where TCompositor : ICompositor;
+    void Destroy(IEntity entity);
 }

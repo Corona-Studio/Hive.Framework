@@ -3,7 +3,7 @@
 namespace Hive.Codec.Abstractions
 {
     /// <summary>
-    /// 封包 类型 / ID 映射器
+    ///     封包 类型 / ID 映射器
     /// </summary>
     public interface IPacketIdMapper
     {

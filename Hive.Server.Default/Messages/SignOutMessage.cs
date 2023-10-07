@@ -7,6 +7,5 @@ namespace Hive.Server.Default.Messages;
 [MemoryPackable]
 public partial class SignOutMessage
 {
-    [ProtoMember(1)]
-    public int Id { get; set; }
+    [ProtoMember(1)] public int Id { get; set; }
 }

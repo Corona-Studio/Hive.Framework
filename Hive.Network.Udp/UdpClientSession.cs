@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 namespace Hive.Network.Udp
 {
     /// <summary>
-    /// 基于 Socket 的 UDP 传输层实现
+    ///     基于 Socket 的 UDP 传输层实现
     /// </summary>
     public class UdpClientSession : UdpSession
     {
@@ -18,7 +18,7 @@ namespace Hive.Network.Udp
             int sessionId,
             Socket socket,
             IPEndPoint remoteEndPoint,
-            ILogger<UdpClientSession> logger) 
+            ILogger<UdpClientSession> logger)
             : base(sessionId, remoteEndPoint, (IPEndPoint)socket.LocalEndPoint, logger)
         {
             _socket = socket;
@@ -39,7 +39,7 @@ namespace Hive.Network.Udp
             var received = await _socket.ReceiveFromAsync(buffer, SocketFlags.None, RemoteEndPoint);
             return received.ReceivedBytes;
         }
-        
+
         public override void Close()
         {
             IsConnected = false;

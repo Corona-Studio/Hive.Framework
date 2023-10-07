@@ -7,6 +7,5 @@ namespace Hive.Network.Tests.Messages;
 [MemoryPackable]
 public partial class ServerBroadcastTestMessage
 {
-    [ProtoMember(1)]
-    public int Number { get; set; }
+    [ProtoMember(1)] public int Number { get; set; }
 }

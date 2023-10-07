@@ -2,7 +2,6 @@
 using System.Buffers;
 using System.IO;
 using System.Threading.Tasks;
-using Microsoft.IO;
 
 namespace Hive.Codec.Shared.Helpers
 {
@@ -19,13 +18,10 @@ namespace Hive.Codec.Shared.Helpers
             _buffer = ArrayPool<byte>.Shared.Rent((int)_stream.Length);
             _position = 0;
         }
-        
+
         public ReadOnlySpan<byte> Read(int len = 0)
         {
-            if (len == 0)
-            {
-                len = Remaining;
-            }
+            if (len == 0) len = Remaining;
             var read = _stream.Read(_buffer, _position, Math.Min(Remaining, len));
             _position += read;
             return _buffer.AsSpan(_position - read, read);

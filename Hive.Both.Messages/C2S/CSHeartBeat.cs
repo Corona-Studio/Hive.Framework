@@ -7,5 +7,4 @@ namespace Hive.Both.Messages.C2S;
 [MemoryPackable]
 public partial class CSHeartBeat
 {
-    
 }

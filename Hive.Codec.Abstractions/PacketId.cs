@@ -36,13 +36,14 @@ namespace Hive.Codec.Abstractions
 
         public static implicit operator PacketId(ushort packetId)
         {
-            return new PacketId() { Id = packetId };
+            return new PacketId { Id = packetId };
         }
+
         public static int Size => sizeof(ushort);
-        
+
         public static PacketId From(Span<byte> buffer)
         {
-            return new PacketId()
+            return new PacketId
             {
                 Id = BitConverter.ToUInt16(buffer)
             };
@@ -50,13 +51,10 @@ namespace Hive.Codec.Abstractions
 #endif
         public int WriteTo(Span<byte> buffer)
         {
-            if (BitConverter.TryWriteBytes(buffer, Id))
-            {
-                return Size;
-            }
+            if (BitConverter.TryWriteBytes(buffer, Id)) return Size;
             return 0;
         }
-        
+
         public bool Equals(PacketId other)
         {
             return Id == other.Id;

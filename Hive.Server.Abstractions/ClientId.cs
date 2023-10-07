@@ -24,7 +24,7 @@ public struct ClientId : IEquatable<ClientId>, IEqualityComparer<ClientId>
 
     public static implicit operator ClientId(int packetId)
     {
-        return new ClientId() { Id = packetId };
+        return new ClientId { Id = packetId };
     }
 #endif
     public bool Equals(ClientId other)

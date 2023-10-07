@@ -17,8 +17,8 @@ namespace Hive.Network.Shared.Session
     public abstract class AbstractAcceptor<TSession> : IAcceptor<TSession> where TSession : ISession
     {
         private readonly ConcurrentDictionary<SessionId, TSession> _idToSessionDict = new();
-        protected readonly ILogger<AbstractAcceptor<TSession>> Logger;
         private readonly List<TSession> _sessionsToClose = new();
+        protected readonly ILogger<AbstractAcceptor<TSession>> Logger;
         protected readonly IServiceProvider ServiceProvider;
 
         private int _curUsedSessionId = int.MinValue;
@@ -100,25 +100,23 @@ namespace Hive.Network.Shared.Session
             Logger.LogInformation("Session {sessionId} accepted.", session.Id);
             _idToSessionDict.TryAdd(session.Id, session);
 
-            OnSessionCreated?.Invoke(this,new OnClientCreatedArgs<TSession>(session.Id,session));
+            OnSessionCreated?.Invoke(this, new OnClientCreatedArgs<TSession>(session.Id, session));
             if (OnSessionCreateAsync != null)
-            {
                 try
                 {
                     OnSessionCreateAsync(session);
                 }
                 catch (Exception e)
                 {
-                    Logger.LogError(e,"OnSessionCreateAsync error");
+                    Logger.LogError(e, "OnSessionCreateAsync error");
                 }
-            }
         }
-    
+
         protected void FireOnSessionClosed(TSession session)
         {
             Logger.LogInformation("Session {sessionId} closed.", session.Id);
             _idToSessionDict.TryRemove(session.Id, out _);
-            OnSessionClosed?.Invoke(this,new OnClientClosedArgs<TSession>(session.Id,session));
+            OnSessionClosed?.Invoke(this, new OnClientClosedArgs<TSession>(session.Id, session));
         }
 
         protected int GetNextSessionId()

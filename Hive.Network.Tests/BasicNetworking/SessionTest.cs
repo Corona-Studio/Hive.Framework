@@ -60,45 +60,49 @@ public class SessionTestQuic : SessionTest<QuicSession>
     [RequiresPreviewFeatures]
     protected override IServiceProvider GetServiceProvider()
     {
-        var serviceProvider = ServiceProviderHelper.GetServiceProvider<QuicSession, QuicAcceptor, QuicConnector, MemoryPackPacketCodec>(
-            setter =>
-            {
-                setter.Configure<QuicAcceptorOptions>(options =>
+        var serviceProvider = ServiceProviderHelper
+            .GetServiceProvider<QuicSession, QuicAcceptor, QuicConnector, MemoryPackPacketCodec>(
+                setter =>
                 {
-                    options.QuicListenerOptions = new QuicListenerOptions
+                    setter.Configure<QuicAcceptorOptions>(options =>
                     {
-                        ApplicationProtocols = new List<SslApplicationProtocol> { SslApplicationProtocol.Http3 },
-                        ListenEndPoint = QuicNetworkSettings.FallBackEndPoint,
-                        ConnectionOptionsCallback = (_, _, _) => ValueTask.FromResult(new QuicServerConnectionOptions
+                        options.QuicListenerOptions = new QuicListenerOptions
                         {
+                            ApplicationProtocols = new List<SslApplicationProtocol> { SslApplicationProtocol.Http3 },
+                            ListenEndPoint = QuicNetworkSettings.FallBackEndPoint,
+                            ConnectionOptionsCallback = (_, _, _) => ValueTask.FromResult(
+                                new QuicServerConnectionOptions
+                                {
+                                    DefaultStreamErrorCode = 0,
+                                    DefaultCloseErrorCode = 0,
+                                    IdleTimeout = TimeSpan.FromMinutes(5),
+                                    ServerAuthenticationOptions = new SslServerAuthenticationOptions
+                                    {
+                                        ApplicationProtocols = new List<SslApplicationProtocol>
+                                            { SslApplicationProtocol.Http3, SslApplicationProtocol.Http2 },
+                                        ServerCertificate = QuicCertHelper.GenerateTestCertificate()
+                                    }
+                                })
+                        };
+                    });
+
+                    setter.Configure<QuicConnectorOptions>(options =>
+                    {
+                        options.ClientConnectionOptions = new QuicClientConnectionOptions
+                        {
+                            RemoteEndPoint = QuicNetworkSettings.FallBackEndPoint,
                             DefaultStreamErrorCode = 0,
                             DefaultCloseErrorCode = 0,
                             IdleTimeout = TimeSpan.FromMinutes(5),
-                            ServerAuthenticationOptions = new SslServerAuthenticationOptions
+                            ClientAuthenticationOptions = new SslClientAuthenticationOptions
                             {
-                                ApplicationProtocols = new List<SslApplicationProtocol> { SslApplicationProtocol.Http3, SslApplicationProtocol.Http2 },
-                                ServerCertificate = QuicCertHelper.GenerateTestCertificate()
+                                ApplicationProtocols = new List<SslApplicationProtocol>
+                                    { SslApplicationProtocol.Http3, SslApplicationProtocol.Http2 },
+                                RemoteCertificateValidationCallback = (_, _, _, _) => true
                             }
-                        })
-                    };
+                        };
+                    });
                 });
-
-                setter.Configure<QuicConnectorOptions>(options =>
-                {
-                    options.ClientConnectionOptions = new QuicClientConnectionOptions
-                    {
-                        RemoteEndPoint = QuicNetworkSettings.FallBackEndPoint,
-                        DefaultStreamErrorCode = 0,
-                        DefaultCloseErrorCode = 0,
-                        IdleTimeout = TimeSpan.FromMinutes(5),
-                        ClientAuthenticationOptions = new SslClientAuthenticationOptions
-                        {
-                            ApplicationProtocols = new List<SslApplicationProtocol> { SslApplicationProtocol.Http3, SslApplicationProtocol.Http2 },
-                            RemoteCertificateValidationCallback = (_, _, _, _) => true
-                        }
-                    };
-                });
-            });
 
         return serviceProvider;
     }
@@ -106,16 +110,17 @@ public class SessionTestQuic : SessionTest<QuicSession>
 
 public abstract class SessionTest<T> where T : class, ISession
 {
-    protected abstract IServiceProvider GetServiceProvider();
-    private CancellationTokenSource _cts = null!;
-    private IServiceProvider _serviceProvider = null!;
-    private IAcceptor<T> _acceptor = null!;
+    protected const int SendInterval = 0;
     private readonly List<T> _clientSideSessions = new();
     private readonly List<T> _serverSideSessions = new();
-
-    protected const int SendInterval = 0;
+#pragma warning disable NUnit1032
+    private IAcceptor<T> _acceptor = null!;
+#pragma warning restore NUnit1032
+    private CancellationTokenSource _cts = null!;
+    private IServiceProvider _serviceProvider = null!;
     protected double LossRate = 1;
-    
+    protected abstract IServiceProvider GetServiceProvider();
+
     [OneTimeSetUp]
     public void OneTimeSetUp()
     {
@@ -129,16 +134,10 @@ public abstract class SessionTest<T> where T : class, ISession
         _cts.Cancel();
         _cts?.Dispose();
         _acceptor?.Dispose();
-        foreach (var session in _clientSideSessions)
-        {
-            session.Close();
-        }
-        foreach (var session in _serverSideSessions)
-        {
-            session.Close();
-        }
+        foreach (var session in _clientSideSessions) session.Close();
+        foreach (var session in _serverSideSessions) session.Close();
     }
-    
+
     [Test]
     [Author("Leon")]
     [Description("测试会话创建，会话数量为 5000 个")]
@@ -150,23 +149,23 @@ public abstract class SessionTest<T> where T : class, ISession
 
         var sessionCount = 0;
         var tcs = new TaskCompletionSource<bool>();
-        
+
         _cts.Token.Register(() =>
         {
-            if(tcs.Task.Status is TaskStatus.Running or TaskStatus.Canceled)
+            if (tcs.Task.Status is TaskStatus.Running or TaskStatus.Canceled)
                 tcs.SetCanceled(_cts.Token);
         });
-        
+
         _acceptor.OnSessionCreated += (_, args) =>
         {
             sessionCount++;
             _serverSideSessions.Add(args.Session);
-            
-            if(sessionCount == randomClientNum)
+
+            if (sessionCount == randomClientNum)
                 tcs.SetResult(true);
         };
         const int port = 11451;
-        await _acceptor.SetupAsync(new IPEndPoint(IPAddress.Any, port),_cts.Token);
+        await _acceptor.SetupAsync(new IPEndPoint(IPAddress.Any, port), _cts.Token);
         _acceptor.StartAcceptLoop(_cts.Token);
 
         for (var i = 0; i < randomClientNum; i++)
@@ -174,12 +173,9 @@ public abstract class SessionTest<T> where T : class, ISession
             var connector = _serviceProvider.GetRequiredService<IConnector<T>>();
             var session = await connector.ConnectAsync(new IPEndPoint(IPAddress.Loopback, port),
                 _cts.Token);
-            if (session != null)
-            {
-                _clientSideSessions.Add(session);
-            }
+            if (session != null) _clientSideSessions.Add(session);
         }
-        
+
         await tcs.Task;
         Assert.Multiple(() =>
         {
@@ -191,14 +187,12 @@ public abstract class SessionTest<T> where T : class, ISession
 
     private string GenerateLargeText()
     {
-        var len = Random.Shared.Next(512,1024);
+        var len = Random.Shared.Next(512, 1024);
         var sb = new StringBuilder();
 
         for (var i = 0; i < len; i++)
-        {
             //random
             sb.Append((char)Random.Shared.Next(32, 126));
-        }
 
         return sb.ToString();
     }
@@ -217,11 +211,9 @@ public abstract class SessionTest<T> where T : class, ISession
             session.OnMessageReceived += (_, mem) =>
             {
                 var text = Encoding.UTF8.GetString(mem.Span);
-                if(clientSentText.TryGetValue(session.RemoteEndPoint.Port, out var sentText))
-                {
-                    if(sentText == text)
+                if (clientSentText.TryGetValue(session.RemoteEndPoint.Port, out var sentText))
+                    if (sentText == text)
                         Interlocked.Increment(ref c2sCorrectCount);
-                }
             };
             session.StartAsync(_cts.Token).CatchException();
         }
@@ -231,25 +223,23 @@ public abstract class SessionTest<T> where T : class, ISession
             session.OnMessageReceived += (_, mem) =>
             {
                 var text = Encoding.UTF8.GetString(mem.Span);
-                if(serverSentText.TryGetValue(session.LocalEndPoint.Port,out var sentText))
-                {
-                    if(sentText==text)
+                if (serverSentText.TryGetValue(session.LocalEndPoint.Port, out var sentText))
+                    if (sentText == text)
                         Interlocked.Increment(ref s2cCorrectCount);
-                }
             };
             session.StartAsync(_cts.Token).CatchException();
         }
-        
+
         foreach (var session in _clientSideSessions)
         {
             var text = GenerateLargeText();
             clientSentText.Add(session.LocalEndPoint.Port, text);
-            
+
             var ms = RecycleMemoryStreamManagerHolder.Shared.GetStream();
             Encoding.UTF8.GetBytes(text, (RecyclableMemoryStream)ms);
-            
+
             if (SendInterval > 0)
-                await Task.Delay(SendInterval);// 防止UDP丢包
+                await Task.Delay(SendInterval); // 防止UDP丢包
 
             await session.SendAsync(ms);
         }
@@ -258,17 +248,17 @@ public abstract class SessionTest<T> where T : class, ISession
         {
             var text = GenerateLargeText();
             serverSentText.Add(session.RemoteEndPoint.Port, text);
-            
-            var ms = RecycleMemoryStreamManagerHolder.Shared.GetStream();
-            Encoding.UTF8.GetBytes(text,((RecyclableMemoryStream)ms));
 
-            if (SendInterval>0)
-                await Task.Delay(SendInterval);// 防止UDP丢包
+            var ms = RecycleMemoryStreamManagerHolder.Shared.GetStream();
+            Encoding.UTF8.GetBytes(text, (RecyclableMemoryStream)ms);
+
+            if (SendInterval > 0)
+                await Task.Delay(SendInterval); // 防止UDP丢包
             await session.SendAsync(ms);
         }
-        
+
         await Task.Delay(3000);
-        
+
         Assert.Multiple(() =>
         {
             Assert.That(c2sCorrectCount, Is.GreaterThanOrEqualTo(_clientSideSessions.Count * LossRate));

@@ -11,16 +11,18 @@ namespace Hive.Network.Shared.LoadBalancers
 {
     public class BasicWeightedLoadBalancer<TSession> : ILoadBalancer<TSession> where TSession : ISession
     {
-        private readonly ConcurrentDictionary<TSession, bool> _sessionAvailabilityDic = new();
-        private readonly Dictionary<TSession, ushort> _sessions = new ();
         private readonly Random _random = new();
+        private readonly ConcurrentDictionary<TSession, bool> _sessionAvailabilityDic = new();
+        private readonly Dictionary<TSession, ushort> _sessions = new();
 
         public int Available
         {
             get
             {
                 lock (_sessions)
+                {
                     return _sessions.Count;
+                }
             }
         }
 
@@ -49,18 +51,6 @@ namespace Hive.Network.Shared.LoadBalancers
             }
         }
 
-        public bool UpdateWeight(TSession session, ushort weight)
-        {
-            lock (_sessions)
-            {
-                if (!_sessions.ContainsKey(session)) return false;
-
-                _sessions[session] = weight;
-
-                return true;
-            }
-        }
-
         public bool UpdateSessionAvailability(TSession sessionInfo, bool available)
         {
             return _sessionAvailabilityDic.TryGetValue(sessionInfo, out var oldAvailability) &&
@@ -75,10 +65,7 @@ namespace Hive.Network.Shared.LoadBalancers
 
                 foreach (var (session, weight) in _sessions)
                 {
-                    if (randomWeight < weight && _sessionAvailabilityDic[session])
-                    {
-                        return session;
-                    }
+                    if (randomWeight < weight && _sessionAvailabilityDic[session]) return session;
 
                     randomWeight -= weight;
                 }
@@ -90,7 +77,9 @@ namespace Hive.Network.Shared.LoadBalancers
         public IReadOnlyList<TSession> GetRawList()
         {
             lock (_sessions)
+            {
                 return _sessions.Select(p => p.Key).ToList().AsReadOnly();
+            }
         }
 
         public IEnumerator<TSession> GetEnumerator()
@@ -108,6 +97,18 @@ namespace Hive.Network.Shared.LoadBalancers
         IEnumerator IEnumerable.GetEnumerator()
         {
             return GetEnumerator();
+        }
+
+        public bool UpdateWeight(TSession session, ushort weight)
+        {
+            lock (_sessions)
+            {
+                if (!_sessions.ContainsKey(session)) return false;
+
+                _sessions[session] = weight;
+
+                return true;
+            }
         }
     }
 }

@@ -2,14 +2,13 @@
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using Hive.Network.Abstractions;
 using Hive.Network.Shared.Session;
 using Microsoft.Extensions.Logging;
 
 namespace Hive.Network.Udp
 {
     /// <summary>
-    /// 基于 Socket 的 UDP 传输层实现
+    ///     基于 Socket 的 UDP 传输层实现
     /// </summary>
     public class UdpSession : AbstractSession
     {
@@ -41,7 +40,7 @@ namespace Hive.Network.Udp
         {
             throw new NotImplementedException();
         }
-        
+
         public override void Close()
         {
             IsConnected = false;

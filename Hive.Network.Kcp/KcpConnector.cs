@@ -1,12 +1,12 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using System.Net.Sockets;
+﻿using System;
 using System.Net;
-using System.Threading.Tasks;
+using System.Net.Sockets;
 using System.Threading;
-using System;
-using Hive.Network.Shared.HandShake;
+using System.Threading.Tasks;
 using Hive.Network.Abstractions.Session;
+using Hive.Network.Shared.HandShake;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Hive.Network.Kcp
 {
@@ -22,8 +22,11 @@ namespace Hive.Network.Kcp
         {
             _logger = logger;
             _serviceProvider = serviceProvider;
-            _sessionFactory = ActivatorUtilities.CreateFactory<KcpClientSession>(new[]{typeof(int),
-                typeof(Socket), typeof(IPEndPoint)});
+            _sessionFactory = ActivatorUtilities.CreateFactory<KcpClientSession>(new[]
+            {
+                typeof(int),
+                typeof(Socket), typeof(IPEndPoint)
+            });
         }
 
         public async ValueTask<KcpSession?> ConnectAsync(IPEndPoint remoteEndPoint, CancellationToken token = default)
@@ -40,7 +43,7 @@ namespace Hive.Network.Kcp
                 {
                     (int)sessionId,
                     socket,
-                    remoteEndPoint,
+                    remoteEndPoint
                 });
             }
             catch (Exception e)

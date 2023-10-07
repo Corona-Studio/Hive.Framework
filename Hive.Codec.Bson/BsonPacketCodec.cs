@@ -1,15 +1,16 @@
-﻿using Hive.Codec.Abstractions;
+﻿using System;
+using System.IO;
+using Hive.Codec.Abstractions;
 using Hive.Codec.Shared;
 using MongoDB.Bson.IO;
 using MongoDB.Bson.Serialization;
-using System;
-using System.IO;
 
 namespace Hive.Codec.Bson;
 
 public class BsonPacketCodec : AbstractPacketCodec
 {
-    public BsonPacketCodec(IPacketIdMapper packetIdMapper, ICustomCodecProvider customCodecProvider) : base(packetIdMapper, customCodecProvider)
+    public BsonPacketCodec(IPacketIdMapper packetIdMapper, ICustomCodecProvider customCodecProvider) : base(
+        packetIdMapper, customCodecProvider)
     {
     }
 

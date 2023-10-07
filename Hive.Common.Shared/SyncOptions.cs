@@ -5,6 +5,6 @@
         None,
         ClientOnly,
         ServerOnly,
-        AllSession,
+        AllSession
     }
 }

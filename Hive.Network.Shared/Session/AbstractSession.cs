@@ -12,20 +12,13 @@ using Microsoft.Extensions.Logging;
 namespace Hive.Network.Shared.Session
 {
     /// <summary>
-    /// 连接会话抽象
+    ///     连接会话抽象
     /// </summary>
     public abstract class AbstractSession : ISession, IDisposable
     {
         protected readonly ILogger<AbstractSession> Logger;
-        
-        protected virtual Channel<MemoryStream>? SendChannel { get; set; } = Channel.CreateBounded<MemoryStream>(new BoundedChannelOptions(1024)
-        {
-            SingleReader = true,
-            SingleWriter = true,
-            FullMode = BoundedChannelFullMode.DropOldest
-        });
 
-        
+
         protected bool ReceivingLoopRunning;
         protected bool SendingLoopRunning;
 
@@ -39,36 +32,46 @@ namespace Hive.Network.Shared.Session
             LastHeartBeatTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         }
 
+        protected virtual Channel<MemoryStream>? SendChannel { get; set; } = Channel.CreateBounded<MemoryStream>(
+            new BoundedChannelOptions(1024)
+            {
+                SingleReader = true,
+                SingleWriter = true,
+                FullMode = BoundedChannelFullMode.DropOldest
+            });
+
+        public abstract bool CanSend { get; }
+        public abstract bool CanReceive { get; }
+        public virtual bool IsConnected { get; protected set; } = true;
+        public bool Running => SendingLoopRunning && ReceivingLoopRunning;
+
+        public virtual void Dispose()
+        {
+            if (SendChannel == null) return;
+            SendChannel.Writer.Complete();
+            while (SendChannel.Reader.TryRead(out var stream)) stream.Dispose();
+        }
+
         public SessionId Id { get; }
         public abstract IPEndPoint? LocalEndPoint { get; }
         public abstract IPEndPoint? RemoteEndPoint { get; }
         public long LastHeartBeatTime { get; }
 
         public event EventHandler<ReadOnlyMemory<byte>>? OnMessageReceived;
-        
-        protected void FireMessageReceived(ReadOnlyMemory<byte> data)
-        {
-            OnMessageReceived?.Invoke(this, data);
-        }
 
         public virtual async ValueTask<bool> SendAsync(MemoryStream ms, CancellationToken token = default)
         {
             if (SendChannel == null)
                 return false;
-            
+
             if (await SendChannel.Writer.WaitToWriteAsync(token))
                 return SendChannel.Writer.TryWrite(ms);
-            
+
             return false;
         }
 
         public abstract void Close();
 
-        public abstract bool CanSend { get; }
-        public abstract bool CanReceive { get; }
-        public virtual bool IsConnected { get; protected set; } = true;
-        public bool Running => SendingLoopRunning && ReceivingLoopRunning;
-        
         public virtual Task StartAsync(CancellationToken token)
         {
             var sendTask = Task.Run(() => SendLoop(token), token);
@@ -76,7 +79,12 @@ namespace Hive.Network.Shared.Session
 
             return Task.WhenAll(sendTask, receiveTask);
         }
-        
+
+        protected void FireMessageReceived(ReadOnlyMemory<byte> data)
+        {
+            OnMessageReceived?.Invoke(this, data);
+        }
+
         protected virtual async Task SendLoop(CancellationToken token)
         {
             var sendBuffer = ArrayPool<byte>.Shared.Rent(NetworkSettings.DefaultBufferSize);
@@ -99,7 +107,8 @@ namespace Hive.Network.Shared.Session
                     stream.Seek(0, SeekOrigin.Begin);
 
                     // ReSharper disable once MethodHasAsyncOverloadWithCancellation
-                    var readLen = await stream.ReadAsync(sendBuffer, NetworkSettings.PacketBodyOffset, (int)stream.Length, token);
+                    var readLen = await stream.ReadAsync(sendBuffer, NetworkSettings.PacketBodyOffset,
+                        (int)stream.Length, token);
 
                     if (readLen != stream.Length)
                     {
@@ -151,7 +160,7 @@ namespace Hive.Network.Shared.Session
             }
         }
 
-        
+
         protected virtual async Task ReceiveLoop(CancellationToken stoppingToken)
         {
             var receiveBuffer = ArrayPool<byte>.Shared.Rent(NetworkSettings.DefaultBufferSize);
@@ -173,7 +182,7 @@ namespace Hive.Network.Shared.Session
                         Logger.LogError("Received 0 bytes, the buffer may be full");
                         break;
                     }
-                    
+
                     // ReSharper disable once RedundantRangeBound
                     var totalLen = BitConverter.ToUInt16(segment[NetworkSettings.PacketLengthOffset..]);
 
@@ -207,15 +216,5 @@ namespace Hive.Network.Shared.Session
         public abstract ValueTask<int> SendOnce(ArraySegment<byte> data, CancellationToken token);
 
         public abstract ValueTask<int> ReceiveOnce(ArraySegment<byte> buffer, CancellationToken token);
-
-        public virtual void Dispose()
-        {
-            if (SendChannel == null) return;
-            SendChannel.Writer.Complete();
-            while (SendChannel.Reader.TryRead(out var stream))
-            {
-                stream.Dispose();
-            }
-        }
     }
 }

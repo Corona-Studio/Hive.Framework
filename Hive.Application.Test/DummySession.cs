@@ -11,6 +11,7 @@ public class DummySession : ISession
     public IPEndPoint? RemoteEndPoint { get; }
     public long LastHeartBeatTime { get; }
     public event EventHandler<ReadOnlyMemory<byte>>? OnMessageReceived;
+
     public Task StartAsync(CancellationToken token)
     {
         throw new NotImplementedException();

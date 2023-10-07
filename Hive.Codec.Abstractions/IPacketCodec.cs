@@ -3,7 +3,7 @@
 namespace Hive.Codec.Abstractions
 {
     /// <summary>
-    /// 封包编解码器接口
+    ///     封包编解码器接口
     /// </summary>
     public interface IPacketCodec
     {

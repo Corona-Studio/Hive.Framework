@@ -1,6 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
-using System;
 
 namespace Hive.Common.Shared
 {
@@ -29,6 +29,7 @@ namespace Hive.Common.Shared
             {
                 e._invocationList.Add(callback);
             }
+
             return e;
         }
 
@@ -42,6 +43,7 @@ namespace Hive.Common.Shared
             {
                 e._invocationList.Remove(callback);
             }
+
             return e;
         }
 
@@ -54,10 +56,8 @@ namespace Hive.Common.Shared
             }
 
             foreach (var callback in tmpInvocationList)
-            {
                 //Assuming we want a serial invocation, for a parallel invocation we can use Task.WhenAll instead
                 await callback(sender, eventArgs);
-            }
         }
     }
 }

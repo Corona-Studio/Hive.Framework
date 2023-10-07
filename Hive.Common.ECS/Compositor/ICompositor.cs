@@ -1,9 +1,8 @@
 ﻿using Hive.Common.ECS.Entity;
 
-namespace Hive.Common.ECS.Compositor
+namespace Hive.Common.ECS.Compositor;
+
+public interface ICompositor
 {
-    public interface ICompositor
-    {
-        public ObjectEntity Composite(long id, IEntity parent);
-    }
+    public ObjectEntity Composite(long id, IEntity parent);
 }

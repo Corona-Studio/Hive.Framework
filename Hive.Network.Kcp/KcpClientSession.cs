@@ -1,20 +1,20 @@
-﻿using Microsoft.Extensions.Logging;
-using System.Net.Sockets;
-using System.Net;
-using System.Threading.Tasks;
-using System.Threading;
-using System;
+﻿using System;
 using System.Buffers;
+using System.Net;
+using System.Net.Sockets;
+using System.Threading;
+using System.Threading.Tasks;
 using Hive.Network.Shared;
+using Microsoft.Extensions.Logging;
 
 namespace Hive.Network.Kcp
 {
     public class KcpClientSession : KcpSession
     {
-        private Socket? _socket;
+        private readonly ArrayBufferWriter<byte> _receiveBuffer = new();
 
         private readonly OpenArrayBufferWriter<byte> _sendBuffer = new();
-        private readonly ArrayBufferWriter<byte> _receiveBuffer = new();
+        private Socket? _socket;
 
         public KcpClientSession(
             int sessionId,

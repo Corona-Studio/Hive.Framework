@@ -143,7 +143,7 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
     {
         if(e.Session.RemoteEndPoint is null)
             throw new InvalidOperationException("Session remote end point is null.");
-        
+
         ServerSessionTable.AddOrUpdate(e.Session.RemoteEndPoint, e.Session, (_, _) => e.Session);
         foreach (var (_, loadBalancer) in PacketRouteTable)
             loadBalancer.UpdateSessionAvailability(e.Session, true);
@@ -193,7 +193,7 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
         var packetFlagsMemory = BitConverter.GetBytes((uint)newPacketFlags).AsMemory();
         var packetIdMemory = receivedDataEventArgs.Id;
         var packetId = PacketCodec.GetPacketId(receivedDataEventArgs.Id);
-        
+
         if (!GetServerSession(packetId, true, out var serverSession)) return;
 
         var payload = data[(2 + 4 + packetIdMemory.Length)..];
@@ -340,3 +340,4 @@ public abstract class AbstractGatewayServer<TSession, TSessionId, TId> : IGatewa
         Acceptor.CloseAsync(CancellationToken.None);
     }
 }*/
+

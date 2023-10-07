@@ -1,9 +1,8 @@
 ﻿using Hive.Common.ECS.Entity;
 
-namespace Hive.Common.ECS.System.Phases
+namespace Hive.Common.ECS.System.Phases;
+
+public interface IDestroySystem : ISystem
 {
-    public interface IDestroySystem : ISystem
-    {
-        void OnDestroy(IEntity entity);
-    }
+    void OnDestroy(IEntity entity);
 }

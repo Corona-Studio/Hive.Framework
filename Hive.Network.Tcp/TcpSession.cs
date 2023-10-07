@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging;
 namespace Hive.Network.Tcp
 {
     /// <summary>
-    /// 基于 Socket 的 TCP 传输层实现
+    ///     基于 Socket 的 TCP 传输层实现
     /// </summary>
     public sealed class TcpSession : AbstractSession
     {
@@ -24,7 +24,7 @@ namespace Hive.Network.Tcp
             Socket = socket;
             socket.ReceiveBufferSize = NetworkSettings.DefaultSocketBufferSize;
         }
-        
+
         public Socket? Socket { get; private set; }
 
         public override IPEndPoint? LocalEndPoint => Socket?.LocalEndPoint as IPEndPoint;
@@ -36,21 +36,18 @@ namespace Hive.Network.Tcp
         public override bool CanReceive => IsConnected;
 
         public override bool IsConnected => Socket is { Connected: true };
-        
+
         public event EventHandler<SocketError>? OnSocketError;
 
         public override async ValueTask<int> SendOnce(ArraySegment<byte> data, CancellationToken token)
         {
-            int len = await Socket.SendAsync(data, SocketFlags.None, cancellationToken: token);
-            if (len == 0)
-            {
-                OnSocketError?.Invoke(this, SocketError.ConnectionReset);
-            }
+            var len = await Socket.SendAsync(data, SocketFlags.None, token);
+            if (len == 0) OnSocketError?.Invoke(this, SocketError.ConnectionReset);
             return len;
         }
 
         /// <summary>
-        /// TCP是基于流的，所以需要自己处理两个报文粘在一起的情况
+        ///     TCP是基于流的，所以需要自己处理两个报文粘在一起的情况
         /// </summary>
         protected override async Task ReceiveLoop(CancellationToken stoppingToken)
         {
@@ -133,11 +130,11 @@ namespace Hive.Network.Tcp
             }
             catch (TaskCanceledException)
             {
-                Logger.LogInformation("Receive loop canceled, SessionId:{sessionId}",Id);
+                Logger.LogInformation("Receive loop canceled, SessionId:{sessionId}", Id);
             }
             catch (OperationCanceledException)
             {
-                Logger.LogInformation("Receive loop canceled, SessionId:{sessionId}",Id);
+                Logger.LogInformation("Receive loop canceled, SessionId:{sessionId}", Id);
             }
             finally
             {
@@ -148,9 +145,9 @@ namespace Hive.Network.Tcp
 
         public override async ValueTask<int> ReceiveOnce(ArraySegment<byte> buffer, CancellationToken token)
         {
-            return await Socket.ReceiveAsync(buffer, SocketFlags.None, cancellationToken: token);
+            return await Socket.ReceiveAsync(buffer, SocketFlags.None, token);
         }
-        
+
         public override void Close()
         {
             IsConnected = false;

@@ -1,17 +1,17 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <LangVersion>latest</LangVersion>
-    <TargetFramework>netstandard2.1</TargetFramework>
-    <Nullable>enable</Nullable>
-    <RootNamespace>$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>
-    <DefineConstants>PACKET_ID_INT</DefineConstants>
-    <AssemblyName>$(MSBuildProjectName)</AssemblyName>
-  </PropertyGroup>
+	<PropertyGroup>
+		<LangVersion>latest</LangVersion>
+		<TargetFramework>netstandard2.1</TargetFramework>
+		<Nullable>enable</Nullable>
+		<RootNamespace>$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>
+		<DefineConstants>PACKET_ID_INT</DefineConstants>
+		<AssemblyName>$(MSBuildProjectName)</AssemblyName>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Hive.Codec.Abstractions\Hive.Codec.Abstractions.csproj" />
-    <ProjectReference Include="..\Hive.Common.Shared\Hive.Common.Shared.csproj" />
-  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\Hive.Codec.Abstractions\Hive.Codec.Abstractions.csproj" />
+		<ProjectReference Include="..\Hive.Common.Shared\Hive.Common.Shared.csproj" />
+	</ItemGroup>
 
 </Project>

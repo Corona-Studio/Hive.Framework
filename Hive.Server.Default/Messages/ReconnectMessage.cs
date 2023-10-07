@@ -5,4 +5,6 @@ namespace Hive.Server.Default.Messages;
 
 [ProtoContract]
 [MemoryPackable]
-public partial class ReconnectMessage { }
+public partial class ReconnectMessage
+{
+}

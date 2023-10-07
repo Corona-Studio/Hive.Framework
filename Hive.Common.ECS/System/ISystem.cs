@@ -1,18 +1,15 @@
-﻿using System.Collections.Generic;
-using Hive.Common.ECS.Entity;
+﻿using Hive.Common.ECS.Entity;
 
-namespace Hive.Common.ECS.System
+namespace Hive.Common.ECS.System;
+
+public interface ISystem
 {
-    public interface ISystem
+    bool EntityFilter(IEntity entity)
     {
-        bool EntityFilter(IEntity entity)
-        {
-            return true;
-        }
+        return true;
+    }
 
-        void Execute(IEntity entity)
-        {
-            
-        }
+    void Execute(IEntity entity)
+    {
     }
 }

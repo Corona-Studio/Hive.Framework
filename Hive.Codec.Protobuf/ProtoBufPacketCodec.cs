@@ -1,14 +1,15 @@
-﻿using Hive.Codec.Abstractions;
+﻿using System;
+using System.IO;
+using Hive.Codec.Abstractions;
 using Hive.Codec.Shared;
 using ProtoBuf.Meta;
-using System;
-using System.IO;
 
 namespace Hive.Codec.Protobuf;
 
 public class ProtoBufPacketCodec : AbstractPacketCodec
 {
-    public ProtoBufPacketCodec(IPacketIdMapper packetIdMapper, ICustomCodecProvider customCodecProvider) : base(packetIdMapper, customCodecProvider)
+    public ProtoBufPacketCodec(IPacketIdMapper packetIdMapper, ICustomCodecProvider customCodecProvider) : base(
+        packetIdMapper, customCodecProvider)
     {
     }
 
