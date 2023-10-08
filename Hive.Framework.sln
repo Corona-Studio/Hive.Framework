@@ -77,6 +77,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.DataSync.Abstractions"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hive.Network.Abstractions", "Hive.Network.Abstractions\Hive.Network.Abstractions.csproj", "{A9B87D48-9BFF-4D3A-8C3A-21F5F7D5B85B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hive.Server.Actor", "Hive.Server.Actor\Hive.Server.Actor.csproj", "{E385ED18-6E27-42F3-8FC6-41C9AF76F01C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -317,6 +319,14 @@ Global
 		{A9B87D48-9BFF-4D3A-8C3A-21F5F7D5B85B}.Release|Any CPU.Build.0 = Release|Any CPU
 		{A9B87D48-9BFF-4D3A-8C3A-21F5F7D5B85B}.Release|x64.ActiveCfg = Release|Any CPU
 		{A9B87D48-9BFF-4D3A-8C3A-21F5F7D5B85B}.Release|x64.Build.0 = Release|Any CPU
+		{E385ED18-6E27-42F3-8FC6-41C9AF76F01C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E385ED18-6E27-42F3-8FC6-41C9AF76F01C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E385ED18-6E27-42F3-8FC6-41C9AF76F01C}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{E385ED18-6E27-42F3-8FC6-41C9AF76F01C}.Debug|x64.Build.0 = Debug|Any CPU
+		{E385ED18-6E27-42F3-8FC6-41C9AF76F01C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E385ED18-6E27-42F3-8FC6-41C9AF76F01C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E385ED18-6E27-42F3-8FC6-41C9AF76F01C}.Release|x64.ActiveCfg = Release|Any CPU
+		{E385ED18-6E27-42F3-8FC6-41C9AF76F01C}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -353,6 +363,7 @@ Global
 		{FA339459-26A6-40F6-982B-8910D76C2816} = {19C34F0A-0FC6-41A0-80AB-44922096A893}
 		{2A79E91F-24D0-4AAA-AA74-F820CFF58A4F} = {FC605D62-8065-4450-8F75-44200FA893B8}
 		{A9B87D48-9BFF-4D3A-8C3A-21F5F7D5B85B} = {4C77F938-4CBF-45D6-BE8C-4DA9C0F10DD0}
+		{E385ED18-6E27-42F3-8FC6-41C9AF76F01C} = {19C34F0A-0FC6-41A0-80AB-44922096A893}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F2F9E22D-2C90-425D-86FF-62DCA2D66872}

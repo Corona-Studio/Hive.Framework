@@ -7,12 +7,17 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\Hive.Both.General\Hive.Both.General.csproj" />
       <ProjectReference Include="..\Hive.Network.Shared\Hive.Network.Shared.csproj" />
       <ProjectReference Include="..\Hive.Network.Tcp\Hive.Network.Tcp.csproj" />
+      <ProjectReference Include="..\Hive.Server.Abstractions\Hive.Server.Abstractions.csproj" />
     </ItemGroup>
 
     <ItemGroup>
+      <PackageReference Include="MemoryPack" Version="1.9.16" />
       <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="7.0.0" />
     </ItemGroup>
+
+
 
 </Project>
