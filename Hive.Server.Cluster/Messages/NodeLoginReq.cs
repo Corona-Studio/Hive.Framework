@@ -6,11 +6,13 @@ namespace Hive.Server.Cluster.Messages;
 
 [MemoryPackable]
 [MessageDefine]
-public partial class NodeLogin
+public partial class NodeLoginReq
 {
     public string Signature;
 
     public string PublicKey;
+    
+    public string MachineId;
     
     public List<ServiceKey> Services;
 }
@@ -20,9 +22,18 @@ public partial class NodeLogin
 [MessageDefine]
 public partial class NodeLoginResp
 {
+    public ErrorCode ErrorCode;
+    
     public string Signature;
     
     public string PublicKey;
     
     public int NodeId;
+
+    public NodeLoginResp(ErrorCode errorCode, string signature, string publicKey)
+    {
+        ErrorCode = errorCode;
+        Signature = signature;
+        PublicKey = publicKey;
+    }
 }

@@ -4,6 +4,11 @@ public struct ClusterNodeId : IEquatable<ClusterNodeId>, IEqualityComparer<Clust
 {
     public int Id;
 
+    public ClusterNodeId(int id)
+    {
+        Id = id;
+    }
+
     public bool Equals(ClusterNodeId other)
     {
         return Id == other.Id;
@@ -27,5 +32,15 @@ public struct ClusterNodeId : IEquatable<ClusterNodeId>, IEqualityComparer<Clust
     public int GetHashCode(ClusterNodeId obj)
     {
         return obj.Id;
+    }
+
+    public static bool operator ==(ClusterNodeId left, ClusterNodeId right)
+    {
+        return left.Equals(right);
+    }
+
+    public static bool operator !=(ClusterNodeId left, ClusterNodeId right)
+    {
+        return !(left == right);
     }
 }
