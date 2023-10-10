@@ -24,7 +24,7 @@ public interface ISession
     ///     拿到后立刻处理，否则数据会被回收。
     ///     <para>如果要缓存，必须复制一份数据</para>
     /// </summary>
-    event EventHandler<ReadOnlyMemory<byte>> OnMessageReceived;
+    event SessionReceivedHandler OnMessageReceived;
 
 
     public Task StartAsync(CancellationToken token);

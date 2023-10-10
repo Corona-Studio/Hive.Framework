@@ -2,13 +2,14 @@
 
 namespace Hive.Server.Abstractions;
 
-public readonly struct ClusterNodeInfo: IEquatable<ClusterNodeInfo>
+public struct ClusterNodeInfo: IEquatable<ClusterNodeInfo>
 {
-    public ClusterNodeId NodeId { get; }
-    private IPEndPoint NodeEndPoint { get; }
-    public string MachineId { get; }
-    public ServiceKey[] ServiceKeys { get; }
-    
+    public readonly ClusterNodeId NodeId { get; }
+    private readonly IPEndPoint NodeEndPoint { get; }
+    public readonly string MachineId { get; }
+    public readonly ServiceKey[] ServiceKeys { get; }
+    public DateTime LastHeartBeatTime { get; set; }
+
     public ClusterNodeInfo(ClusterNodeId nodeId, IPEndPoint nodeEndPoint, string machineId, ServiceKey[] serviceKeys)
     {
         NodeId = nodeId;

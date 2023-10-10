@@ -1,6 +1,6 @@
 ﻿using Hive.Network.Abstractions.Session;
 
-namespace Hive.Both.General
+namespace Hive.Both.General.Dispatchers
 {
     public struct ReceiveMessageEventArgs<T>
     {

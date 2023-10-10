@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using Hive.Both.General;
+using Hive.Both.General.Dispatchers;
 using Hive.Network.Abstractions.Session;
 using Hive.Network.Tcp;
 using Hive.Server.Abstractions;

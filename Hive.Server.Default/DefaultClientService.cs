@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using Hive.Both.General;
+using Hive.Both.General.Dispatchers;
 using Hive.Both.Messages.C2S;
 using Hive.Both.Messages.S2C;
 using Hive.Network.Abstractions;

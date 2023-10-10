@@ -1,10 +1,10 @@
 ﻿using System.Collections.Concurrent;
 using System.Net;
 using System.Threading.Channels;
-using Hive.Both.General;
+using Hive.Both.General.Channels;
+using Hive.Both.General.Dispatchers;
 using Hive.Network.Abstractions;
 using Hive.Network.Abstractions.Session;
-using Hive.Network.Tcp;
 using Hive.Server.Abstractions;
 using Hive.Server.Cluster.Messages;
 using Microsoft.Extensions.Hosting;
@@ -14,9 +14,9 @@ namespace Hive.Server.Cluster;
 
 public class CentralizedManagerService : BackgroundService
 {
-    private readonly TcpAcceptor _tcpAcceptor;
+    private readonly IAcceptor _sessionAcceptor;
     private readonly IDispatcher _dispatcher;
-    private IServiceProvider _serviceProvider;
+    private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<CentralizedManagerService> _logger;
     
     // todo use a better data structure
@@ -33,34 +33,25 @@ public class CentralizedManagerService : BackgroundService
     private readonly CentralizedManagerServiceOptions _options;
     
     // Save node login request to a channel, and handle it in a background task, so that the acceptor and dispatcher won't be blocked
-    private readonly Channel<(ISession, NodeLoginReq)> _nodeLoginReqChannel =
-        Channel.CreateBounded<(ISession, NodeLoginReq)>(new BoundedChannelOptions(1000)
-        {
-            FullMode = BoundedChannelFullMode.DropNewest
-        });
-    
-    public CentralizedManagerService(CentralizedManagerServiceOptions options, IServiceProvider serviceProvider, TcpAcceptor tcpAcceptor,
+    private IServerMessageChannel<ActorHeartBeat, ActorHeartBeat> _actorHeartBeatChannel;
+    private IServerMessageChannel<NodeLoginReq, NodeLoginResp> _nodeLoginRespChannel;
+    public CentralizedManagerService(CentralizedManagerServiceOptions options, IServiceProvider serviceProvider, IAcceptor sessionAcceptor,
         IDispatcher dispatcher, ILogger<CentralizedManagerService> logger)
     {
         _serviceProvider = serviceProvider;
-        _tcpAcceptor = tcpAcceptor;
+        _sessionAcceptor = sessionAcceptor;
         _dispatcher = dispatcher;
         _logger = logger;
         _options = options;
 
-        _tcpAcceptor.OnSessionCreated += OnSessionCreated;
-        _tcpAcceptor.OnSessionClosed += OnSessionClosed;
+        _sessionAcceptor.OnSessionCreated += OnSessionCreated;
+        _sessionAcceptor.OnSessionClosed += OnSessionClosed;
+        _sessionAcceptor.BindTo(dispatcher);
 
-        _dispatcher.AddHandler<ActorHeartBeat>(OnReceiveHeartBeat);
-        _dispatcher.AddHandler<NodeLoginReq>(OnReceiveNodeLoginReq);
-    }
-
-    private void OnReceiveNodeLoginReq(IDispatcher dispatcher, ISession session, NodeLoginReq message)
-    {
-        if (!_nodeLoginReqChannel.Writer.TryWrite((session, message)))
-        {
-            _logger.LogError("Fail to write node login request to channel, request: {@Request}", message);
-        }
+        _actorHeartBeatChannel = _dispatcher.CreateServerChannel<ActorHeartBeat, ActorHeartBeat>(_serviceProvider);
+        _nodeLoginRespChannel = _dispatcher.CreateServerChannel<NodeLoginReq, NodeLoginResp>(_serviceProvider);
+        //_dispatcher.AddHandler<ActorHeartBeat>(OnReceiveHeartBeat);
+        //_dispatcher.AddHandler<NodeLoginReq>(OnReceiveNodeLoginReq);
     }
     
     /// <summary>
@@ -150,21 +141,16 @@ public class CentralizedManagerService : BackgroundService
         var serviceAddresses = _serviceKeyToAddresses.GetOrAdd(serviceKey, new ConcurrentBag<ServiceAddress>());
         serviceAddresses.Add(serviceAddress);
     }
-    
-    private void OnReceiveHeartBeat(IDispatcher dispatcher, ISession session, ActorHeartBeat message)
-    {
-        dispatcher.SendAsync(session, new ActorHeartBeat());
-    }
 
-    private void OnSessionCreated(object? sender, OnClientCreatedArgs<TcpSession> e)
+    private void OnSessionCreated(object? sender, OnClientCreatedArgs<ISession> e)
     {
         if (_sessionToNodeId.ContainsKey(e.Session.Id))
         {
-            _logger.LogError("Session {SessionId} already exists", e.Session.Id);
+            _logger.LogWarning("Session {SessionId} already exists", e.Session.Id);
         }
     }
 
-    private void OnSessionClosed(object? sender, OnClientClosedArgs<TcpSession> e)
+    private void OnSessionClosed(object? sender, OnClientClosedArgs<ISession> e)
     {
         if (_sessionToNodeId.TryRemove(e.Session.Id, out var nodeId))
         {
@@ -177,17 +163,19 @@ public class CentralizedManagerService : BackgroundService
     {
         var ipAddress = IPAddress.Parse(_options.ListenAddress);
         var port = _options.ListenPort;
-        var acceptorTsk = _tcpAcceptor.SetupAsync(new IPEndPoint(ipAddress, port), stoppingToken);
-        var nodeLoginReqTsk = HandleNodeLoginReqAsync(stoppingToken);
+        var acceptorTsk = _sessionAcceptor.SetupAsync(new IPEndPoint(ipAddress, port), stoppingToken);
         
-        return Task.WhenAll(acceptorTsk, nodeLoginReqTsk);
+        var nodeHeartBeatTsk = HandleNodeHeartBeat(stoppingToken);
+        var nodeLoginReqTsk = HandleNodeLoginReqAsync(stoppingToken);
+
+        return Task.WhenAll(acceptorTsk, nodeLoginReqTsk, nodeHeartBeatTsk);
     }
 
     private async Task HandleNodeLoginReqAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            var (session, message) = await _nodeLoginReqChannel.Reader.ReadAsync(stoppingToken);
+            var (session, message) = await _nodeLoginRespChannel.ReadAsync(stoppingToken);
             
             _logger.LogDebug("Receive node login request: {@Request}", message);
             
@@ -223,8 +211,8 @@ public class CentralizedManagerService : BackgroundService
 
             if (TryAddNode(nodeInfo))
             {
-                var sent = await _dispatcher.SendAsync(session,
-                    new NodeLoginResp(ErrorCode.Ok, signature: signature, publicKey: publicKey));
+                
+                var sent = await _nodeLoginRespChannel.WriteAsync(session, new NodeLoginResp(ErrorCode.Ok, signature: signature, publicKey: publicKey));
 
                 if (sent)
                 {
@@ -244,8 +232,31 @@ public class CentralizedManagerService : BackgroundService
                 _logger.LogError("Node {EndPointAddress}:{EndPointPort} login failed, fail to add node", endPoint.Address,
                     endPoint.Port);
                 
-                await _dispatcher.SendAsync(session,new NodeLoginResp(ErrorCode.NodeAlreadyExists, signature: signature, publicKey: publicKey));
+                await _nodeLoginRespChannel.WriteAsync(session,new NodeLoginResp(ErrorCode.NodeAlreadyExists, signature: signature, publicKey: publicKey));
             }
+        }
+    }
+
+
+    private async Task HandleNodeHeartBeat(CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            var (session, message) = await _actorHeartBeatChannel.ReadAsync(stoppingToken);
+            
+            _logger.LogDebug("Receive node heart beat: {@Request}", message);
+            
+            if (!_sessionToNodeId.TryGetValue(session.Id, out var nodeId))
+            {
+                _logger.LogError("Node with session {SessionId} does not exist", session.Id);
+                continue;
+            }
+            
+            var nodeInfo = _clusterNodes[nodeId];
+            nodeInfo.LastHeartBeatTime = DateTime.UtcNow;
+            
+            // todo 暂时原样返回
+            await _actorHeartBeatChannel.WriteAsync(session, message);
         }
     }
 

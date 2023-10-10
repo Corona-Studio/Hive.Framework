@@ -6,10 +6,25 @@ using System.Threading.Tasks;
 
 namespace Hive.Network.Abstractions.Session;
 
+public interface IAcceptor : IDisposable
+{
+    event Func<ISession, ValueTask> OnSessionCreateAsync;
+
+    event EventHandler<OnClientCreatedArgs<ISession>> OnSessionCreated;
+
+    /// <summary>
+    ///     连接意外关闭时触发，主动关闭时不会触发
+    /// </summary>
+    event EventHandler<OnClientClosedArgs<ISession>> OnSessionClosed;
+    
+    ISession? GetSession(SessionId sessionId);
+    Task<bool> SetupAsync(IPEndPoint listenEndPoint, CancellationToken token);
+}
+
 /// <summary>
 ///     代表一个接入连接接收器
 /// </summary>
-public interface IAcceptor<TSession> : IDisposable where TSession : ISession
+public interface IAcceptor<TSession> : IAcceptor where TSession : ISession
 {
     bool IsValid { get; }
 
@@ -18,24 +33,22 @@ public interface IAcceptor<TSession> : IDisposable where TSession : ISession
     /// </summary>
     bool IsSelfRunning { get; }
 
-    event Func<TSession, ValueTask> OnSessionCreateAsync;
-
-    Task<bool> SetupAsync(IPEndPoint listenEndPoint, CancellationToken token);
+    new event Func<TSession, ValueTask> OnSessionCreateAsync;
 
     void StartAcceptLoop(CancellationToken token);
 
-    Task<bool> CloseAsync(CancellationToken token);
+    new Task<bool> CloseAsync(CancellationToken token);
 
-    ValueTask<bool> DoOnceAcceptAsync(CancellationToken token);
+    new ValueTask<bool> DoOnceAcceptAsync(CancellationToken token);
 
-    event EventHandler<OnClientCreatedArgs<TSession>> OnSessionCreated;
+    new event EventHandler<OnClientCreatedArgs<TSession>> OnSessionCreated;
 
     /// <summary>
     ///     连接意外关闭时触发，主动关闭时不会触发
     /// </summary>
-    event EventHandler<OnClientClosedArgs<TSession>> OnSessionClosed;
+    new event EventHandler<OnClientClosedArgs<TSession>> OnSessionClosed;
 
-    TSession? GetSession(SessionId sessionId);
+    new TSession? GetSession(SessionId sessionId);
 
     ValueTask<bool> SendToAsync(SessionId sessionId, MemoryStream buffer, CancellationToken token = default);
 

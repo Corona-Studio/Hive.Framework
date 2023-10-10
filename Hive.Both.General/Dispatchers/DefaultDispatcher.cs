@@ -8,7 +8,7 @@ using Hive.Network.Abstractions.Session;
 using Hive.Network.Shared;
 using Microsoft.Extensions.Logging;
 
-namespace Hive.Both.General
+namespace Hive.Both.General.Dispatchers
 {
     public class DefaultDispatcher : IDispatcher
     {

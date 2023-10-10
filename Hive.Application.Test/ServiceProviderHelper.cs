@@ -1,4 +1,5 @@
 ﻿using Hive.Both.General;
+using Hive.Both.General.Dispatchers;
 using Hive.Codec.Abstractions;
 using Hive.Codec.Shared;
 using Hive.Network.Abstractions.Session;

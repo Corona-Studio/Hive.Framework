@@ -5,6 +5,7 @@ using System.IO;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using Hive.Common.Shared;
 using Hive.Network.Abstractions;
 using Hive.Network.Abstractions.Session;
 using Microsoft.Extensions.Logging;
@@ -38,6 +39,33 @@ namespace Hive.Network.Shared.Session
         public event EventHandler<OnClientCreatedArgs<TSession>>? OnSessionCreated;
         public event EventHandler<OnClientClosedArgs<TSession>>? OnSessionClosed;
         public abstract Task<bool> SetupAsync(IPEndPoint listenEndPoint, CancellationToken token);
+        
+        private EventHandler<OnClientCreatedArgs<ISession>>? _onSessionCreated;
+        event EventHandler<OnClientCreatedArgs<ISession>>? IAcceptor.OnSessionCreated
+        {
+            add => _onSessionCreated += value;
+            remove => _onSessionCreated -= value;
+        }
+        
+        private EventHandler<OnClientClosedArgs<ISession>>? _onSessionClosed;
+        event EventHandler<OnClientClosedArgs<ISession>>? IAcceptor.OnSessionClosed
+        {
+            add => _onSessionClosed += value;
+            remove => _onSessionClosed -= value;
+        }
+        
+        // todo use async event
+        private Func<ISession, ValueTask>? _onSessionCreateAsync;
+        event Func<ISession, ValueTask>? IAcceptor.OnSessionCreateAsync
+        {
+            add => _onSessionCreateAsync += value;
+            remove => _onSessionCreateAsync -= value;
+        }
+
+        ISession? IAcceptor.GetSession(SessionId sessionId)
+        {
+            return GetSession(sessionId);
+        }
 
 
         public virtual async void StartAcceptLoop(CancellationToken token)
@@ -53,11 +81,11 @@ namespace Hive.Network.Shared.Session
             }
             catch (TaskCanceledException e)
             {
-                Logger.LogInformation(e, "Accept loop canceled.");
+                Logger.LogInformation(e, "Accept loop canceled");
             }
             catch (Exception e)
             {
-                Logger.LogError(e, "Accept loop error.");
+                Logger.LogError(e, "Accept loop error");
             }
         }
 
@@ -101,6 +129,8 @@ namespace Hive.Network.Shared.Session
             _idToSessionDict.TryAdd(session.Id, session);
 
             OnSessionCreated?.Invoke(this, new OnClientCreatedArgs<TSession>(session.Id, session));
+            _onSessionCreated?.Invoke(this, new OnClientCreatedArgs<ISession>(session.Id, session));
+            
             if (OnSessionCreateAsync != null)
                 try
                 {
@@ -110,13 +140,25 @@ namespace Hive.Network.Shared.Session
                 {
                     Logger.LogError(e, "OnSessionCreateAsync error");
                 }
+            
+            if (_onSessionCreateAsync != null)
+                try
+                {
+                    _onSessionCreateAsync(session);
+                }
+                catch (Exception e)
+                {
+                    Logger.LogError(e, "OnSessionCreateAsync error");
+                }
         }
 
         protected void FireOnSessionClosed(TSession session)
         {
-            Logger.LogInformation("Session {sessionId} closed.", session.Id);
+            Logger.LogInformation("Session {SessionId} closed", session.Id);
             _idToSessionDict.TryRemove(session.Id, out _);
+            
             OnSessionClosed?.Invoke(this, new OnClientClosedArgs<TSession>(session.Id, session));
+            _onSessionClosed?.Invoke(this, new OnClientClosedArgs<ISession>(session.Id, session));
         }
 
         protected int GetNextSessionId()

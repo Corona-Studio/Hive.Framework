@@ -3,7 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Hive.Network.Abstractions.Session;
 
-namespace Hive.Both.General
+namespace Hive.Both.General.Dispatchers
 {
     public interface IDispatcher
     {

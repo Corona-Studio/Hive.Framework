@@ -56,7 +56,7 @@ namespace Hive.Network.Shared.Session
         public abstract IPEndPoint? RemoteEndPoint { get; }
         public long LastHeartBeatTime { get; }
 
-        public event EventHandler<ReadOnlyMemory<byte>>? OnMessageReceived;
+        public event SessionReceivedHandler? OnMessageReceived;
 
         public virtual async ValueTask<bool> SendAsync(MemoryStream ms, CancellationToken token = default)
         {
@@ -112,7 +112,7 @@ namespace Hive.Network.Shared.Session
                     if (readLen != stream.Length)
                     {
                         Logger.LogError(
-                            "Read {0} bytes from stream, but the stream length is {1}",
+                            "Read {ReadLen} bytes from stream, but the stream length is {StreamLength}",
                             readLen,
                             stream.Length);
                         await stream.DisposeAsync();
@@ -187,7 +187,7 @@ namespace Hive.Network.Shared.Session
 
                     if (totalLen > lenThisTime)
                     {
-                        Logger.LogError("Received {0} bytes, but the packet length is {1}", lenThisTime, totalLen);
+                        Logger.LogError("Received {ReadLen} bytes, but the packet length is {TotalLen}", lenThisTime, totalLen);
                         continue;
                     }
 

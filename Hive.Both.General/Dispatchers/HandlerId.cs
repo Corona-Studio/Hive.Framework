@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Hive.Both.General
+namespace Hive.Both.General.Dispatchers
 {
     public readonly struct HandlerId : IEquatable<HandlerId>, IEqualityComparer<HandlerId>
     {
