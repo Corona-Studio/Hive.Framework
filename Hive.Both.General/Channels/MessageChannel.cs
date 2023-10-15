@@ -11,6 +11,7 @@ namespace Hive.Both.General.Channels
         private readonly ISession _session;
         private readonly IDispatcher _dispatcher;
         private readonly Channel<TRead> _channel = Channel.CreateUnbounded<TRead>();
+
         public MessageChannel(ISession session, IDispatcher dispatcher)
         {
             _session = session;

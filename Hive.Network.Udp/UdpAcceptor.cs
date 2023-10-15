@@ -152,7 +152,7 @@ namespace Hive.Network.Udp
                         {
                             if (_udpSessions.TryGetValue(sessionId, out var session))
                                 // Copy one time
-                                session.OnReceived(_receiveBuffer.AsMemory()[..length], token);
+                                await session.OnReceivedAsync(_receiveBuffer.AsMemory()[..length], token);
                             else
                                 return false;
                         }

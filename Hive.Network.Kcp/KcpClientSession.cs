@@ -12,8 +12,8 @@ namespace Hive.Network.Kcp
     public class KcpClientSession : KcpSession
     {
         private readonly ArrayBufferWriter<byte> _receiveBuffer = new();
-
         private readonly OpenArrayBufferWriter<byte> _sendBuffer = new();
+
         private Socket? _socket;
 
         public KcpClientSession(
