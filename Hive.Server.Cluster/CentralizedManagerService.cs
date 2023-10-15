@@ -7,6 +7,7 @@ using Hive.Network.Abstractions;
 using Hive.Network.Abstractions.Session;
 using Hive.Server.Abstractions;
 using Hive.Server.Cluster.Messages;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -48,8 +49,8 @@ public class CentralizedManagerService : BackgroundService
         _sessionAcceptor.OnSessionClosed += OnSessionClosed;
         _sessionAcceptor.BindTo(dispatcher);
 
-        _actorHeartBeatChannel = _dispatcher.CreateServerChannel<ActorHeartBeat, ActorHeartBeat>(_serviceProvider);
-        _nodeLoginRespChannel = _dispatcher.CreateServerChannel<NodeLoginReq, NodeLoginResp>(_serviceProvider);
+        _actorHeartBeatChannel = _dispatcher.CreateServerChannel<ActorHeartBeat, ActorHeartBeat>(_serviceProvider.GetRequiredService<ILoggerFactory>());
+        _nodeLoginRespChannel = _dispatcher.CreateServerChannel<NodeLoginReq, NodeLoginResp>(_serviceProvider.GetRequiredService<ILoggerFactory>());
         //_dispatcher.AddHandler<ActorHeartBeat>(OnReceiveHeartBeat);
         //_dispatcher.AddHandler<NodeLoginReq>(OnReceiveNodeLoginReq);
     }
@@ -142,17 +143,17 @@ public class CentralizedManagerService : BackgroundService
         serviceAddresses.Add(serviceAddress);
     }
 
-    private void OnSessionCreated(object? sender, OnClientCreatedArgs<ISession> e)
+    private void OnSessionCreated(IAcceptor acceptor, SessionId sessionId, ISession session)
     {
-        if (_sessionToNodeId.ContainsKey(e.Session.Id))
+        if (_sessionToNodeId.ContainsKey(sessionId))
         {
-            _logger.LogWarning("Session {SessionId} already exists", e.Session.Id);
+            _logger.LogWarning("Session {SessionId} already exists", sessionId);
         }
     }
 
-    private void OnSessionClosed(object? sender, OnClientClosedArgs<ISession> e)
+    private void OnSessionClosed(IAcceptor acceptor, SessionId sessionId, ISession session)
     {
-        if (_sessionToNodeId.TryRemove(e.Session.Id, out var nodeId))
+        if (_sessionToNodeId.TryRemove(sessionId, out var nodeId))
         {
             _logger.LogInformation("Node {NodeId} disconnected", nodeId);
             TryRemoveNode(nodeId);

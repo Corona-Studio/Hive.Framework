@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net7.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Hive.Both.General\Hive.Both.General.csproj" />
+      <ProjectReference Include="..\Hive.Network.Abstractions\Hive.Network.Abstractions.csproj" />
+    </ItemGroup>
+
+</Project>

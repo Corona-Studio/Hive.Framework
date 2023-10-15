@@ -48,7 +48,7 @@ namespace Hive.Network.Kcp
             return updateTask;
         }
 
-        public override async ValueTask<bool> SendAsync(MemoryStream ms, CancellationToken token = default)
+        public override async ValueTask<bool> TrySendAsync(MemoryStream ms, CancellationToken token = default)
         {
             ms.Seek(0, SeekOrigin.Begin);
 

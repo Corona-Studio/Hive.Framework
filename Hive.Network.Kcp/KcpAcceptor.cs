@@ -38,7 +38,7 @@ namespace Hive.Network.Kcp
             _serverSocket = new Socket(listenEndPoint.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
         }
 
-        public override Task<bool> SetupAsync(IPEndPoint listenEndPoint, CancellationToken token)
+        public override Task SetupAsync(IPEndPoint listenEndPoint, CancellationToken token)
         {
             if (_serverSocket == null)
                 InitSocket(listenEndPoint);
@@ -51,7 +51,7 @@ namespace Hive.Network.Kcp
             return Task.FromResult(true);
         }
 
-        public override Task<bool> CloseAsync(CancellationToken token)
+        public override Task<bool> TryCloseAsync(CancellationToken token)
         {
             if (_serverSocket == null) return Task.FromResult(false);
 
@@ -76,7 +76,7 @@ namespace Hive.Network.Kcp
             return sentLen;
         }
 
-        public override async ValueTask<bool> DoOnceAcceptAsync(CancellationToken token)
+        public override async ValueTask<bool> TryDoOnceAcceptAsync(CancellationToken token)
         {
             if (_serverSocket == null)
                 return false;

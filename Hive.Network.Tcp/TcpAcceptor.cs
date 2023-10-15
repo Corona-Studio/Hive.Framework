@@ -30,7 +30,7 @@ namespace Hive.Network.Tcp
             _serverSocket = new Socket(listenEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
         }
 
-        public override Task<bool> SetupAsync(IPEndPoint listenEndPoint, CancellationToken token)
+        public override Task SetupAsync(IPEndPoint listenEndPoint, CancellationToken token)
         {
             if (_serverSocket == null)
                 InitSocket(listenEndPoint);
@@ -40,10 +40,11 @@ namespace Hive.Network.Tcp
 
             _serverSocket.Bind(listenEndPoint);
             _serverSocket.Listen(listenEndPoint.Port);
-            return Task.FromResult(true);
+            
+            return Task.CompletedTask;
         }
 
-        public override Task<bool> CloseAsync(CancellationToken token)
+        public override Task<bool> TryCloseAsync(CancellationToken token)
         {
             if (_serverSocket == null) return Task.FromResult(false);
 
@@ -55,7 +56,7 @@ namespace Hive.Network.Tcp
         }
 
 
-        public override async ValueTask<bool> DoOnceAcceptAsync(CancellationToken token)
+        public override async ValueTask<bool> TryDoOnceAcceptAsync(CancellationToken token)
         {
             if (_serverSocket == null)
                 return false;

@@ -57,8 +57,17 @@ namespace Hive.Network.Shared.Session
         public long LastHeartBeatTime { get; }
 
         public event SessionReceivedHandler? OnMessageReceived;
+        
+        public virtual async ValueTask SendAsync(MemoryStream ms, CancellationToken token = default)
+        {
+            if (SendChannel == null)
+                throw new NullReferenceException(nameof(SendChannel));
 
-        public virtual async ValueTask<bool> SendAsync(MemoryStream ms, CancellationToken token = default)
+            if (await SendChannel.Writer.WaitToWriteAsync(token))
+                await SendChannel.Writer.WriteAsync(ms, token);
+        }
+
+        public virtual async ValueTask<bool> TrySendAsync(MemoryStream ms, CancellationToken token = default)
         {
             if (SendChannel == null)
                 return false;

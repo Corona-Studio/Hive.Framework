@@ -156,10 +156,10 @@ public abstract class SessionTest<T> where T : class, ISession
                 tcs.SetCanceled(_cts.Token);
         });
 
-        _acceptor.OnSessionCreated += (_, args) =>
+        _acceptor.OnSessionCreated += (_, id, session) =>
         {
             sessionCount++;
-            _serverSideSessions.Add(args.Session);
+            _serverSideSessions.Add(session);
 
             if (sessionCount == randomClientNum)
                 tcs.SetResult(true);
@@ -241,7 +241,7 @@ public abstract class SessionTest<T> where T : class, ISession
             if (SendInterval > 0)
                 await Task.Delay(SendInterval); // 防止UDP丢包
 
-            await session.SendAsync(ms);
+            await session.TrySendAsync(ms);
         }
 
         foreach (var session in _serverSideSessions)
@@ -254,7 +254,7 @@ public abstract class SessionTest<T> where T : class, ISession
 
             if (SendInterval > 0)
                 await Task.Delay(SendInterval); // 防止UDP丢包
-            await session.SendAsync(ms);
+            await session.TrySendAsync(ms);
         }
 
         await Task.Delay(3000);

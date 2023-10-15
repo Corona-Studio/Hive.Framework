@@ -10,15 +10,21 @@ public interface IAcceptor : IDisposable
 {
     event Func<ISession, ValueTask> OnSessionCreateAsync;
 
-    event EventHandler<OnClientCreatedArgs<ISession>> OnSessionCreated;
+    event Action<IAcceptor,SessionId,ISession> OnSessionCreated;
 
     /// <summary>
     ///     连接意外关闭时触发，主动关闭时不会触发
     /// </summary>
-    event EventHandler<OnClientClosedArgs<ISession>> OnSessionClosed;
+    event Action<IAcceptor,SessionId,ISession> OnSessionClosed;
     
     ISession? GetSession(SessionId sessionId);
-    Task<bool> SetupAsync(IPEndPoint listenEndPoint, CancellationToken token);
+    Task SetupAsync(IPEndPoint listenEndPoint, CancellationToken token);
+    void StartAcceptLoop(CancellationToken token);
+    new Task<bool> TryCloseAsync(CancellationToken token);
+    new ValueTask<bool> TryDoOnceAcceptAsync(CancellationToken token);
+    
+    ValueTask<bool> TrySendToAsync(SessionId sessionId, MemoryStream buffer, CancellationToken token = default);
+    ValueTask SendToAsync(SessionId sessionId, MemoryStream buffer, CancellationToken token = default);
 }
 
 /// <summary>
@@ -35,22 +41,14 @@ public interface IAcceptor<TSession> : IAcceptor where TSession : ISession
 
     new event Func<TSession, ValueTask> OnSessionCreateAsync;
 
-    void StartAcceptLoop(CancellationToken token);
-
-    new Task<bool> CloseAsync(CancellationToken token);
-
-    new ValueTask<bool> DoOnceAcceptAsync(CancellationToken token);
-
-    new event EventHandler<OnClientCreatedArgs<TSession>> OnSessionCreated;
+    new event Action<IAcceptor,SessionId,TSession> OnSessionCreated;
 
     /// <summary>
     ///     连接意外关闭时触发，主动关闭时不会触发
     /// </summary>
-    new event EventHandler<OnClientClosedArgs<TSession>> OnSessionClosed;
+    new event Action<IAcceptor,SessionId,TSession> OnSessionClosed;
 
     new TSession? GetSession(SessionId sessionId);
-
-    ValueTask<bool> SendToAsync(SessionId sessionId, MemoryStream buffer, CancellationToken token = default);
 
     /// <summary>
     ///     进行一次心跳检查
@@ -59,28 +57,4 @@ public interface IAcceptor<TSession> : IAcceptor where TSession : ISession
     /// </summary>
     /// <returns></returns>
     void DoHeartBeatCheck();
-}
-
-public readonly struct OnClientCreatedArgs<TSession> where TSession : ISession
-{
-    public readonly SessionId SessionId;
-    public readonly TSession Session;
-
-    public OnClientCreatedArgs(SessionId sessionId, TSession session)
-    {
-        SessionId = sessionId;
-        Session = session;
-    }
-}
-
-public readonly struct OnClientClosedArgs<TSession> where TSession : ISession
-{
-    public readonly SessionId SessionId;
-    public readonly TSession Session;
-
-    public OnClientClosedArgs(SessionId sessionId, TSession session)
-    {
-        SessionId = sessionId;
-        Session = session;
-    }
 }

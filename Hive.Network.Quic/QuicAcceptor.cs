@@ -44,18 +44,16 @@ public sealed class QuicAcceptor : AbstractAcceptor<QuicSession>
         _listener = listener;
     }
 
-    public override async Task<bool> SetupAsync(IPEndPoint listenEndPoint, CancellationToken token)
+    public override async Task SetupAsync(IPEndPoint listenEndPoint, CancellationToken token)
     {
         if (_listener == null)
             await InitListener(listenEndPoint);
 
         if (_listener == null)
             throw new NullReferenceException("ServerSocket is null and InitSocket failed.");
-
-        return true;
     }
 
-    public override async Task<bool> CloseAsync(CancellationToken token)
+    public override async Task<bool> TryCloseAsync(CancellationToken token)
     {
         if (_listener != null)
         {
@@ -67,7 +65,7 @@ public sealed class QuicAcceptor : AbstractAcceptor<QuicSession>
     }
 
 
-    public override async ValueTask<bool> DoOnceAcceptAsync(CancellationToken token)
+    public override async ValueTask<bool> TryDoOnceAcceptAsync(CancellationToken token)
     {
         if (_listener == null)
             return false;
@@ -100,6 +98,6 @@ public sealed class QuicAcceptor : AbstractAcceptor<QuicSession>
 
     public override void Dispose()
     {
-        CloseAsync(CancellationToken.None).Wait();
+        TryCloseAsync(CancellationToken.None).Wait();
     }
 }

@@ -56,20 +56,20 @@ public class DefaultClientService<TSession> : BackgroundService, IClientService 
     {
     }
 
-    private void OnSessionClosed(object? sender, OnClientClosedArgs<TSession> e)
+    private void OnSessionClosed(IAcceptor acceptor, SessionId sessionId, TSession session)
     {
-        if (_sessionIdToClientDict.TryRemove(e.Session.Id, out var clientHandle))
+        if (_sessionIdToClientDict.TryRemove(sessionId, out var clientHandle))
             _clientDict.TryRemove(clientHandle.Id, out _);
     }
 
-    private void OnSessionCreated(object? sender, OnClientCreatedArgs<TSession> e)
+    private void OnSessionCreated(IAcceptor acceptor, SessionId sessionId, TSession session)
     {
         var clientId = GenerateClientId();
-        var clientHandle = new ClientHandle(clientId, e.Session);
-        e.Session.OnMessageReceived += OnReceiveMessage;
+        var clientHandle = new ClientHandle(clientId, session);
+        session.OnMessageReceived += OnReceiveMessage;
 
         _clientDict.TryAdd(clientId, clientHandle);
-        _sessionIdToClientDict.TryAdd(e.Session.Id, clientHandle);
+        _sessionIdToClientDict.TryAdd(sessionId, clientHandle);
     }
 
     private void OnReceiveMessage(object? sender, ReadOnlyMemory<byte> e)

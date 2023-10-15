@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net7.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Hive.Both.General\Hive.Both.General.csproj" />
+      <ProjectReference Include="..\Hive.Both.Messages\Hive.Both.Messages.csproj" />
+      <ProjectReference Include="..\Hive.Server.Common.Abstract\Hive.Server.Common.Abstract.csproj" />
+        <ProjectReference Include="..\Hive.Server.Common.Application.Generator\Hive.Server.Common.Application.Generator.csproj"
+                          OutputItemType="Analyzer"
+                          ReferenceOutputAssembly="false"
+        />
+    </ItemGroup>
+
+</Project>

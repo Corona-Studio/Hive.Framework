@@ -8,19 +8,13 @@ namespace Hive.Both.General.Dispatchers
         {
             session.OnMessageReceived += dispatcher.Dispatch;
         }
-        
+
         public static void BindTo(this IAcceptor acceptor, IDispatcher dispatcher)
         {
             var handler = new SessionReceivedHandler(dispatcher.Dispatch);
-            acceptor.OnSessionCreated += (sender, args) =>
-            {
-                args.Session.OnMessageReceived += handler;
-            };
-            
-            acceptor.OnSessionClosed += (sender, args) =>
-            {
-                args.Session.OnMessageReceived -= handler;
-            };
+            acceptor.OnSessionCreated += (sender, id, session) => { session.OnMessageReceived += handler; };
+
+            acceptor.OnSessionClosed += (sender, id, session) => { session.OnMessageReceived -= handler; };
         }
     }
 }

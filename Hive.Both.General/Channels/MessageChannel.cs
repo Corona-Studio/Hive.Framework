@@ -3,7 +3,6 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using Hive.Both.General.Dispatchers;
 using Hive.Network.Abstractions.Session;
-using Microsoft.Extensions.Logging;
 
 namespace Hive.Both.General.Channels
 {
@@ -11,13 +10,11 @@ namespace Hive.Both.General.Channels
     {
         private readonly ISession _session;
         private readonly IDispatcher _dispatcher;
-        private readonly ILogger<MessageChannel<TRead, TWrite>> _logger;
         private readonly Channel<TRead> _channel = Channel.CreateUnbounded<TRead>();
-        public MessageChannel(ISession session, IDispatcher dispatcher, ILogger<MessageChannel<TRead, TWrite>> logger)
+        public MessageChannel(ISession session, IDispatcher dispatcher)
         {
             _session = session;
             _dispatcher = dispatcher;
-            _logger = logger;
             dispatcher.AddHandler<TRead>(OnReceive);
         }
 
@@ -25,7 +22,6 @@ namespace Hive.Both.General.Channels
         {
             if (!_channel.Writer.TryWrite( message))
             {
-                _logger.LogWarning("Failed to write message to channel");
             }
         }
 
@@ -37,6 +33,11 @@ namespace Hive.Both.General.Channels
         public ValueTask<bool> WriteAsync(TWrite message)
         {
             return _dispatcher.SendAsync(_session, message);
+        }
+        
+        ~MessageChannel()
+        {
+            _dispatcher.RemoveHandler<TRead>(OnReceive);
         }
     }
 }

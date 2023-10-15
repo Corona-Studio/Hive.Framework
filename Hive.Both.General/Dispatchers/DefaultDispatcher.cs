@@ -191,7 +191,7 @@ namespace Hive.Both.General.Dispatchers
             _packetCodec.Encode(message, stream);
 
 
-            return await session.SendAsync(stream);
+            return await session.TrySendAsync(stream);
         }
 
         private void AddHandler<T>(HandlerWarp<T> warp)

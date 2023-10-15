@@ -7,6 +7,7 @@ using Hive.Codec.MemoryPack;
 using Hive.Network.Abstractions.Session;
 using Hive.Network.Tcp;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using NUnit.Framework;
 
 namespace Hive.Application.Test;
@@ -39,7 +40,7 @@ public class ChannelTest
         
         dispatcher.Dispatch(dummySession, mem);
 
-        var channel = dispatcher.CreateServerChannel<ComplexMessage, ComplexMessage>(serviceProvider);
+        var channel = dispatcher.CreateServerChannel<ComplexMessage, ComplexMessage>(serviceProvider.GetRequiredService<ILoggerFactory>());
         using CancellationTokenSource cts = new();
         var token = cts.Token;
         var task = Task.Run(async () =>
@@ -103,7 +104,7 @@ public class ChannelTest
         
         dispatcher.Dispatch(dummySession, mem);
 
-        var channel = dispatcher.CreateChannel<ComplexMessage, ComplexMessage>(dummySession,serviceProvider);
+        var channel = dispatcher.CreateChannel<ComplexMessage, ComplexMessage>(dummySession,serviceProvider.GetRequiredService<ILoggerFactory>());
         using CancellationTokenSource cts = new();
         var token = cts.Token;
         var task = Task.Run(async () =>

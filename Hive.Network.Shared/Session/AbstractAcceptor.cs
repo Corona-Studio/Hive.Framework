@@ -36,19 +36,19 @@ namespace Hive.Network.Shared.Session
         public bool IsSelfRunning { get; protected set; }
 
         public event Func<TSession, ValueTask>? OnSessionCreateAsync;
-        public event EventHandler<OnClientCreatedArgs<TSession>>? OnSessionCreated;
-        public event EventHandler<OnClientClosedArgs<TSession>>? OnSessionClosed;
-        public abstract Task<bool> SetupAsync(IPEndPoint listenEndPoint, CancellationToken token);
+        public event Action<IAcceptor,SessionId,TSession>? OnSessionCreated;
+        public event Action<IAcceptor,SessionId,TSession>? OnSessionClosed;
+        public abstract Task SetupAsync(IPEndPoint listenEndPoint, CancellationToken token);
         
-        private EventHandler<OnClientCreatedArgs<ISession>>? _onSessionCreated;
-        event EventHandler<OnClientCreatedArgs<ISession>>? IAcceptor.OnSessionCreated
+        private Action<IAcceptor,SessionId,ISession>? _onSessionCreated;
+        event Action<IAcceptor,SessionId,ISession>? IAcceptor.OnSessionCreated
         {
             add => _onSessionCreated += value;
             remove => _onSessionCreated -= value;
         }
         
-        private EventHandler<OnClientClosedArgs<ISession>>? _onSessionClosed;
-        event EventHandler<OnClientClosedArgs<ISession>>? IAcceptor.OnSessionClosed
+        private Action<IAcceptor,SessionId,ISession>? _onSessionClosed;
+        event Action<IAcceptor,SessionId,ISession>? IAcceptor.OnSessionClosed
         {
             add => _onSessionClosed += value;
             remove => _onSessionClosed -= value;
@@ -75,7 +75,7 @@ namespace Hive.Network.Shared.Session
                 await Task.Run(async () =>
                 {
                     IsSelfRunning = true;
-                    while (!token.IsCancellationRequested) await DoOnceAcceptAsync(token);
+                    while (!token.IsCancellationRequested) await TryDoOnceAcceptAsync(token);
                     IsSelfRunning = false;
                 }, token);
             }
@@ -89,21 +89,32 @@ namespace Hive.Network.Shared.Session
             }
         }
 
-        public abstract Task<bool> CloseAsync(CancellationToken token);
+        public abstract Task<bool> TryCloseAsync(CancellationToken token);
 
-        public abstract ValueTask<bool> DoOnceAcceptAsync(CancellationToken token);
+        public abstract ValueTask<bool> TryDoOnceAcceptAsync(CancellationToken token);
 
 
         public TSession? GetSession(SessionId sessionId)
         {
             return _idToSessionDict.TryGetValue(sessionId, out var session) ? session : default;
         }
-
-        public ValueTask<bool> SendToAsync(SessionId sessionId, MemoryStream buffer, CancellationToken token = default)
+        
+        public async ValueTask<bool> TrySendToAsync(SessionId sessionId, MemoryStream buffer, CancellationToken token = default)
         {
             var session = GetSession(sessionId);
-            if (session != null) return session.SendAsync(buffer, token);
-            return new ValueTask<bool>(false);
+            if (session == null)
+                return false;
+            
+            return await session.TrySendAsync(buffer, token);;
+        }
+
+        public ValueTask SendToAsync(SessionId sessionId, MemoryStream buffer, CancellationToken token = default)
+        {
+            var session = GetSession(sessionId);
+            if (session == null) 
+                throw new ArgumentException($"Session {sessionId} not found.");
+            
+            return session.SendAsync(buffer, token);
         }
 
         public virtual void DoHeartBeatCheck()
@@ -128,8 +139,8 @@ namespace Hive.Network.Shared.Session
             Logger.LogInformation("Session {sessionId} accepted.", session.Id);
             _idToSessionDict.TryAdd(session.Id, session);
 
-            OnSessionCreated?.Invoke(this, new OnClientCreatedArgs<TSession>(session.Id, session));
-            _onSessionCreated?.Invoke(this, new OnClientCreatedArgs<ISession>(session.Id, session));
+            OnSessionCreated?.Invoke(this, session.Id, session);
+            _onSessionCreated?.Invoke(this, session.Id, session);
             
             if (OnSessionCreateAsync != null)
                 try
@@ -157,8 +168,8 @@ namespace Hive.Network.Shared.Session
             Logger.LogInformation("Session {SessionId} closed", session.Id);
             _idToSessionDict.TryRemove(session.Id, out _);
             
-            OnSessionClosed?.Invoke(this, new OnClientClosedArgs<TSession>(session.Id, session));
-            _onSessionClosed?.Invoke(this, new OnClientClosedArgs<ISession>(session.Id, session));
+            OnSessionClosed?.Invoke(this, session.Id, session);
+            _onSessionClosed?.Invoke(this, session.Id, session);
         }
 
         protected int GetNextSessionId()

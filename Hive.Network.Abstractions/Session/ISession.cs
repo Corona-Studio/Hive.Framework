@@ -28,7 +28,9 @@ public interface ISession
 
 
     public Task StartAsync(CancellationToken token);
-
+    
+    
+    ValueTask SendAsync(MemoryStream ms, CancellationToken token = default);
 
     /// <summary>
     ///     发送数据
@@ -36,7 +38,7 @@ public interface ISession
     /// <param name="ms"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    ValueTask<bool> SendAsync(MemoryStream ms, CancellationToken token = default);
+    ValueTask<bool> TrySendAsync(MemoryStream ms, CancellationToken token = default);
 
     void Close();
 }
