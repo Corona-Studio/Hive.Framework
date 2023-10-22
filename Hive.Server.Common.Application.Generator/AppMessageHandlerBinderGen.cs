@@ -19,7 +19,7 @@ namespace Hive.Server.Common.Application.SourceGen
             DiagnosticSeverity.Error, true);
         
         
-        private const string Tempalte = """
+        private const string Template = """
 
 {0}
 
@@ -172,7 +172,7 @@ namespace {1}
 
             var binderInvoke = string.Join(",\n", binderInvokeList);
 
-            var finalCode = string.Format(Tempalte, usingBuilder.ToString(), namespaceName, definedApplicationClassSymbol.Name, definedApplicationClassSymbol.ToDisplayString(), binderInvoke);
+            var finalCode = string.Format(Template, usingBuilder.ToString(), namespaceName, definedApplicationClassSymbol.Name, definedApplicationClassSymbol.ToDisplayString(), binderInvoke);
 
             var newSourceText = CSharpSyntaxTree.ParseText(SourceText.From(finalCode, Encoding.UTF8)).GetRoot()
                 .NormalizeWhitespace().SyntaxTree.GetText();
