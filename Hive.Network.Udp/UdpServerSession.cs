@@ -1,9 +1,8 @@
 ﻿using System;
-using System.Buffers;
 using System.Net;
 using System.Threading;
-using System.Threading.Channels;
 using System.Threading.Tasks;
+using Hive.Network.Shared;
 using Microsoft.Extensions.Logging;
 
 namespace Hive.Network.Udp
@@ -13,9 +12,6 @@ namespace Hive.Network.Udp
     /// </summary>
     public class UdpServerSession : UdpSession
     {
-        private readonly Channel<ArraySegment<byte>> _messageStreamChannel =
-            Channel.CreateUnbounded<ArraySegment<byte>>();
-
         public UdpServerSession(
             int sessionId,
             IPEndPoint remoteEndPoint,
@@ -35,32 +31,23 @@ namespace Hive.Network.Udp
             return OnSendAsync?.Invoke(data, RemoteEndPoint, token) ?? new ValueTask<int>(0);
         }
 
-        internal void OnReceived(Memory<byte> memory, CancellationToken token)
+        internal async ValueTask OnReceivedAsync(Memory<byte> memory, CancellationToken token)
         {
             if (!IsConnected) return;
+            if (ReceivePipe == null)
+                throw new NullReferenceException(nameof(ReceivePipe));
 
-            var bytes = ArrayPool<byte>.Shared.Rent(memory.Length);
-            memory.CopyTo(bytes);
-            var segment = new ArraySegment<byte>(bytes, 0, memory.Length);
-            if (!_messageStreamChannel.Writer.TryWrite(segment))
-            {
-                ArrayPool<byte>.Shared.Return(bytes);
+            var buffer = ReceivePipe.Writer.GetMemory(NetworkSettings.DefaultBufferSize);
+
+            memory.Span.CopyTo(buffer.Span);
+            ReceivePipe.Writer.Advance(memory.Length);
+
+            var flushResult = await ReceivePipe.Writer.FlushAsync(token);
+
+            if (flushResult.IsCompleted)
                 IsConnected = false;
-            }
         }
 
-        public override async ValueTask<int> ReceiveOnce(ArraySegment<byte> buffer, CancellationToken token)
-        {
-            if (!IsConnected) return 0;
-
-            await _messageStreamChannel.Reader.WaitToReadAsync(token);
-
-            if (!_messageStreamChannel.Reader.TryRead(out var stream)) return 0;
-
-            stream.CopyTo(buffer);
-            var len = stream.Count;
-            ArrayPool<byte>.Shared.Return(stream.Array);
-            return len;
-        }
+        public override ValueTask<int> ReceiveOnce(ArraySegment<byte> buffer, CancellationToken token) => new (0);
     }
 }

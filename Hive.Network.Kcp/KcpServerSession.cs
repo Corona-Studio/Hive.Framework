@@ -46,6 +46,7 @@ namespace Hive.Network.Kcp
         internal void OnReceived(Memory<byte> memory, CancellationToken token)
         {
             if (!IsConnected) return;
+            if (token.IsCancellationRequested) return;
 
             Logger.LogInformation("UDP raw packet received [length: {len}]", memory.Length);
 

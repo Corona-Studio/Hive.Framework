@@ -1,9 +1,9 @@
 ﻿using System;
-using System.Buffers;
 using System.IO;
+using System.IO.Pipelines;
 using System.Net;
+using System.Runtime.InteropServices;
 using System.Threading;
-using System.Threading.Channels;
 using System.Threading.Tasks;
 using Hive.Network.Abstractions;
 using Hive.Network.Abstractions.Session;
@@ -31,25 +31,13 @@ namespace Hive.Network.Shared.Session
             LastHeartBeatTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         }
 
-        protected virtual Channel<MemoryStream>? SendChannel { get; set; } = Channel.CreateBounded<MemoryStream>(
-            new BoundedChannelOptions(1024)
-            {
-                SingleReader = true,
-                SingleWriter = true,
-                FullMode = BoundedChannelFullMode.DropOldest
-            });
+        protected Pipe? SendPipe { get; set; } = new();
+        protected Pipe? ReceivePipe { get; set; } = new();
 
         public abstract bool CanSend { get; }
         public abstract bool CanReceive { get; }
         public virtual bool IsConnected { get; protected set; } = true;
         public bool Running => SendingLoopRunning && ReceivingLoopRunning;
-
-        public virtual void Dispose()
-        {
-            if (SendChannel == null) return;
-            SendChannel.Writer.Complete();
-            while (SendChannel.Reader.TryRead(out var stream)) stream.Dispose();
-        }
 
         public SessionId Id { get; }
         public abstract IPEndPoint? LocalEndPoint { get; }
@@ -57,35 +45,14 @@ namespace Hive.Network.Shared.Session
         public long LastHeartBeatTime { get; }
 
         public event SessionReceivedHandler? OnMessageReceived;
-        
-        public virtual async ValueTask SendAsync(MemoryStream ms, CancellationToken token = default)
-        {
-            if (SendChannel == null)
-                throw new NullReferenceException(nameof(SendChannel));
-
-            if (await SendChannel.Writer.WaitToWriteAsync(token))
-                await SendChannel.Writer.WriteAsync(ms, token);
-        }
-
-        public virtual async ValueTask<bool> TrySendAsync(MemoryStream ms, CancellationToken token = default)
-        {
-            if (SendChannel == null)
-                return false;
-
-            if (await SendChannel.Writer.WaitToWriteAsync(token))
-                return SendChannel.Writer.TryWrite(ms);
-
-            return false;
-        }
-
-        public abstract void Close();
 
         public virtual Task StartAsync(CancellationToken token)
         {
             var sendTask = Task.Run(() => SendLoop(token), token);
+            var fillReceivePipeTask = Task.Run(() => FillReceivePipeAsync(ReceivePipe!.Writer, token), token);
             var receiveTask = Task.Run(() => ReceiveLoop(token), token);
 
-            return Task.WhenAll(sendTask, receiveTask);
+            return Task.WhenAll(sendTask, fillReceivePipeTask, receiveTask);
         }
 
         protected void FireMessageReceived(ReadOnlyMemory<byte> data)
@@ -93,9 +60,84 @@ namespace Hive.Network.Shared.Session
             OnMessageReceived?.Invoke(this, data);
         }
 
+        #region Send
+
+        public virtual async ValueTask SendAsync(MemoryStream ms, CancellationToken token = default)
+        {
+            if (SendPipe == null)
+                throw new NullReferenceException(nameof(SendPipe));
+
+            var result = await FillSendPipeAsync(SendPipe.Writer, ms, token);
+
+            if (!result)
+                throw new InvalidOperationException($"Failed to fill pipe, data size: {ms.Length}");
+        }
+
+        public virtual async ValueTask<bool> TrySendAsync(MemoryStream ms, CancellationToken token = default)
+        {
+            if (SendPipe == null)
+                return false;
+
+            return await FillSendPipeAsync(SendPipe.Writer, ms, token);
+        }
+
+        /// <summary>
+        /// 将流中的数据复制到 <see cref="SendPipe"/>
+        /// <para>Copy and arrange data then send to the <see cref="SendPipe"/></para>
+        /// </summary>
+        /// <param name="writer"></param>
+        /// <param name="stream"></param>
+        /// <param name="token"></param>
+        /// <returns></returns>
+        protected virtual async ValueTask<bool> FillSendPipeAsync(PipeWriter writer, MemoryStream stream, CancellationToken token = default)
+        {
+            stream.Seek(0, SeekOrigin.Begin);
+
+            var memory = writer.GetMemory(NetworkSettings.DefaultBufferSize);
+            var readLen = await stream.ReadAsync(memory[NetworkSettings.PacketBodyOffset..], token);
+
+            if (readLen != stream.Length)
+            {
+                Logger.LogError(
+                    "Read {ReadLen} bytes from stream, but the stream length is {StreamLength}",
+                    readLen,
+                    stream.Length);
+                await stream.DisposeAsync();
+
+                return false;
+            }
+
+            var totalLen = readLen + NetworkSettings.PacketBodyOffset;
+
+            // 写入头部包体长度字段
+            // ReSharper disable once RedundantRangeBound
+            BitConverter.TryWriteBytes(
+                memory.Span[NetworkSettings.PacketLengthOffset..],
+                (ushort)totalLen);
+            BitConverter.TryWriteBytes(
+                memory.Span[NetworkSettings.SessionIdOffset..],
+                Id);
+
+            writer.Advance(totalLen);
+            await stream.DisposeAsync();
+
+            var flushResult = await writer.FlushAsync(token);
+
+            return !flushResult.IsCompleted;
+        }
+
+        /// <summary>
+        /// 从 <see cref="SendPipe"/> 读取待发送数据并使用 Socket 发送
+        /// <para>Read from <see cref="SendPipe"/> and send the data using raw socket</para>
+        /// </summary>
+        /// <param name="token"></param>
+        /// <returns></returns>
+        /// <exception cref="NullReferenceException"></exception>
+        /// <exception cref="InvalidOperationException"></exception>
         protected virtual async Task SendLoop(CancellationToken token)
         {
-            var sendBuffer = ArrayPool<byte>.Shared.Rent(NetworkSettings.DefaultBufferSize);
+            if (SendPipe == null)
+                throw new NullReferenceException(nameof(SendPipe));
 
             try
             {
@@ -103,44 +145,16 @@ namespace Hive.Network.Shared.Session
 
                 while (!token.IsCancellationRequested)
                 {
-                    if (SendChannel == null) throw new InvalidOperationException(nameof(SendChannel));
-                    if (!IsConnected || !CanSend || !await SendChannel.Reader.WaitToReadAsync(token))
-                    {
-                        await Task.Delay(10, token);
-                        continue;
-                    }
+                    var result = await SendPipe.Reader.ReadAsync(token);
+                    var sequence = result.Buffer;
 
-                    var stream = await SendChannel.Reader.ReadAsync(token);
+                    if (!SequenceMarshal.TryGetReadOnlyMemory(sequence, out var buffer))
+                        throw new InvalidOperationException("Failed to create ReadOnlyMemory<byte> from ReadOnlySequence<byte>!");
 
-                    stream.Seek(0, SeekOrigin.Begin);
+                    if (!MemoryMarshal.TryGetArray(buffer, out var segment))
+                        throw new InvalidOperationException("Failed to create ArraySegment<byte> from ReadOnlyMemory<byte>!");
 
-                    // ReSharper disable once MethodHasAsyncOverloadWithCancellation
-                    var readLen = await stream.ReadAsync(sendBuffer, NetworkSettings.PacketBodyOffset,
-                        (int)stream.Length, token);
-
-                    if (readLen != stream.Length)
-                    {
-                        Logger.LogError(
-                            "Read {ReadLen} bytes from stream, but the stream length is {StreamLength}",
-                            readLen,
-                            stream.Length);
-                        await stream.DisposeAsync();
-
-                        continue;
-                    }
-
-                    var totalLen = readLen + NetworkSettings.PacketBodyOffset;
-
-                    // 写入头部包体长度字段
-                    // ReSharper disable once RedundantRangeBound
-                    BitConverter.TryWriteBytes(
-                        sendBuffer.AsSpan()[NetworkSettings.PacketLengthOffset..],
-                        (ushort)totalLen);
-                    BitConverter.TryWriteBytes(
-                        sendBuffer.AsSpan()[NetworkSettings.SessionIdOffset..],
-                        Id);
-
-                    var segment = new ArraySegment<byte>(sendBuffer, 0, totalLen);
+                    var totalLen = buffer.Length;
                     var sentLen = 0;
 
                     while (sentLen < totalLen)
@@ -150,7 +164,9 @@ namespace Hive.Network.Shared.Session
                         sentLen += sendThisTime;
                     }
 
-                    await stream.DisposeAsync();
+                    SendPipe.Reader.AdvanceTo(result.Buffer.End);
+
+                    if (result.IsCompleted) return;
                 }
             }
             catch (TaskCanceledException)
@@ -163,47 +179,73 @@ namespace Hive.Network.Shared.Session
             }
             finally
             {
-                ArrayPool<byte>.Shared.Return(sendBuffer);
                 SendingLoopRunning = false;
             }
         }
 
+        #endregion
 
-        protected virtual async Task ReceiveLoop(CancellationToken stoppingToken)
+        #region Receive
+
+        protected virtual async Task FillReceivePipeAsync(PipeWriter writer, CancellationToken token = default)
         {
-            var receiveBuffer = ArrayPool<byte>.Shared.Rent(NetworkSettings.DefaultBufferSize);
-            var segment = new ArraySegment<byte>(receiveBuffer);
+            while (!token.IsCancellationRequested)
+            {
+                var memory = writer.GetMemory(NetworkSettings.DefaultBufferSize);
+
+                if (!MemoryMarshal.TryGetArray<byte>(memory, out var segment))
+                    throw new InvalidOperationException("Failed to create ArraySegment<byte> from ReadOnlyMemory<byte>!");
+
+                var receiveLen = await ReceiveOnce(segment, token);
+
+                if (receiveLen == 0) break;
+
+                writer.Advance(receiveLen);
+
+                var flushResult = await writer.FlushAsync(token);
+
+                if (flushResult.IsCompleted) break;
+            }
+        }
+
+        protected virtual async Task ReceiveLoop(CancellationToken token)
+        {
+            if (ReceivePipe == null)
+                throw new NullReferenceException(nameof(ReceivePipe));
+
             try
             {
-                while (!stoppingToken.IsCancellationRequested)
+                while (!token.IsCancellationRequested)
                 {
                     if (!IsConnected || !CanReceive)
                     {
-                        await Task.Delay(10, stoppingToken);
+                        await Task.Delay(10, token);
                         continue;
                     }
 
-                    var lenThisTime = await ReceiveOnce(segment, stoppingToken);
-
-                    if (lenThisTime == 0)
-                    {
-                        Logger.LogError("Received 0 bytes, the buffer may be full");
-                        break;
-                    }
+                    var result = await ReceivePipe.Reader.ReadAsync(token);
+                    var sequence = result.Buffer;
+                    
+                    if (!SequenceMarshal.TryGetReadOnlyMemory(sequence, out var buffer))
+                        throw new InvalidOperationException("Failed to create ReadOnlyMemory<byte> from ReadOnlySequence<byte>!");
 
                     // ReSharper disable once RedundantRangeBound
-                    var totalLen = BitConverter.ToUInt16(segment[NetworkSettings.PacketLengthOffset..]);
+                    var totalLen = BitConverter.ToUInt16(buffer.Span[NetworkSettings.PacketLengthOffset..]);
 
-                    if (totalLen > lenThisTime)
+                    if (totalLen > buffer.Length)
                     {
-                        Logger.LogError("Received {ReadLen} bytes, but the packet length is {TotalLen}", lenThisTime, totalLen);
+                        Logger.LogError("Received {ReadLen} bytes, but the packet length is {TotalLen}", buffer.Length, totalLen);
                         continue;
                     }
 
                     var bodyLen = totalLen - NetworkSettings.PacketBodyOffset;
-                    var data = segment.Slice(NetworkSettings.PacketBodyOffset, bodyLen);
+                    var data = buffer.Slice(NetworkSettings.PacketBodyOffset, bodyLen);
 
                     FireMessageReceived(data);
+
+                    ReceivePipe.Reader.AdvanceTo(sequence.Start, sequence.GetPosition(totalLen));
+
+                    if (result.IsCompleted) break;
                 }
             }
             catch (TaskCanceledException)
@@ -217,12 +259,32 @@ namespace Hive.Network.Shared.Session
             finally
             {
                 ReceivingLoopRunning = false;
-                ArrayPool<byte>.Shared.Return(receiveBuffer);
             }
         }
+
+        #endregion
+
+        public abstract void Close();
 
         public abstract ValueTask<int> SendOnce(ArraySegment<byte> data, CancellationToken token);
 
         public abstract ValueTask<int> ReceiveOnce(ArraySegment<byte> buffer, CancellationToken token);
+
+        public virtual void Dispose()
+        {
+            if (SendPipe != null)
+            {
+                SendPipe.Reader.Complete();
+                SendPipe.Writer.Complete();
+                SendPipe = null;
+            }
+
+            if (ReceivePipe != null)
+            {
+                ReceivePipe.Reader.Complete();
+                ReceivePipe.Writer.Complete();
+                ReceivePipe = null;
+            }
+        }
     }
 }

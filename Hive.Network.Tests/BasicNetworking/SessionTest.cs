@@ -79,7 +79,7 @@ public class SessionTestQuic : SessionTest<QuicSession>
                                     ServerAuthenticationOptions = new SslServerAuthenticationOptions
                                     {
                                         ApplicationProtocols = new List<SslApplicationProtocol>
-                                            { SslApplicationProtocol.Http3, SslApplicationProtocol.Http2 },
+                                            { SslApplicationProtocol.Http3 },
                                         ServerCertificate = QuicCertHelper.GenerateTestCertificate()
                                     }
                                 })
@@ -97,7 +97,7 @@ public class SessionTestQuic : SessionTest<QuicSession>
                             ClientAuthenticationOptions = new SslClientAuthenticationOptions
                             {
                                 ApplicationProtocols = new List<SslApplicationProtocol>
-                                    { SslApplicationProtocol.Http3, SslApplicationProtocol.Http2 },
+                                    { SslApplicationProtocol.Http3 },
                                 RemoteCertificateValidationCallback = (_, _, _, _) => true
                             }
                         };
