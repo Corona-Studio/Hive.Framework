@@ -94,9 +94,9 @@ public class DefaultClientService<TSession> : BackgroundService, IClientService 
         }
     }
 
-    private void OnReceiveClientHeartBeat(IDispatcher dispatcher, ISession session, CSHeartBeat message)
+    private void OnReceiveClientHeartBeat(MessageContext<CSHeartBeat> context)
     {
-        if (_sessionIdToClientDict.TryGetValue(session.Id, out var clientHandle))
+        if (_sessionIdToClientDict.TryGetValue(context.FromSession.Id, out var clientHandle))
         {
             clientHandle.LastHeartBeatTimeUtc = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             _dispatcher.SendAsync(clientHandle.Session, new SCHeartBeat());

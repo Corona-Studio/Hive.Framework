@@ -37,7 +37,7 @@ public class DispatcherTest
         dispatcher.Dispatch(dummySession, mem);
 
 
-        void Dispatcher(IDispatcher d, ISession session, ComplexMessage complexMessage)
+        void Dispatcher(MessageContext<ComplexMessage> complexMessage)
         {
             cnt++;
         }
@@ -70,7 +70,7 @@ public class DispatcherTest
         dispatcher.RemoveHandler<ComplexMessage>(Dispatcher);
         dispatcher.Dispatch(dummySession, mem);
 
-        void Dispatcher(IDispatcher d, ISession session, ComplexMessage complexMessage)
+        void Dispatcher(MessageContext<ComplexMessage> complexMessage)
         {
             cnt++;
         }

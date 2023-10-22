@@ -12,12 +12,12 @@ public class ChannelHandlerBinderAttribute : Attribute
 
     public Type Type { get; }
 }
-public class ChannelHandlerBinderProvider
+public static class MessageHandlerBinderProvider
 {
-    private static readonly Dictionary<Type,IChannelHandlerBinder> BinderCache;
-    static ChannelHandlerBinderProvider()
+    private static readonly Dictionary<Type,IMessageHandlerBinder> BinderCache;
+    static MessageHandlerBinderProvider()
     {
-        BinderCache = new Dictionary<Type, IChannelHandlerBinder>();
+        BinderCache = new Dictionary<Type, IMessageHandlerBinder>();
         var assemblies = AppDomain.CurrentDomain.GetAssemblies();
         foreach (var assembly in assemblies)
         {
@@ -26,7 +26,7 @@ public class ChannelHandlerBinderProvider
                 var attribute = type.GetCustomAttribute<ChannelHandlerBinderAttribute>();
                 if (attribute != null)
                 {
-                    if (Activator.CreateInstance(type) is IChannelHandlerBinder binder)
+                    if (Activator.CreateInstance(type) is IMessageHandlerBinder binder)
                     {
                         BinderCache.Add(attribute.Type,binder);
                     }
@@ -34,7 +34,7 @@ public class ChannelHandlerBinderProvider
             }
         }
     }
-    public static IChannelHandlerBinder GetHandlerBinder(Type type)
+    public static IMessageHandlerBinder GetHandlerBinder(Type type)
     {
         lock (BinderCache)
         {

@@ -1,6 +1,6 @@
-﻿using Hive.Both.Messages.C2S;
+﻿using Hive.Both.General.Dispatchers;
+using Hive.Both.Messages.C2S;
 using Hive.Both.Messages.S2C;
-using Hive.Network.Abstractions;
 
 namespace Hive.Server.Common.Application;
 
@@ -11,10 +11,11 @@ public class TestApplication : ServerApplicationBase
         
     }
     
-
+    
     [MessageHandler]
-    public ValueTask<SCHeartBeat> HelloHandler(SessionId sessionId, CSHeartBeat request)
+    
+    public async ValueTask<ResultContext<SCHeartBeat>> HelloHandler(CSHeartBeat request)
     {
-        return new ValueTask<SCHeartBeat>(new SCHeartBeat());
+        return new ResultContext<SCHeartBeat>(new SCHeartBeat());
     }
 }

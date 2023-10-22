@@ -20,8 +20,8 @@ public abstract class ServerApplicationBase : IServerApplication
     
     public Task OnStartAsync(IAcceptor acceptor, IDispatcher dispatcher,CancellationToken stoppingToken)
     {
-        var channelHandlerBinder = ChannelHandlerBinderProvider.GetHandlerBinder(this.GetType());
-        return channelHandlerBinder.BindAndStart(this, dispatcher, _serviceProvider.GetRequiredService<ILoggerFactory>(), stoppingToken);
+        var channelHandlerBinder = MessageHandlerBinderProvider.GetHandlerBinder(this.GetType());
+        return channelHandlerBinder.BindAndStart(this, dispatcher, stoppingToken);
     }
 
     public virtual void OnSessionCreated(ISession session)
@@ -33,5 +33,29 @@ public abstract class ServerApplicationBase : IServerApplication
     {
         
     }
+    
+    internal Task StartMessageProcessLoop<TReq,TReply>(IDispatcher dispatcher, Func<MessageContext<TReq>,ValueTask<ResultContext<TReply>>> handler, CancellationToken stoppingToken)
+    {
+        return Task.Run(async () =>
+        {
+            var currentAwaiter = new HandlerAwaiter<MessageContext<TReq>>();
+            dispatcher.AddHandler<TReq>(currentAwaiter.SetResult);
+            while (!stoppingToken.IsCancellationRequested)
+            {
+                var task = new ValueTask<MessageContext<TReq>>(currentAwaiter, currentAwaiter.Version);
+                var context = await task;
+                currentAwaiter.Reset();
+                var resultContext = await handler(context);
+                await dispatcher.SendAsync(context.FromSession, resultContext);
+            }
+            dispatcher.RemoveHandler<TReq>(currentAwaiter.SetResult);
+        }, stoppingToken);
+    }
+    
+    internal Task StartMessageProcessLoop<TReq,TReply>(IDispatcher dispatcher, Func<TReq,ValueTask<ResultContext<TReply>>> handler, CancellationToken stoppingToken) 
+        => StartMessageProcessLoop<TReq,TReply>(dispatcher, (context) => handler(context.Message), stoppingToken);
+    
+    internal Task StartMessageProcessLoop<TReq,TReply>(IDispatcher dispatcher, Func<TReq,ISession,ValueTask<ResultContext<TReply>>> handler, CancellationToken stoppingToken) 
+        => StartMessageProcessLoop<TReq,TReply>(dispatcher, (context) => handler(context.Message,context.FromSession), stoppingToken);
     
 }

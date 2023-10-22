@@ -49,8 +49,8 @@ public class CentralizedManagerService : BackgroundService
         _sessionAcceptor.OnSessionClosed += OnSessionClosed;
         _sessionAcceptor.BindTo(dispatcher);
 
-        _actorHeartBeatChannel = _dispatcher.CreateServerChannel<ActorHeartBeat, ActorHeartBeat>(_serviceProvider.GetRequiredService<ILoggerFactory>());
-        _nodeLoginRespChannel = _dispatcher.CreateServerChannel<NodeLoginReq, NodeLoginResp>(_serviceProvider.GetRequiredService<ILoggerFactory>());
+        _actorHeartBeatChannel = _dispatcher.CreateServerChannel<ActorHeartBeat, ActorHeartBeat>();
+        _nodeLoginRespChannel = _dispatcher.CreateServerChannel<NodeLoginReq, NodeLoginResp>();
         //_dispatcher.AddHandler<ActorHeartBeat>(OnReceiveHeartBeat);
         //_dispatcher.AddHandler<NodeLoginReq>(OnReceiveNodeLoginReq);
     }

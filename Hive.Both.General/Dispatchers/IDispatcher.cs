@@ -12,9 +12,9 @@ namespace Hive.Both.General.Dispatchers
         void Dispatch<T>(ISession session, T message) where T : class;
         void Dispatch(ISession session, Type type, object message);
 
-        HandlerId AddHandler<T>(DispatchHandler<T> handler, TaskScheduler? scheduler = null);
+        HandlerId AddHandler<T>(Action<MessageContext<T>> handler, TaskScheduler? scheduler = null);
 
-        bool RemoveHandler<T>(DispatchHandler<T> handler);
+        bool RemoveHandler<T>(Action<MessageContext<T>> handler);
         bool RemoveHandler(HandlerId id);
 
         Task<T> HandleOnce<T>(ISession session, CancellationToken cancellationToken = default);

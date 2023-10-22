@@ -40,7 +40,7 @@ public class ChannelTest
         
         dispatcher.Dispatch(dummySession, mem);
 
-        var channel = dispatcher.CreateServerChannel<ComplexMessage, ComplexMessage>(serviceProvider.GetRequiredService<ILoggerFactory>());
+        var channel = dispatcher.CreateServerChannel<ComplexMessage, ComplexMessage>();
         using CancellationTokenSource cts = new();
         var token = cts.Token;
         var task = Task.Run(async () =>
@@ -104,7 +104,7 @@ public class ChannelTest
         
         dispatcher.Dispatch(dummySession, mem);
 
-        var channel = dispatcher.CreateChannel<ComplexMessage, ComplexMessage>(dummySession,serviceProvider.GetRequiredService<ILoggerFactory>());
+        var channel = dispatcher.CreateChannel<ComplexMessage, ComplexMessage>(dummySession);
         using CancellationTokenSource cts = new();
         var token = cts.Token;
         var task = Task.Run(async () =>

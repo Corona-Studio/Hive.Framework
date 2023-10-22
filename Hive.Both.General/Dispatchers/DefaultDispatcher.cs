@@ -72,14 +72,14 @@ namespace Hive.Both.General.Dispatchers
                 }
         }
 
-        public HandlerId AddHandler<T>(DispatchHandler<T> handler, TaskScheduler? scheduler = null)
+        public HandlerId AddHandler<T>(Action<MessageContext<T>> handler, TaskScheduler? scheduler = null)
         {
             var warp = new HandlerWarp<T>(GetNextId(), handler);
             AddHandler(warp);
             return warp.Id;
         }
 
-        public bool RemoveHandler<T>(DispatchHandler<T> handler)
+        public bool RemoveHandler<T>(Action<MessageContext<T>> handler)
         {
             if (_delegateToId.TryRemove(handler, out var id))
                 if (_idToTypes.TryRemove(id, out var warp))
@@ -153,8 +153,10 @@ namespace Hive.Both.General.Dispatchers
 
             return default!;
 
-            void Handler(IDispatcher dispatcher, ISession sender, T message)
+            void Handler(MessageContext<T> context)
             {
+                var sender = context.FromSession;
+                var message = context.Message;
                 _logger.LogTrace("Listen once received message, session:{SessionId}, message:{Message}", sender.Id,
                     message);
                 if (cancellationToken.IsCancellationRequested)
@@ -239,14 +241,14 @@ namespace Hive.Both.General.Dispatchers
 
         public class HandlerWarp<T> : IHandleWarp
         {
-            public HandlerWarp(HandlerId id, DispatchHandler<T> handler)
+            public HandlerWarp(HandlerId id, Action<MessageContext<T>> handler)
             {
                 Handler = handler;
                 Id = id;
             }
 
             public HandlerId Id { get; }
-            public DispatchHandler<T> Handler { get; }
+            public Action<MessageContext<T>> Handler { get; }
 
             public Type Type => typeof(T);
             public Delegate HandlerDelegate => Handler;
@@ -255,7 +257,7 @@ namespace Hive.Both.General.Dispatchers
 
             public void Call(IDispatcher dispatcher, ISession sender, object message)
             {
-                if (message is T t) Handler.Invoke(dispatcher, sender, t);
+                if (message is T t) Handler.Invoke(new MessageContext<T>(sender,dispatcher, t));
             }
         }
     }

@@ -17,9 +17,9 @@ namespace Hive.Both.General.Channels
             _dispatcher.AddHandler<TRead>(OnReceive);
         }
         
-        private void OnReceive(IDispatcher dispatcher, ISession session, TRead message)
+        private void OnReceive(MessageContext<TRead> context)
         {
-            if (!_channel.Writer.TryWrite((session, message)))
+            if (!_channel.Writer.TryWrite((context.FromSession, context.Message)))
             {
                 
             }
