@@ -156,7 +156,7 @@ public abstract class SessionTest<T> where T : class, ISession
                 tcs.SetCanceled(_cts.Token);
         });
 
-        _acceptor.OnSessionCreated += (_, id, session) =>
+        _acceptor.OnSessionCreated += (_, _, session) =>
         {
             sessionCount++;
             _serverSideSessions.Add(session);
@@ -254,10 +254,11 @@ public abstract class SessionTest<T> where T : class, ISession
 
             if (SendInterval > 0)
                 await Task.Delay(SendInterval); // 防止UDP丢包
+
             await session.TrySendAsync(ms);
         }
 
-        await Task.Delay(3000);
+        await Task.Delay(6000);
 
         Assert.Multiple(() =>
         {

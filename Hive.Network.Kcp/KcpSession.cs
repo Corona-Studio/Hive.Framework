@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Buffers;
-using System.IO;
-using System.IO.Pipelines;
 using System.Net;
 using System.Net.Sockets.Kcp;
 using System.Runtime.InteropServices;
@@ -29,7 +26,7 @@ namespace Hive.Network.Kcp
 
             Conv = conv;
 
-            Kcp = CreateNewKcpManager(conv);
+            Kcp = CreateNewKcpManager(Conv);
 
             LocalEndPoint = localEndPoint;
             RemoteEndPoint = remoteEndPoint;
@@ -88,10 +85,10 @@ namespace Hive.Network.Kcp
         private static UnSafeSegManager.KcpIO CreateNewKcpManager(uint conv)
         {
             var kcp = new UnSafeSegManager.KcpIO(conv);
-            kcp.NoDelay(2, 5, 2, 1);
-            kcp.WndSize(1024, 1024);
-            //kcp.SetMtu(512);
-            kcp.fastlimit = -1;
+            kcp.NoDelay(1, 10, 2, 1);
+            // kcp.WndSize(128, 128);
+            // kcp.SetMtu(512);
+            // kcp.fastlimit = -1;
 
             return kcp;
         }
