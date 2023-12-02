@@ -42,7 +42,7 @@ public class DispatcherTest
             cnt++;
         }
 
-        Assert.AreEqual(3, cnt);
+        Assert.Equals(3, cnt);
     }
 
     [Test]
@@ -75,7 +75,7 @@ public class DispatcherTest
             cnt++;
         }
 
-        Assert.AreEqual(1, cnt);
+        Assert.Equals(1, cnt);
 
         // Test remove by id
         var handlerId = dispatcher.AddHandler<ComplexMessage>(Dispatcher);
@@ -83,7 +83,7 @@ public class DispatcherTest
         dispatcher.RemoveHandler(handlerId);
         dispatcher.Dispatch(dummySession, mem);
 
-        Assert.AreEqual(2, cnt);
+        Assert.Equals(2, cnt);
     }
 
     [Test]
@@ -106,12 +106,12 @@ public class DispatcherTest
         DelaySendMessage(dispatcher, dummySession, mem, 100);
         CancellationTokenSource cts = new();
         cts.CancelAfter(1000);
-
+        
         var received = await dispatcher.HandleOnce<ComplexMessage>(dummySession, cts.Token);
-        Assert.NotNull(received);
+        Assert.That(received != null);
 
         var receivedSecond = await dispatcher.HandleOnce<ComplexMessage>(dummySession, cts.Token);
-        Assert.Null(receivedSecond);
+        Assert.That(receivedSecond == null);
     }
 
     private async void DelaySendMessage(IDispatcher dispatcher, ISession session, Memory<byte> message,

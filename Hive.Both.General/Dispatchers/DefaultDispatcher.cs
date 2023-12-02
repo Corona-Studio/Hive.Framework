@@ -107,7 +107,7 @@ namespace Hive.Both.General.Dispatchers
             return false;
         }
 
-        public async Task<T> HandleOnce<T>(ISession session, CancellationToken cancellationToken = default)
+        public async Task<T?> HandleOnce<T>(ISession session, CancellationToken cancellationToken = default)
         {
             TaskCompletionSource<T> tcs = new();
             var handlerWarp = new HandlerWarp<T>(GetNextId(), Handler)
@@ -131,7 +131,7 @@ namespace Hive.Both.General.Dispatchers
                 if (cancellationToken.IsCancellationRequested)
                 {
                     _logger.LogTrace("Listen once canceled before listen, handlerId:{HandlerId}", id);
-                    return default!;
+                    return default;
                 }
 
                 var result = await tcs.Task;
@@ -151,7 +151,7 @@ namespace Hive.Both.General.Dispatchers
                 _logger.LogTrace("Listen once removed handler, handlerId:{HandlerId}", id);
             }
 
-            return default!;
+            return default;
 
             void Handler(MessageContext<T> context)
             {

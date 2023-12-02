@@ -74,8 +74,8 @@ public class ChannelTest
         cts.CancelAfter(1000);
         await task;
         
-        Assert.AreEqual(3, cnt);
-        Assert.AreEqual(3, sent);
+        Assert.Equals(3, cnt);
+        Assert.Equals(3, sent);
     }
     
     [Test]
@@ -138,8 +138,8 @@ public class ChannelTest
         cts.CancelAfter(1000);
         await task;
         
-        Assert.AreEqual(3, cnt);
-        Assert.AreEqual(3, sent);
+        Assert.Equals(3, cnt);
+        Assert.Equals(3, sent);
     }
 
     private async void DelaySendMessage(IDispatcher dispatcher, ISession session, Memory<byte> message,

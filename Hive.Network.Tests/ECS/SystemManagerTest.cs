@@ -29,7 +29,7 @@ public class SystemManagerTest
         var indexOfSystem =
             orderedExecutionSequence.ToDictionary(warp => warp.System, warp => orderedExecutionSequence.IndexOf(warp));
 
-        Assert.True(indexOfSystem[systems[3]] > indexOfSystem[systems[1]] &&
+        Assert.That(indexOfSystem[systems[3]] > indexOfSystem[systems[1]] &&
                     indexOfSystem[systems[3]] < indexOfSystem[systems[2]]);
     }
 

@@ -17,7 +17,7 @@ namespace Hive.Both.General.Dispatchers
         bool RemoveHandler<T>(Action<MessageContext<T>> handler);
         bool RemoveHandler(HandlerId id);
 
-        Task<T> HandleOnce<T>(ISession session, CancellationToken cancellationToken = default);
+        Task<T?> HandleOnce<T>(ISession session, CancellationToken cancellationToken = default);
 
         Task<TResp?> SendAndListenOnce<TReq, TResp>(ISession session, TReq message,
             CancellationToken cancellationToken = default);
