@@ -215,6 +215,8 @@ namespace Hive.Network.Shared.Session
 
             try
             {
+                ReceivingLoopRunning = true;
+
                 while (!token.IsCancellationRequested)
                 {
                     if (!IsConnected || !CanReceive)

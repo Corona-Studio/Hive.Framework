@@ -5,7 +5,6 @@ using System.IO;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using Hive.Common.Shared;
 using Hive.Network.Abstractions;
 using Hive.Network.Abstractions.Session;
 using Microsoft.Extensions.Logging;
@@ -105,7 +104,7 @@ namespace Hive.Network.Shared.Session
             if (session == null)
                 return false;
             
-            return await session.TrySendAsync(buffer, token);;
+            return await session.TrySendAsync(buffer, token);
         }
 
         public ValueTask SendToAsync(SessionId sessionId, MemoryStream buffer, CancellationToken token = default)

@@ -155,7 +155,7 @@ public abstract class SessionTest<T> where T : class, ISession
             if (tcs.Task.Status is TaskStatus.Running or TaskStatus.Canceled)
                 tcs.SetCanceled(_cts.Token);
         });
-
+        
         _acceptor.OnSessionCreated += (_, _, session) =>
         {
             sessionCount++;
