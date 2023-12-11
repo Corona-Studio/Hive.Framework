@@ -48,9 +48,9 @@ namespace Hive.Network.Shared.Session
 
         public virtual Task StartAsync(CancellationToken token)
         {
-            var sendTask = Task.Run(() => SendLoop(token), token);
-            var fillReceivePipeTask = Task.Run(() => FillReceivePipeAsync(ReceivePipe!.Writer, token), token);
-            var receiveTask = Task.Run(() => ReceiveLoop(token), token);
+            var sendTask = SendLoop(token);
+            var fillReceivePipeTask = FillReceivePipeAsync(ReceivePipe!.Writer, token);
+            var receiveTask = ReceiveLoop(token);
 
             return Task.WhenAll(sendTask, fillReceivePipeTask, receiveTask);
         }
@@ -249,10 +249,6 @@ namespace Hive.Network.Shared.Session
 
                     if (result.IsCompleted) break;
                 }
-            }
-            catch (TaskCanceledException)
-            {
-                Logger.LogInformation("Receive loop canceled, SessionId:{SessionId}", Id);
             }
             catch (OperationCanceledException)
             {
