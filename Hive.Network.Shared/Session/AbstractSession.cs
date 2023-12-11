@@ -200,6 +200,10 @@ namespace Hive.Network.Shared.Session
 
                 if (receiveLen == 0) break;
 
+                Logger.LogTrace(
+                    "Data received from [{endPoint}] with length [{length}]",
+                    RemoteEndPoint, receiveLen);
+
                 writer.Advance(receiveLen);
 
                 var flushResult = await writer.FlushAsync(token);
@@ -248,7 +252,7 @@ namespace Hive.Network.Shared.Session
 
                     FireMessageReceived(data);
 
-                    ReceivePipe.Reader.AdvanceTo(sequence.Start, sequence.GetPosition(totalLen));
+                    ReceivePipe.Reader.AdvanceTo(sequence.GetPosition(totalLen));
 
                     if (result.IsCompleted) break;
                 }

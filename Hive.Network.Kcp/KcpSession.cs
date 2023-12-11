@@ -146,7 +146,7 @@ namespace Hive.Network.Kcp
                         sentLen += sendThisTime;
                     }
 
-                    SendPipe.Reader.AdvanceTo(sequence.Start, sequence.GetPosition(sentLen));
+                    SendPipe.Reader.AdvanceTo(sequence.GetPosition(sentLen));
 
                     if (result.IsCompleted) break;
                 }
