@@ -34,7 +34,7 @@ namespace Hive.Network.Tcp
 
         public override bool CanReceive => IsConnected;
 
-        public override bool IsConnected => Socket is { Connected: true };
+        // public override bool IsConnected => Socket is { Connected: true };
 
         public event EventHandler<SocketError>? OnSocketError;
 
