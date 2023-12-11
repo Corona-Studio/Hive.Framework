@@ -243,8 +243,8 @@ namespace Hive.Network.Shared.Session
                     var bodyLen = totalLen - NetworkSettings.PacketBodyOffset;
                     var data = buffer.Slice(NetworkSettings.PacketBodyOffset, bodyLen);
 
-                    Logger.LogDebug("Packet Length: {length}", totalLen);
-                    Logger.LogDebug("Body Length: {length}", bodyLen);
+                    Logger.LogTrace("Packet Length: {length}", totalLen);
+                    Logger.LogTrace("Body Length: {length}", bodyLen);
 
                     FireMessageReceived(data);
 
