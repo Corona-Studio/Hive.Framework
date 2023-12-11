@@ -30,8 +30,7 @@ namespace Hive.Both.General.Dispatchers
 
         public void Dispatch(ISession session, ReadOnlyMemory<byte> rawMessage)
         {
-            using var stream = RecycleMemoryStreamManagerHolder.Shared.GetStream();
-            stream.Write(rawMessage.Span);
+            using var stream = RecycleMemoryStreamManagerHolder.Shared.GetStream(rawMessage.Span);
             stream.Seek(0, SeekOrigin.Begin);
 
             var message = _packetCodec.Decode(stream);
@@ -45,6 +44,10 @@ namespace Hive.Both.General.Dispatchers
 
                 return;
             }
+
+            _logger.LogDebug(
+                "Message resolved from session [{endPoint}]<{type}>",
+                session.RemoteEndPoint, message.GetType());
 
             Dispatch(session, message.GetType(), message);
         }
