@@ -32,9 +32,14 @@ namespace Hive.Network.Tcp
 
                 return ActivatorUtilities.CreateInstance<TcpSession>(_serviceProvider, GetNextSessionId(), socket);
             }
+            catch (SocketException e)
+            {
+                _logger.LogError(e, "[TCP_CONN] Connect to {0} failed", remoteEndPoint);
+                return null;
+            }
             catch (Exception e)
             {
-                _logger.LogError(e, "Connect to {0} failed", remoteEndPoint);
+                _logger.LogError(e, "[TCP_CONN] Connect to {0} failed", remoteEndPoint);
                 throw;
             }
         }
