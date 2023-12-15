@@ -192,9 +192,8 @@ namespace Hive.Both.General.Dispatchers
 
         public async ValueTask<bool> SendAsync<T>(ISession session, T message)
         {
-            using var stream = RecycleMemoryStreamManagerHolder.Shared.GetStream();
+            await using var stream = RecycleMemoryStreamManagerHolder.Shared.GetStream();
             _packetCodec.Encode(message, stream);
-
 
             return await session.TrySendAsync(stream);
         }
