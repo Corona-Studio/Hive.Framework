@@ -45,7 +45,7 @@ namespace Hive.Both.General.Dispatchers
                 return;
             }
 
-            _logger.LogDebug(
+            _logger.LogTrace(
                 "Message resolved from session [{endPoint}]<{type}>",
                 session.RemoteEndPoint, message.GetType());
 
