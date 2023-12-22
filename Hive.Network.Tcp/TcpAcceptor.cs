@@ -79,7 +79,7 @@ namespace Hive.Network.Tcp
         {
             if (sender is TcpSession session)
             {
-                Logger.LogDebug("Session {sessionId} socket error: {socketError}", session.Id, e);
+                Logger.LogDebug("Session {sessionId} socket error: {socketError}", session.Id.Id, e);
                 session.Close();
                 FireOnSessionClosed(session);
             }
