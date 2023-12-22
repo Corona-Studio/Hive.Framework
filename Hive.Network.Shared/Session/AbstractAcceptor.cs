@@ -135,7 +135,7 @@ namespace Hive.Network.Shared.Session
 
         protected void FireOnSessionCreate(TSession session)
         {
-            Logger.LogInformation("Session {sessionId} accepted.", session.Id);
+            Logger.LogInformation("Session {sessionId} accepted.", session.Id.Id);
             _idToSessionDict.TryAdd(session.Id, session);
 
             OnSessionCreated?.Invoke(this, session.Id, session);
