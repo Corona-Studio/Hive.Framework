@@ -32,7 +32,7 @@ public struct SessionId : IEquatable<SessionId>, IEqualityComparer<SessionId>
         return Id == other.Id;
     }
 
-    public override bool Equals(object? obj)
+    public readonly override bool Equals(object? obj)
     {
         return obj is SessionId other && Equals(other);
     }
