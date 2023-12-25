@@ -48,14 +48,20 @@ namespace Hive.Network.Kcp
             }
             catch (SocketException e)
             {
-                _logger.LogError(e, "[TCP_CONN] Connect to {0} failed", remoteEndPoint);
+                _logger.LogConnectFailed(e, remoteEndPoint);
                 return null;
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "[TCP_CONN] Connect to {0} failed", remoteEndPoint);
+                _logger.LogConnectFailed(e, remoteEndPoint);
                 throw;
             }
         }
+    }
+
+    internal static partial class KcpConnectorLoggers
+    {
+        [LoggerMessage(LogLevel.Error, "{ex} [KCP_CONN] Connect to {RemoteEndPoint} failed")]
+        public static partial void LogConnectFailed(this ILogger logger, Exception ex, IPEndPoint remoteEndPoint);
     }
 }

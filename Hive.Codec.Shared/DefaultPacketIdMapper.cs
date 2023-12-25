@@ -49,7 +49,8 @@ namespace Hive.Codec.Shared
 
                     _typeIdMapping.Add(type, newId);
                     id = newId;
-                    _logger.LogInformation("Registered msg type {type} with id {newId}", type, newId);
+
+                    _logger.RegisteredMsgType(type, newId);
                 }
                 finally
                 {
@@ -107,5 +108,11 @@ namespace Hive.Codec.Shared
 
             throw new InvalidOperationException($"Cannot get id of msg type {type}");
         }
+    }
+
+    internal static partial class DefaultPacketIdMapperLoggers
+    {
+        [LoggerMessage(LogLevel.Information, "Registered msg type {type} with id {newId}")]
+        public static partial void RegisteredMsgType(this ILogger<DefaultPacketIdMapper> logger, Type type, PacketId newId);
     }
 }

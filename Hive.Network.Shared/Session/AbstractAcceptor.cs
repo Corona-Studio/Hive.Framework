@@ -80,11 +80,11 @@ namespace Hive.Network.Shared.Session
             }
             catch (TaskCanceledException e)
             {
-                Logger.LogInformation(e, "Accept loop canceled");
+                Logger.LogAcceptLoopCanceled(e);
             }
             catch (Exception e)
             {
-                Logger.LogError(e, "Accept loop error");
+                Logger.LogAcceptLoopError(e);
             }
         }
 
@@ -122,7 +122,7 @@ namespace Hive.Network.Shared.Session
             foreach (var (sessionId, session) in _idToSessionDict)
                 if (session.LastHeartBeatTime + NetworkSettings.MaxHeartBeatTimeout < now)
                 {
-                    Logger.LogDebug("Session {sessionId} heartbeat timeout.", sessionId);
+                    Logger.LogSessionHeartBeatTimeout(sessionId);
                     session.Close();
                     _sessionsToClose.Add(session);
                 }
@@ -135,7 +135,7 @@ namespace Hive.Network.Shared.Session
 
         protected void FireOnSessionCreate(TSession session)
         {
-            Logger.LogInformation("Session {sessionId} accepted.", session.Id.Id);
+            Logger.LogSessionAccepted(session.Id);
             _idToSessionDict.TryAdd(session.Id, session);
 
             OnSessionCreated?.Invoke(this, session.Id, session);
@@ -148,7 +148,7 @@ namespace Hive.Network.Shared.Session
                 }
                 catch (Exception e)
                 {
-                    Logger.LogError(e, "OnSessionCreateAsync error");
+                    Logger.LogOnSessionCreateAsyncError(e);
                 }
             
             if (_onSessionCreateAsync != null)
@@ -158,13 +158,13 @@ namespace Hive.Network.Shared.Session
                 }
                 catch (Exception e)
                 {
-                    Logger.LogError(e, "OnSessionCreateAsync error");
+                    Logger.LogOnSessionCreateAsyncError(e);
                 }
         }
 
         protected void FireOnSessionClosed(TSession session)
         {
-            Logger.LogInformation("Session {SessionId} closed", session.Id);
+            Logger.LogSessionClosed(session.Id);
             _idToSessionDict.TryRemove(session.Id, out _);
             
             OnSessionClosed?.Invoke(this, session.Id, session);
@@ -176,5 +176,26 @@ namespace Hive.Network.Shared.Session
             Interlocked.Increment(ref _curUsedSessionId);
             return _curUsedSessionId;
         }
+    }
+
+    internal static partial class AbstractAcceptorLoggers
+    {
+        [LoggerMessage(LogLevel.Warning, "{ex} Accept loop canceled")]
+        public static partial void LogAcceptLoopCanceled(this ILogger logger, Exception ex);
+
+        [LoggerMessage(LogLevel.Error, "{ex} Accept loop error")]
+        public static partial void LogAcceptLoopError(this ILogger logger, Exception ex);
+
+        [LoggerMessage(LogLevel.Debug, "Session {sessionId} heartbeat timeout.")]
+        public static partial void LogSessionHeartBeatTimeout(this ILogger logger, SessionId sessionId);
+
+        [LoggerMessage(LogLevel.Information, "Session {sessionId} accepted.")]
+        public static partial void LogSessionAccepted(this ILogger logger, SessionId sessionId);
+
+        [LoggerMessage(LogLevel.Error, "{ex} OnSessionCreateAsync error")]
+        public static partial void LogOnSessionCreateAsyncError(this ILogger logger, Exception ex);
+
+        [LoggerMessage(LogLevel.Information, "Session {SessionId} closed")]
+        public static partial void LogSessionClosed(this ILogger logger, SessionId sessionId);
     }
 }

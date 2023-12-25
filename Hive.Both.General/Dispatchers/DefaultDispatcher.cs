@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.IO;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Hive.Codec.Abstractions;
+using Hive.Network.Abstractions;
 using Hive.Network.Abstractions.Session;
 using Hive.Network.Shared;
 using Microsoft.Extensions.Logging;
@@ -36,18 +38,17 @@ namespace Hive.Both.General.Dispatchers
             var message = _packetCodec.Decode(stream);
             if (message == null)
             {
-                _logger.LogError("Decode message failed");
+                _logger.LogMessageDecodeFailed();
+
 #if DEBUG
                 var base64 = Convert.ToBase64String(rawMessage.Span);
-                _logger.LogTrace("Raw message: {RawMessage}", base64);
+                _logger.LogRawMessage(base64);
 #endif
 
                 return;
             }
 
-            _logger.LogTrace(
-                "Message resolved from session [{endPoint}]<{type}>",
-                session.RemoteEndPoint, message.GetType());
+            _logger.LogMessageResolved(session.RemoteEndPoint!, message.GetType());
 
             Dispatch(session, message.GetType(), message);
         }
@@ -64,7 +65,7 @@ namespace Hive.Both.General.Dispatchers
                 {
                     if (!_idToTypes.TryGetValue(id, out var warp))
                     {
-                        _logger.LogWarning("Handler id {HandlerId} not found", id);
+                        _logger.LogHandlerIdNotFound(id);
                         continue;
                     }
 
@@ -88,11 +89,11 @@ namespace Hive.Both.General.Dispatchers
                 if (_idToTypes.TryRemove(id, out var warp))
                     if (_typeToHandlerIds.TryGetValue(warp.Type, out var handlers))
                     {
-                        handlers.TryTake(out id);
+                        handlers.TryTake(out _);
                         return true;
                     }
 
-            _logger.LogWarning("Remove handler failed, handler:{Handler}", handler);
+            _logger.LogRemoveHandlerFailed(handler);
             return false;
         }
 
@@ -105,7 +106,7 @@ namespace Hive.Both.General.Dispatchers
                     if (_delegateToId.TryRemove(warp.HandlerDelegate, out _)) return true;
                 }
 
-            _logger.LogWarning("Remove handler failed, id:{HandlerId}", id);
+            _logger.LogRemoveHandlerFailed(id);
 
             return false;
         }
@@ -123,7 +124,7 @@ namespace Hive.Both.General.Dispatchers
 
             cancellationToken.Register(() =>
             {
-                _logger.LogTrace("Listen once canceled by token, handlerId:{HandlerId}", id);
+                _logger.LogListenOnceCanceledByToken(id);
                 tcs.SetCanceled();
             });
 
@@ -133,7 +134,7 @@ namespace Hive.Both.General.Dispatchers
             {
                 if (cancellationToken.IsCancellationRequested)
                 {
-                    _logger.LogTrace("Listen once canceled before listen, handlerId:{HandlerId}", id);
+                    _logger.LogListenOnceCanceledBeforeListen(id);
                     return default;
                 }
 
@@ -142,16 +143,16 @@ namespace Hive.Both.General.Dispatchers
             }
             catch (TaskCanceledException e)
             {
-                _logger.LogWarning("Listen once canceled, handlerId:{HandlerId}", id);
+                _logger.LogListenOnceCanceled(id);
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "Listen once failed, handlerId:{HandlerId}", id);
+                _logger.LogListenOnceFailed(e, id);
             }
             finally
             {
                 RemoveHandler(id);
-                _logger.LogTrace("Listen once removed handler, handlerId:{HandlerId}", id);
+                _logger.LogListenOnceRemovedHandler(id);
             }
 
             return default;
@@ -160,8 +161,9 @@ namespace Hive.Both.General.Dispatchers
             {
                 var sender = context.FromSession;
                 var message = context.Message;
-                _logger.LogTrace("Listen once received message, session:{SessionId}, message:{Message}", sender.Id,
-                    message);
+
+                _logger.LogListenOnceMessageReceived(sender.Id, message);
+
                 if (cancellationToken.IsCancellationRequested)
                 {
                     if (tcs.Task.Status != TaskStatus.Canceled)
@@ -180,9 +182,10 @@ namespace Hive.Both.General.Dispatchers
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(token);
             var task = HandleOnce<TResp>(session, cts.Token);
             var sentSucceed = await SendAsync(session, message);
+
             if (!sentSucceed)
             {
-                _logger.LogError("SendAndListenOnce canceled, send message failed: {Message}", message);
+                _logger.LogSendAndListenOnceCanceled(message);
                 cts.Cancel();
                 return default;
             }
@@ -201,29 +204,30 @@ namespace Hive.Both.General.Dispatchers
         private void AddHandler<T>(HandlerWarp<T> warp)
         {
             var type = warp.Type;
-
             var id = warp.Id;
+
             if (!_typeToHandlerIds.TryGetValue(type, out var handlers))
             {
                 handlers = new ConcurrentBag<HandlerId>();
+
                 if (!_typeToHandlerIds.TryAdd(type, handlers))
-                    _logger.LogError("Add handler failed, type:{HandlerType}", type);
+                    _logger.LogAddHandlerFailed(type);
             }
 
             handlers.Add(id);
             if (!_delegateToId.TryAdd(warp.HandlerDelegate, id))
             {
-                _logger.LogError("Add handler failed, id:{HandlerId}", id);
+                _logger.LogAddHandlerFailed(id);
                 return;
             }
 
             if (!_idToTypes.TryAdd(id, warp))
             {
-                _logger.LogError("Add handler failed, id:{HandlerId}", id);
+                _logger.LogAddHandlerFailed(id);
                 return;
             }
 
-            _logger.LogTrace("Add handler succeed, id:{HandlerId}, message type:{type}", id, type);
+            _logger.LogAddHandlerSucceed(id, type);
         }
 
 
@@ -262,5 +266,56 @@ namespace Hive.Both.General.Dispatchers
                 if (message is T t) Handler.Invoke(new MessageContext<T>(sender,dispatcher, t));
             }
         }
+    }
+
+    internal static partial class DefaultDispatcherLoggers
+    {
+        [LoggerMessage(LogLevel.Trace, "Decode message failed")]
+        public static partial void LogMessageDecodeFailed(this ILogger logger);
+
+        [LoggerMessage(LogLevel.Trace, "Raw message: {RawMessage}")]
+        public static partial void LogRawMessage(this ILogger logger, string rawMessage);
+
+        [LoggerMessage(LogLevel.Trace, "Message resolved from session [{endPoint}]<{type}>")]
+        public static partial void LogMessageResolved(this ILogger logger, IPEndPoint endPoint, Type type);
+
+        [LoggerMessage(LogLevel.Warning, "Handler id {HandlerId} not found")]
+        public static partial void LogHandlerIdNotFound(this ILogger logger, HandlerId handlerId);
+
+        [LoggerMessage(LogLevel.Warning, "Remove handler failed, handler:{Handler}")]
+        public static partial void LogRemoveHandlerFailed(this ILogger logger, Delegate handler);
+
+        [LoggerMessage(LogLevel.Warning, "Remove handler failed, id:{HandlerId}")]
+        public static partial void LogRemoveHandlerFailed(this ILogger logger, HandlerId handlerId);
+
+        [LoggerMessage(LogLevel.Trace, "Listen once canceled by token, handlerId:{HandlerId}")]
+        public static partial void LogListenOnceCanceledByToken(this ILogger logger, HandlerId handlerId);
+
+        [LoggerMessage(LogLevel.Trace, "Listen once canceled before listen, handlerId:{HandlerId}")]
+        public static partial void LogListenOnceCanceledBeforeListen(this ILogger logger, HandlerId handlerId);
+
+        [LoggerMessage(LogLevel.Warning, "Listen once canceled, handlerId:{HandlerId}")]
+        public static partial void LogListenOnceCanceled(this ILogger logger, HandlerId handlerId);
+
+        [LoggerMessage(LogLevel.Error, "{ex} Listen once failed, handlerId:{HandlerId}")]
+        public static partial void LogListenOnceFailed(this ILogger logger, Exception ex, HandlerId handlerId);
+
+        [LoggerMessage(LogLevel.Trace, "Listen once removed handler, handlerId:{HandlerId}")]
+        public static partial void LogListenOnceRemovedHandler(this ILogger logger, HandlerId handlerId);
+
+        [LoggerMessage(LogLevel.Trace, "Listen once received message, session:{SessionId}, message:{Message}")]
+        public static partial void LogListenOnceMessageReceived(this ILogger logger, SessionId sessionId, object? message);
+
+        [LoggerMessage(LogLevel.Error, "SendAndListenOnce canceled, send message failed: {Message}")]
+        public static partial void LogSendAndListenOnceCanceled(this ILogger logger, object? message);
+
+        [LoggerMessage(LogLevel.Error, "Add handler failed, type:{HandlerType}")]
+        public static partial void LogAddHandlerFailed(this ILogger logger, Type handlerType);
+
+        [LoggerMessage(LogLevel.Error, "Add handler failed, id:{HandlerId}")]
+        public static partial void LogAddHandlerFailed(this ILogger logger, HandlerId handlerId);
+
+        [LoggerMessage(LogLevel.Trace, "Add handler succeed, id: {HandlerId}, message type: {type}")]
+        public static partial void LogAddHandlerSucceed(this ILogger logger, HandlerId handlerId, Type type);
     }
 }

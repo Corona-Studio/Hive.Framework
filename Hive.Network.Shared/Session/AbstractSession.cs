@@ -98,10 +98,7 @@ namespace Hive.Network.Shared.Session
 
             if (readLen != stream.Length)
             {
-                Logger.LogError(
-                    "Read {ReadLen} bytes from stream, but the stream length is {StreamLength}",
-                    readLen,
-                    stream.Length);
+                Logger.LogReadBytesFromStreamFailed(readLen, stream.Length);
                 await stream.DisposeAsync();
 
                 return false;
@@ -169,13 +166,9 @@ namespace Hive.Network.Shared.Session
                     if (result.IsCompleted) return;
                 }
             }
-            catch (TaskCanceledException)
-            {
-                Logger.LogInformation("Send loop canceled, SessionId:{SessionId}", Id);
-            }
             catch (OperationCanceledException)
             {
-                Logger.LogInformation("Send loop canceled, SessionId:{SessionId}", Id);
+                Logger.LogSendLoopCanceled(Id);
             }
             finally
             {
@@ -200,9 +193,7 @@ namespace Hive.Network.Shared.Session
 
                 if (receiveLen == 0) break;
 
-                Logger.LogTrace(
-                    "Data received from [{endPoint}] with length [{length}]",
-                    RemoteEndPoint, receiveLen);
+                Logger.LogDataReceived(RemoteEndPoint!, receiveLen);
 
                 writer.Advance(receiveLen);
 
@@ -240,15 +231,15 @@ namespace Hive.Network.Shared.Session
 
                     if (totalLen > buffer.Length)
                     {
-                        Logger.LogError("Received {ReadLen} bytes, but the packet length is {TotalLen}", buffer.Length, totalLen);
+                        Logger.LogReceiveError(buffer.Length, totalLen);
                         continue;
                     }
 
                     var bodyLen = totalLen - NetworkSettings.PacketBodyOffset;
                     var data = buffer.Slice(NetworkSettings.PacketBodyOffset, bodyLen);
 
-                    Logger.LogTrace("Packet Length: {length}", totalLen);
-                    Logger.LogTrace("Body Length: {length}", bodyLen);
+                    Logger.LogPacketLength(totalLen);
+                    Logger.LogBodyLength(bodyLen);
 
                     FireMessageReceived(data);
 
@@ -259,7 +250,7 @@ namespace Hive.Network.Shared.Session
             }
             catch (OperationCanceledException)
             {
-                Logger.LogInformation("Receive loop canceled, SessionId:{SessionId}", Id);
+                Logger.LogReceiveLoopCanceled(Id);
             }
             finally
             {
@@ -291,5 +282,29 @@ namespace Hive.Network.Shared.Session
                 ReceivePipe = null;
             }
         }
+    }
+
+    internal static partial class AbstractSessionLoggers
+    {
+        [LoggerMessage(LogLevel.Error, "Read {ReadLen} bytes from stream, but the stream length is {StreamLength}")]
+        public static partial void LogReadBytesFromStreamFailed(this ILogger logger, int readLen, long streamLength);
+
+        [LoggerMessage(LogLevel.Warning, "Send loop canceled, SessionId:{SessionId}")]
+        public static partial void LogSendLoopCanceled(this ILogger logger, int sessionId);
+
+        [LoggerMessage(LogLevel.Trace, "Data received from [{endPoint}] with length [{length}]")]
+        public static partial void LogDataReceived(this ILogger logger, IPEndPoint endPoint, int length);
+
+        [LoggerMessage(LogLevel.Error, "Received {ReadLen} bytes, but the packet length is {TotalLen}")]
+        public static partial void LogReceiveError(this ILogger logger, int readLen, int totalLen);
+
+        [LoggerMessage(LogLevel.Trace, "Packet Length: {length}")]
+        public static partial void LogPacketLength(this ILogger logger, int length);
+
+        [LoggerMessage(LogLevel.Trace, "Body Length: {length}")]
+        public static partial void LogBodyLength(this ILogger logger, int length);
+
+        [LoggerMessage(LogLevel.Warning, "Receive loop canceled, SessionId:{SessionId}")]
+        public static partial void LogReceiveLoopCanceled(this ILogger logger, int sessionId);
     }
 }

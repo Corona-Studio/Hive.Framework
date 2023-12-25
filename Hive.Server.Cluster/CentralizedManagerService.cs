@@ -1,13 +1,11 @@
 ﻿using System.Collections.Concurrent;
 using System.Net;
-using System.Threading.Channels;
 using Hive.Both.General.Channels;
 using Hive.Both.General.Dispatchers;
 using Hive.Network.Abstractions;
 using Hive.Network.Abstractions.Session;
 using Hive.Server.Abstractions;
 using Hive.Server.Cluster.Messages;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -104,8 +102,7 @@ public class CentralizedManagerService : BackgroundService
     {
         if (!_serviceKeyToAddresses.TryGetValue(service, out var serviceAddressBag))
         {
-            _logger.LogError("Try to remove service {ServiceName} on node {NodeId} but service not found",
-                service.ServiceName, nodeId);
+            _logger.LogRemoveServiceNotFound(service.ServiceName, nodeId);
             return;
         }
 
@@ -113,21 +110,17 @@ public class CentralizedManagerService : BackgroundService
         {
             if (serviceAddress.NodeInfo.NodeId != nodeId)
             {
-                _logger.LogError(
-                    "Try to remove service {ServiceName} on node {NodeId}, found service address {ServiceAddressNodeId} not match",
-                    service.ServiceName, nodeId, serviceAddress.NodeInfo.NodeId);
+                _logger.LogRemoveServiceAddressNotMatch(service.ServiceName, nodeId, serviceAddress.NodeInfo.NodeId);
                 continue;
             }
 
             if (serviceAddressBag.TryTake(out _))
             {
-                _logger.LogInformation("Service {ServiceName} on node {NodeId} is removed", service.ServiceName,
-                    nodeId);
+                _logger.LogRemoveService(service.ServiceName, nodeId);
             }
             else
             {
-                _logger.LogError("Fail to remove service {ServiceName} on node {NodeId}", service.ServiceName,
-                    nodeId);
+                _logger.LogRemoveServiceError(service.ServiceName, nodeId);
             }
         }
     }
@@ -147,7 +140,7 @@ public class CentralizedManagerService : BackgroundService
     {
         if (_sessionToNodeId.ContainsKey(sessionId))
         {
-            _logger.LogWarning("Session {SessionId} already exists", sessionId);
+            _logger.LogSessionAlreadyExists(sessionId);
         }
     }
 
@@ -155,7 +148,7 @@ public class CentralizedManagerService : BackgroundService
     {
         if (_sessionToNodeId.TryRemove(sessionId, out var nodeId))
         {
-            _logger.LogInformation("Node {NodeId} disconnected", nodeId);
+            _logger.LogNodeDisconnected(nodeId);
             TryRemoveNode(nodeId);
         }
     }
@@ -178,11 +171,11 @@ public class CentralizedManagerService : BackgroundService
         {
             var (session, message) = await _nodeLoginRespChannel.ReadAsync(stoppingToken);
             
-            _logger.LogDebug("Receive node login request: {@Request}", message);
+            _logger.LogReceiveNodeLoginReq(message);
             
             if (_sessionToNodeId.ContainsKey(session.Id))
             {
-                _logger.LogError("Node with session {SessionId} already exists", session.Id);
+                _logger.LogNodeAlreadyExists(session.Id);
                 continue;
             }
             
@@ -192,19 +185,16 @@ public class CentralizedManagerService : BackgroundService
             var endPoint = session.RemoteEndPoint;
             if (endPoint == null)
             {
-                _logger.LogError("EndPoint is null");
+                _logger.LogEndPointIsNull();
                 continue;
             }
 
-            _logger.LogInformation(
-                "Node {EndPointAddress}:{EndPointPort} login with signature {Signature} and public key {PublicKey}",
-                endPoint.Address, endPoint.Port, signature, publicKey);
-
+            _logger.LogNodeLogin(endPoint.Address, endPoint.Port, signature, publicKey);
 
             var nodeId = GetNodeId();
             var services = message.Services;
-            _logger.LogInformation("Node {EndPointAddress}:{EndPointPort} has services {Services}", endPoint.Address,
-                endPoint.Port, services);
+
+            _logger.LogNodeHasServices(endPoint.Address, endPoint.Port, services);
             
             // todo check signature and public key
             
@@ -217,21 +207,18 @@ public class CentralizedManagerService : BackgroundService
 
                 if (sent)
                 {
-                    _logger.LogInformation("Node {EndPointAddress}:{EndPointPort} login successfully", endPoint.Address,
-                        endPoint.Port);
+                    _logger.LogNodeLoginSuccessfully(endPoint.Address, endPoint.Port);
                     
                     _sessionToNodeId.TryAdd(session.Id, nodeId);
                 }
                 else
                 {
-                    _logger.LogError("Node {EndPointAddress}:{EndPointPort} login failed, fail to send response",
-                        endPoint.Address, endPoint.Port);
+                    _logger.LogNodeLoginFailed(endPoint.Address, endPoint.Port);
                 }
             }
             else
             {
-                _logger.LogError("Node {EndPointAddress}:{EndPointPort} login failed, fail to add node", endPoint.Address,
-                    endPoint.Port);
+                _logger.LogNodeLoginFailed(endPoint.Address, endPoint.Port);
                 
                 await _nodeLoginRespChannel.WriteAsync(session,new NodeLoginResp(ErrorCode.NodeAlreadyExists, signature: signature, publicKey: publicKey));
             }
@@ -245,11 +232,11 @@ public class CentralizedManagerService : BackgroundService
         {
             var (session, message) = await _actorHeartBeatChannel.ReadAsync(stoppingToken);
             
-            _logger.LogDebug("Receive node heart beat: {@Request}", message);
+            _logger.LogReceiveNodeHeartBeat(message);
             
             if (!_sessionToNodeId.TryGetValue(session.Id, out var nodeId))
             {
-                _logger.LogError("Node with session {SessionId} does not exist", session.Id);
+                _logger.LogNodeDoesNotExist(session.Id);
                 continue;
             }
             
@@ -268,4 +255,52 @@ public class CentralizedManagerService : BackgroundService
         Interlocked.Increment(ref _nodeId);
         return new ClusterNodeId(_nodeId);
     }
+}
+
+internal static partial class CentralizedManagerServiceLoggers
+{
+    [LoggerMessage(LogLevel.Error, "Try to remove service {ServiceName} on node {NodeId} but service not found")]
+    public static partial void LogRemoveServiceNotFound(this ILogger logger, string serviceName, ClusterNodeId nodeId);
+
+    [LoggerMessage(LogLevel.Error, "Try to remove service {ServiceName} on node {NodeId}, found service address {ServiceAddressNodeId} not match")]
+    public static partial void LogRemoveServiceAddressNotMatch(this ILogger logger, string serviceName, ClusterNodeId nodeId, ClusterNodeId serviceAddressNodeId);
+
+    [LoggerMessage(LogLevel.Information, "Service {ServiceName} on node {NodeId} is removed")]
+    public static partial void LogRemoveService(this ILogger logger, string serviceName, ClusterNodeId nodeId);
+
+    [LoggerMessage(LogLevel.Error, "Fail to remove service {ServiceName} on node {NodeId}")]
+    public static partial void LogRemoveServiceError(this ILogger logger, string serviceName, ClusterNodeId nodeId);
+
+    [LoggerMessage(LogLevel.Warning, "Session {SessionId} already exists")]
+    public static partial void LogSessionAlreadyExists(this ILogger logger, SessionId sessionId);
+
+    [LoggerMessage(LogLevel.Information, "Node {NodeId} disconnected")]
+    public static partial void LogNodeDisconnected(this ILogger logger, ClusterNodeId nodeId);
+
+    [LoggerMessage(LogLevel.Debug, "Receive node login request: {Request}")]
+    public static partial void LogReceiveNodeLoginReq(this ILogger logger, NodeLoginReq request);
+
+    [LoggerMessage(LogLevel.Error, "Node with session {SessionId} already exists")]
+    public static partial void LogNodeAlreadyExists(this ILogger logger, SessionId sessionId);
+
+    [LoggerMessage(LogLevel.Error, "EndPoint is null")]
+    public static partial void LogEndPointIsNull(this ILogger logger);
+
+    [LoggerMessage(LogLevel.Information, "Node {EndPointAddress}:{EndPointPort} login with signature {Signature} and public key {PublicKey}")]
+    public static partial void LogNodeLogin(this ILogger logger, IPAddress endPointAddress, int endPointPort, string signature, string publicKey);
+
+    [LoggerMessage(LogLevel.Information, "Node {EndPointAddress}:{EndPointPort} has services {Services}")]
+    public static partial void LogNodeHasServices(this ILogger logger, IPAddress endPointAddress, int endPointPort, IReadOnlyList<ServiceKey> services);
+
+    [LoggerMessage(LogLevel.Information, "Node {EndPointAddress}:{EndPointPort} login successfully")]
+    public static partial void LogNodeLoginSuccessfully(this ILogger logger, IPAddress endPointAddress, int endPointPort);
+
+    [LoggerMessage(LogLevel.Error, "Node {EndPointAddress}:{EndPointPort} login failed, fail to send response")]
+    public static partial void LogNodeLoginFailed(this ILogger logger, IPAddress endPointAddress, int endPointPort);
+
+    [LoggerMessage(LogLevel.Debug, "Receive node heart beat: {Request}")]
+    public static partial void LogReceiveNodeHeartBeat(this ILogger logger, ActorHeartBeat request);
+
+    [LoggerMessage(LogLevel.Error, "Node with session {SessionId} does not exist")]
+    public static partial void LogNodeDoesNotExist(this ILogger logger, SessionId sessionId);
 }

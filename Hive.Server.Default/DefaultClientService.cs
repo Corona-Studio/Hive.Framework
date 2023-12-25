@@ -1,5 +1,4 @@
 ﻿using System.Collections.Concurrent;
-using Hive.Both.General;
 using Hive.Both.General.Dispatchers;
 using Hive.Both.Messages.C2S;
 using Hive.Both.Messages.S2C;
@@ -33,14 +32,13 @@ public class DefaultClientService<TSession> : BackgroundService, IClientService 
 
     public override async Task StartAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Starting client service...");
+        _logger.LogStartingClientService();
         await base.StartAsync(cancellationToken);
 
-        _logger.LogInformation("Registering handlers...");
+        _logger.LogRegisteringHandlers();
         _dispatcher.AddHandler<CSHeartBeat>(OnReceiveClientHeartBeat);
 
-
-        _logger.LogInformation("Starting acceptor...");
+        _logger.LogStartingAcceptor();
         _acceptor.OnSessionCreated += OnSessionCreated;
         _acceptor.OnSessionClosed += OnSessionClosed;
 
@@ -114,4 +112,16 @@ public class DefaultClientService<TSession> : BackgroundService, IClientService 
         Interlocked.Increment(ref _curClientId);
         return new ClientId { Id = _curClientId };
     }
+}
+
+internal static partial class DefaultClientServiceLoggers
+{
+    [LoggerMessage(LogLevel.Information, "Starting client service...")]
+    public static partial void LogStartingClientService(this ILogger logger);
+
+    [LoggerMessage(LogLevel.Information, "Registering handlers...")]
+    public static partial void LogRegisteringHandlers(this ILogger logger);
+
+    [LoggerMessage(LogLevel.Information, "Starting acceptor...")]
+    public static partial void LogStartingAcceptor(this ILogger logger);
 }

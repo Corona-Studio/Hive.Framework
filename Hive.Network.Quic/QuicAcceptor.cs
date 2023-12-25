@@ -2,6 +2,7 @@
 using System.Net.Quic;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
+using Hive.Network.Abstractions;
 using Hive.Network.Shared.Session;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -90,7 +91,8 @@ public sealed class QuicAcceptor : AbstractAcceptor<QuicSession>
     {
         if (sender is QuicSession session)
         {
-            Logger.LogDebug("Session {sessionId} QUIC error: {quicError}", session.Id, e);
+            Logger.LogQuicError(session.Id, e);
+
             session.Close();
             FireOnSessionClosed(session);
         }
@@ -100,4 +102,11 @@ public sealed class QuicAcceptor : AbstractAcceptor<QuicSession>
     {
         TryCloseAsync(CancellationToken.None).Wait();
     }
+}
+
+[RequiresPreviewFeatures]
+internal static partial class QuicAcceptorLoggers
+{
+    [LoggerMessage(LogLevel.Debug, "Session {sessionId} QUIC error: {quicError}")]
+    public static partial void LogQuicError(this ILogger logger, SessionId sessionId, QuicError quicError);
 }

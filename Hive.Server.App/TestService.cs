@@ -16,8 +16,14 @@ public class TestService : BackgroundService
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            _logger.LogInformation("Worker running at: {Time}", DateTimeOffset.Now);
+            _logger.LogRunningTime(DateTimeOffset.Now);
             await Task.Delay(1_000, stoppingToken);
         }
     }
+}
+
+internal static partial class TestServiceLoggers
+{
+    [LoggerMessage(LogLevel.Information, "Worker running at: {Time}")]
+    public static partial void LogRunningTime(this ILogger logger, DateTimeOffset time);
 }

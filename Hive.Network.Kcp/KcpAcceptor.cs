@@ -98,8 +98,8 @@ namespace Hive.Network.Kcp
 
                 if (isPendingHandShake && length != received)
                 {
-                    Logger.LogWarning("Packet length is not equal to the received length!");
-                    Logger.LogWarning("Received: [{recv}] Actual: [{actual}]", received, length);
+                    Logger.LogPacketLengthNotEqualToReceivedLength();
+                    Logger.LogReceivedLengthNotEqualToActualLength(received, length);
                     return false;
                 }
 
@@ -129,7 +129,7 @@ namespace Hive.Network.Kcp
                         }
                         else
                         {
-                            Logger.LogError("Enter write lock failed.");
+                            Logger.LogEnterWriteLockFailed();
                             return false;
                         }
                     }
@@ -165,7 +165,7 @@ namespace Hive.Network.Kcp
                     }
                     else
                     {
-                        Logger.LogError("Enter read lock failed.");
+                        Logger.LogEnterReadLockFailed();
                         return false;
                     }
                 }
@@ -174,7 +174,7 @@ namespace Hive.Network.Kcp
             }
             catch (Exception e)
             {
-                Logger.LogError(e, "Accept failed.");
+                Logger.LogAcceptFailed(e);
                 throw;
             }
         }
@@ -197,5 +197,23 @@ namespace Hive.Network.Kcp
             _serverSocket?.Dispose();
             _dictLock.Dispose();
         }
+    }
+
+    internal static partial class KcpAcceptorLoggers
+    {
+        [LoggerMessage(LogLevel.Warning, "Packet length is not equal to the received length!")]
+        public static partial void LogPacketLengthNotEqualToReceivedLength(this ILogger logger);
+
+        [LoggerMessage(LogLevel.Warning, "Received: [{recv}] Actual: [{actual}]")]
+        public static partial void LogReceivedLengthNotEqualToActualLength(this ILogger logger, int recv, int actual);
+
+        [LoggerMessage(LogLevel.Error, "Enter write lock failed.")]
+        public static partial void LogEnterWriteLockFailed(this ILogger logger);
+
+        [LoggerMessage(LogLevel.Error, "Enter read lock failed.")]
+        public static partial void LogEnterReadLockFailed(this ILogger logger);
+
+        [LoggerMessage(LogLevel.Error, "{ex} Accept failed.")]
+        public static partial void LogAcceptFailed(this ILogger logger, Exception ex);
     }
 }

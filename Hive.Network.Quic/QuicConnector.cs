@@ -52,7 +52,7 @@ public class QuicConnector : IConnector<QuicSession>
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "Connect to {remote} failed", remoteEndPoint);
+            _logger.LogConnectFailed(e, remoteEndPoint);
             throw;
         }
     }
@@ -61,4 +61,11 @@ public class QuicConnector : IConnector<QuicSession>
     {
         return Interlocked.Increment(ref _currentSessionId);
     }
+}
+
+[RequiresPreviewFeatures]
+internal static partial class QuicConnectorLoggers
+{
+    [LoggerMessage(LogLevel.Error, "{ex} Connect to {remote} failed")]
+    public static partial void LogConnectFailed(this ILogger logger, Exception ex, IPEndPoint remote);
 }

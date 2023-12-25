@@ -1,5 +1,4 @@
 ﻿using System.Net;
-using Hive.Both.General;
 using Hive.Both.General.Dispatchers;
 using Hive.Network.Abstractions.Session;
 using Hive.Network.Tcp;
@@ -10,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Hive.Server.Cluster;
 
-public class CentralizedNodeService: BackgroundService, IClusterNodeService
+public class CentralizedNodeService : BackgroundService, IClusterNodeService
 {
     public ClusterNodeId NodeId { get; }
     private readonly CentralizedNodeServiceOptions _options;
@@ -40,7 +39,7 @@ public class CentralizedNodeService: BackgroundService, IClusterNodeService
         
         if (_session == null)
         {
-            _logger.LogError("Failed to connect to manager");
+            _logger.LogFailedToConnectToManager();
             return;
         }
         
@@ -52,13 +51,13 @@ public class CentralizedNodeService: BackgroundService, IClusterNodeService
          
         if (resp == null)
         {
-            _logger.LogError("Failed to login to manager, no response");
+            _logger.LogFailedToLoginToManagerNoResponse();
             return;
         }
         
         if (resp.ErrorCode != ErrorCode.Ok)
         {
-            _logger.LogError("Failed to login to manager, Error Code: {ErrorCode}", resp.ErrorCode);
+            _logger.LogFailedToLoginToManager(resp.ErrorCode);
             return;
         }
         
@@ -77,4 +76,16 @@ public class CentralizedNodeService: BackgroundService, IClusterNodeService
             await Task.Delay(_options.HeartBeatInterval, stoppingToken);
         }
     }
+}
+
+internal static partial class CentralizedNodeServiceLoggers
+{
+    [LoggerMessage(LogLevel.Error, "Failed to connect to manager")]
+    public static partial void LogFailedToConnectToManager(this ILogger logger);
+
+    [LoggerMessage(LogLevel.Error, "Failed to login to manager, no response")]
+    public static partial void LogFailedToLoginToManagerNoResponse(this ILogger logger);
+
+    [LoggerMessage(LogLevel.Error, "Failed to login to manager, Error Code: {ErrorCode}")]
+    public static partial void LogFailedToLoginToManager(this ILogger logger, ErrorCode errorCode);
 }

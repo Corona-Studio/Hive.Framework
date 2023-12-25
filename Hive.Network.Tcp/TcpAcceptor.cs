@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using Hive.Network.Abstractions;
 using Hive.Network.Shared.Session;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -79,7 +80,7 @@ namespace Hive.Network.Tcp
         {
             if (sender is TcpSession session)
             {
-                Logger.LogDebug("Session {sessionId} socket error: {socketError}", session.Id.Id, e);
+                Logger.LogSocketError(session.Id, e);
                 session.Close();
                 FireOnSessionClosed(session);
             }
@@ -89,5 +90,11 @@ namespace Hive.Network.Tcp
         {
             _serverSocket?.Dispose();
         }
+    }
+
+    internal static partial class TcpAcceptorLoggers
+    {
+        [LoggerMessage(LogLevel.Debug, "Session {sessionId} socket error: {socketError}")]
+        public static partial void LogSocketError(this ILogger logger, SessionId sessionId, SocketError socketError);
     }
 }

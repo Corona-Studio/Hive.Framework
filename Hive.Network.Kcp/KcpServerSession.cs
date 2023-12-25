@@ -20,7 +20,7 @@ namespace Hive.Network.Kcp
             ILogger<KcpSession> logger)
             : base(sessionId, remoteEndPoint, localEndPoint, logger)
         {
-            StartKcpLogicAsync(CancellationToken.None);
+            base.StartKcpLogicAsync(CancellationToken.None);
         }
 
         public event Func<ArraySegment<byte>, IPEndPoint, CancellationToken, ValueTask<int>>? OnSendAsync;
@@ -48,7 +48,7 @@ namespace Hive.Network.Kcp
             if (!IsConnected) return;
             if (token.IsCancellationRequested) return;
 
-            Logger.LogInformation("UDP raw packet received [length: {len}]", memory.Length);
+            Logger.LogReceiveClient(memory.Length);
 
             Kcp!.Input(memory.Span);
         }
@@ -67,5 +67,11 @@ namespace Hive.Network.Kcp
 
             return _receiveBuffer.WrittenCount;
         }
+    }
+
+    internal static partial class KcpServerSessionLoggers
+    {
+        [LoggerMessage(LogLevel.Information, "UDP raw packet received [length: {len}]")]
+        public static partial void LogReceiveClient(this ILogger logger, int len);
     }
 }

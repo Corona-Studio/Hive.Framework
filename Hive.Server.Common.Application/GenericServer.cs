@@ -1,5 +1,4 @@
 ﻿using System.Net;
-using Hive.Both.General.Channels;
 using Hive.Both.General.Dispatchers;
 using Hive.Network.Abstractions;
 using Hive.Network.Abstractions.Session;
@@ -15,7 +14,7 @@ public class GenericServer : IServer
     private IAcceptor? _acceptor;
     private IServerApplication? _application;
     private IDispatcher _dispatcher;
-
+    
     private readonly ILogger<GenericServer> _logger;
     private CancellationTokenSource? _acceptorLoopTokenSource;
     public GenericServer(IServiceProvider serviceProvider, IDispatcher dispatcher, ILogger<GenericServer> logger)
@@ -34,7 +33,7 @@ public class GenericServer : IServer
 
         await _acceptor.SetupAsync(ipEndPoint, stoppingToken);
         
-        _logger.LogInformation("Server started at {IpEndPoint}", ipEndPoint);
+        _logger.LogServerStarted(ipEndPoint);
         
         _acceptorLoopTokenSource = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
         _acceptor.StartAcceptLoop(_acceptorLoopTokenSource.Token);
@@ -64,4 +63,10 @@ public class GenericServer : IServer
         _acceptorLoopTokenSource?.Dispose();
         GC.SuppressFinalize(this);
     }
+}
+
+internal static partial class GenericServerLoggers
+{
+    [LoggerMessage(LogLevel.Information, "Server started at {IpEndPoint}")]
+    public static partial void LogServerStarted(this ILogger logger, IPEndPoint ipEndPoint);
 }

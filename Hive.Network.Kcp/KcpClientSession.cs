@@ -24,7 +24,7 @@ namespace Hive.Network.Kcp
             : base(sessionId, remoteEndPoint, (IPEndPoint)socket.LocalEndPoint, logger)
         {
             _socket = socket;
-            StartKcpLogicAsync(CancellationToken.None);
+            base.StartKcpLogicAsync(CancellationToken.None);
         }
 
         public override Task StartKcpLogicAsync(CancellationToken token)
@@ -67,7 +67,7 @@ namespace Hive.Network.Kcp
 
             await Kcp!.RecvAsync(_receiveBuffer);
 
-            Logger.LogInformation("RECV Client [{recv}]", _receiveBuffer.WrittenCount);
+            Logger.LogReceiveClient(_receiveBuffer.WrittenCount);
 
             if (_receiveBuffer.WrittenCount > buffer.Count) return 0;
 
@@ -99,7 +99,7 @@ namespace Hive.Network.Kcp
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "KCP raw receive loop failed!");
+                Logger.LogKcpRawReceiveLoopFailed(ex);
                 throw;
             }
             finally
@@ -115,5 +115,11 @@ namespace Hive.Network.Kcp
             _socket?.Dispose();
             _socket = null;
         }
+    }
+
+    internal static partial class KcpClientSessionLoggers
+    {
+        [LoggerMessage(LogLevel.Error, "{ex} KCP raw receive loop failed!")]
+        public static partial void LogKcpRawReceiveLoopFailed(this ILogger logger, Exception ex);
     }
 }

@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <RootNamespace>$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>
     <AssemblyName>$(MSBuildProjectName)</AssemblyName>
+    <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>

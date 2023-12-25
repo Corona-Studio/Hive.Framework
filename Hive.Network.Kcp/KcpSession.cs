@@ -22,7 +22,7 @@ namespace Hive.Network.Kcp
         {
             var conv = (uint)(1u + int.MaxValue + sessionId);
 
-            Logger.LogInformation("Conv [{conv}]", conv);
+            Logger.LogConv(conv);
 
             Conv = conv;
 
@@ -60,11 +60,11 @@ namespace Hive.Network.Kcp
             }
             catch (TaskCanceledException)
             {
-                Logger.LogInformation("Send loop canceled, SessionId:{SessionId}", Id);
+                Logger.LogSendLoopCanceled(Id);
             }
             catch (OperationCanceledException)
             {
-                Logger.LogInformation("Send loop canceled, SessionId:{SessionId}", Id);
+                Logger.LogSendLoopCanceled(Id);
             }
             finally
             {
@@ -112,7 +112,7 @@ namespace Hive.Network.Kcp
             }
             catch (ObjectDisposedException)
             {
-                Logger.LogWarning("KCP instance disposed");
+                Logger.LogKcpInstanceDisposed();
             }
         }
 
@@ -153,7 +153,7 @@ namespace Hive.Network.Kcp
             }
             catch (ObjectDisposedException)
             {
-                Logger.LogWarning("KCP instance disposed");
+                Logger.LogKcpInstanceDisposed();
             }
         }
 
@@ -163,5 +163,17 @@ namespace Hive.Network.Kcp
             Kcp?.Dispose();
             Kcp = null;
         }
+    }
+
+    internal static partial class KcpSessionLoggers
+    {
+        [LoggerMessage(LogLevel.Information, "Conv [{conv}]")]
+        public static partial void LogConv(this ILogger logger, uint conv);
+
+        [LoggerMessage(LogLevel.Information, "Send loop canceled, SessionId:{SessionId}")]
+        public static partial void LogSendLoopCanceled(this ILogger logger, int sessionId);
+
+        [LoggerMessage(LogLevel.Warning, "KCP instance disposed")]
+        public static partial void LogKcpInstanceDisposed(this ILogger logger);
     }
 }
