@@ -27,7 +27,7 @@ public struct SessionId : IEquatable<SessionId>, IEqualityComparer<SessionId>
         };
     }
 #endif
-    public bool Equals(SessionId other)
+    public readonly bool Equals(SessionId other)
     {
         return Id == other.Id;
     }
@@ -37,18 +37,20 @@ public struct SessionId : IEquatable<SessionId>, IEqualityComparer<SessionId>
         return obj is SessionId other && Equals(other);
     }
 
-    public override int GetHashCode()
+    public readonly override int GetHashCode()
     {
         return Id;
     }
 
-    public bool Equals(SessionId x, SessionId y)
+    public readonly bool Equals(SessionId x, SessionId y)
     {
         return x.Id == y.Id;
     }
 
-    public int GetHashCode(SessionId obj)
+    public readonly int GetHashCode(SessionId obj)
     {
         return obj.Id;
     }
+
+    public readonly override string ToString() => Id.ToString();
 }
