@@ -213,7 +213,7 @@ namespace Hive.Network.Kcp
         [LoggerMessage(LogLevel.Error, "Enter read lock failed.")]
         public static partial void LogEnterReadLockFailed(this ILogger logger);
 
-        [LoggerMessage(LogLevel.Error, "{ex} Accept failed.")]
+        [LoggerMessage(LogLevel.Error, "Accept failed.")]
         public static partial void LogAcceptFailed(this ILogger logger, Exception ex);
     }
 }

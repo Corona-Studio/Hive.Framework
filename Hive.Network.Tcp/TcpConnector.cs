@@ -52,7 +52,7 @@ namespace Hive.Network.Tcp
 
     internal static partial class TcpConnectorLoggers
     {
-        [LoggerMessage(LogLevel.Error, "{ex} [TCP_CONN] Connect to {RemoteEndPoint} failed")]
+        [LoggerMessage(LogLevel.Error, "[TCP_CONN] Connect to {RemoteEndPoint} failed")]
         public static partial void LogConnectFailed(this ILogger logger, Exception ex, IPEndPoint remoteEndPoint);
     }
 }

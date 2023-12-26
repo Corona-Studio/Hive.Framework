@@ -61,7 +61,7 @@ namespace Hive.Network.Udp
 
     internal static partial class UdpConnectorLoggers
     {
-        [LoggerMessage(LogLevel.Error, "{ex} [UDP_CONN] Connect to {RemoteEndPoint} failed")]
+        [LoggerMessage(LogLevel.Error, "[UDP_CONN] Connect to {RemoteEndPoint} failed")]
         public static partial void LogConnectFailed(this ILogger logger, Exception ex, IPEndPoint remoteEndPoint);
     }
 }

@@ -66,6 +66,6 @@ public class QuicConnector : IConnector<QuicSession>
 [RequiresPreviewFeatures]
 internal static partial class QuicConnectorLoggers
 {
-    [LoggerMessage(LogLevel.Error, "{ex} Connect to {remote} failed")]
+    [LoggerMessage(LogLevel.Error, "Connect to {remote} failed")]
     public static partial void LogConnectFailed(this ILogger logger, Exception ex, IPEndPoint remote);
 }

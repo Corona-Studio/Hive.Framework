@@ -1,7 +1,6 @@
 ﻿#define GENERATE_BY_TEMPLATE
 
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis;

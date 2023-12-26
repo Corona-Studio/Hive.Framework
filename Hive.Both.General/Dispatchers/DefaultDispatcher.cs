@@ -297,7 +297,7 @@ namespace Hive.Both.General.Dispatchers
         [LoggerMessage(LogLevel.Warning, "Listen once canceled, handlerId:{HandlerId}")]
         public static partial void LogListenOnceCanceled(this ILogger logger, HandlerId handlerId);
 
-        [LoggerMessage(LogLevel.Error, "{ex} Listen once failed, handlerId:{HandlerId}")]
+        [LoggerMessage(LogLevel.Error, "Listen once failed, handlerId:{HandlerId}")]
         public static partial void LogListenOnceFailed(this ILogger logger, Exception ex, HandlerId handlerId);
 
         [LoggerMessage(LogLevel.Trace, "Listen once removed handler, handlerId:{HandlerId}")]

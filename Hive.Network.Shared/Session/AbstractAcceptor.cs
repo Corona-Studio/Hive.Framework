@@ -180,10 +180,10 @@ namespace Hive.Network.Shared.Session
 
     internal static partial class AbstractAcceptorLoggers
     {
-        [LoggerMessage(LogLevel.Warning, "{ex} Accept loop canceled")]
+        [LoggerMessage(LogLevel.Warning, "Accept loop canceled")]
         public static partial void LogAcceptLoopCanceled(this ILogger logger, Exception ex);
 
-        [LoggerMessage(LogLevel.Error, "{ex} Accept loop error")]
+        [LoggerMessage(LogLevel.Error, "Accept loop error")]
         public static partial void LogAcceptLoopError(this ILogger logger, Exception ex);
 
         [LoggerMessage(LogLevel.Debug, "Session {sessionId} heartbeat timeout.")]
@@ -192,7 +192,7 @@ namespace Hive.Network.Shared.Session
         [LoggerMessage(LogLevel.Information, "Session {sessionId} accepted.")]
         public static partial void LogSessionAccepted(this ILogger logger, SessionId sessionId);
 
-        [LoggerMessage(LogLevel.Error, "{ex} OnSessionCreateAsync error")]
+        [LoggerMessage(LogLevel.Error, "OnSessionCreateAsync error")]
         public static partial void LogOnSessionCreateAsyncError(this ILogger logger, Exception ex);
 
         [LoggerMessage(LogLevel.Information, "Session {SessionId} closed")]

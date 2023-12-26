@@ -119,7 +119,7 @@ namespace Hive.Network.Kcp
 
     internal static partial class KcpClientSessionLoggers
     {
-        [LoggerMessage(LogLevel.Error, "{ex} KCP raw receive loop failed!")]
+        [LoggerMessage(LogLevel.Error, "KCP raw receive loop failed!")]
         public static partial void LogKcpRawReceiveLoopFailed(this ILogger logger, Exception ex);
     }
 }

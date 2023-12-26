@@ -61,7 +61,7 @@ namespace Hive.Network.Kcp
 
     internal static partial class KcpConnectorLoggers
     {
-        [LoggerMessage(LogLevel.Error, "{ex} [KCP_CONN] Connect to {RemoteEndPoint} failed")]
+        [LoggerMessage(LogLevel.Error, "[KCP_CONN] Connect to {RemoteEndPoint} failed")]
         public static partial void LogConnectFailed(this ILogger logger, Exception ex, IPEndPoint remoteEndPoint);
     }
 }
