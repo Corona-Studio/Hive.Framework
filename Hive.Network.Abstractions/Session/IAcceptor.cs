@@ -10,19 +10,19 @@ public interface IAcceptor : IDisposable
 {
     event Func<ISession, ValueTask> OnSessionCreateAsync;
 
-    event Action<IAcceptor,SessionId,ISession> OnSessionCreated;
+    event Action<IAcceptor, SessionId, ISession> OnSessionCreated;
 
     /// <summary>
     ///     连接意外关闭时触发，主动关闭时不会触发
     /// </summary>
-    event Action<IAcceptor,SessionId,ISession> OnSessionClosed;
-    
+    event Action<IAcceptor, SessionId, ISession> OnSessionClosed;
+
     ISession? GetSession(SessionId sessionId);
     Task SetupAsync(IPEndPoint listenEndPoint, CancellationToken token);
     void StartAcceptLoop(CancellationToken token);
-    new Task<bool> TryCloseAsync(CancellationToken token);
-    new ValueTask<bool> TryDoOnceAcceptAsync(CancellationToken token);
-    
+     Task<bool> TryCloseAsync(CancellationToken token);
+     ValueTask<bool> TryDoOnceAcceptAsync(CancellationToken token);
+
     ValueTask<bool> TrySendToAsync(SessionId sessionId, MemoryStream buffer, CancellationToken token = default);
     ValueTask SendToAsync(SessionId sessionId, MemoryStream buffer, CancellationToken token = default);
 }
@@ -41,12 +41,12 @@ public interface IAcceptor<TSession> : IAcceptor where TSession : ISession
 
     new event Func<TSession, ValueTask> OnSessionCreateAsync;
 
-    new event Action<IAcceptor,SessionId,TSession> OnSessionCreated;
+    new event Action<IAcceptor, SessionId, TSession> OnSessionCreated;
 
     /// <summary>
     ///     连接意外关闭时触发，主动关闭时不会触发
     /// </summary>
-    new event Action<IAcceptor,SessionId,TSession> OnSessionClosed;
+    new event Action<IAcceptor, SessionId, TSession> OnSessionClosed;
 
     new TSession? GetSession(SessionId sessionId);
 

@@ -10,8 +10,9 @@ namespace Hive.Both.General.Channels
         {
             return new ServerMessageChannel<TRead, TWrite>(dispatcher);
         }
-        
-        public static IMessageChannel<TRead, TWrite> CreateChannel<TRead, TWrite>(this IDispatcher dispatcher, ISession session)
+
+        public static IMessageChannel<TRead, TWrite> CreateChannel<TRead, TWrite>(this IDispatcher dispatcher,
+            ISession session)
         {
             return new MessageChannel<TRead, TWrite>(session, dispatcher);
         }

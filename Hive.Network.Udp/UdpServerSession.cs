@@ -48,6 +48,9 @@ namespace Hive.Network.Udp
                 IsConnected = false;
         }
 
-        public override ValueTask<int> ReceiveOnce(ArraySegment<byte> buffer, CancellationToken token) => new (0);
+        public override ValueTask<int> ReceiveOnce(ArraySegment<byte> buffer, CancellationToken token)
+        {
+            return new ValueTask<int>(0);
+        }
     }
 }

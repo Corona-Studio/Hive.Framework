@@ -8,7 +8,7 @@
         {
             Message = message;
         }
-        
+
         public static implicit operator ResultContext<T>(T message)
         {
             return new ResultContext<T>(message);

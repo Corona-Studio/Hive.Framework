@@ -8,21 +8,13 @@ namespace Hive.Both.General.Channels
 {
     public class ServerMessageChannel<TRead, TWrite> : IServerMessageChannel<TRead, TWrite>
     {
-        private readonly IDispatcher _dispatcher;
         private readonly Channel<(ISession, TRead)> _channel = Channel.CreateUnbounded<(ISession, TRead)>();
+        private readonly IDispatcher _dispatcher;
 
         public ServerMessageChannel(IDispatcher dispatcher)
         {
             _dispatcher = dispatcher;
             _dispatcher.AddHandler<TRead>(OnReceive);
-        }
-        
-        private void OnReceive(MessageContext<TRead> context)
-        {
-            if (!_channel.Writer.TryWrite((context.FromSession, context.Message)))
-            {
-                
-            }
         }
 
         public ValueTask<(ISession session, TRead message)> ReadAsync(CancellationToken token = default)
@@ -34,7 +26,14 @@ namespace Hive.Both.General.Channels
         {
             return _dispatcher.SendAsync(session, message);
         }
-        
+
+        private void OnReceive(MessageContext<TRead> context)
+        {
+            if (!_channel.Writer.TryWrite((context.FromSession, context.Message)))
+            {
+            }
+        }
+
         ~ServerMessageChannel()
         {
             _dispatcher.RemoveHandler<TRead>(OnReceive);

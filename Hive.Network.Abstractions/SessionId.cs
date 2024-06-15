@@ -52,5 +52,8 @@ public struct SessionId : IEquatable<SessionId>, IEqualityComparer<SessionId>
         return obj.Id;
     }
 
-    public readonly override string ToString() => Id.ToString();
+    public readonly override string ToString()
+    {
+        return Id.ToString();
+    }
 }

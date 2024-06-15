@@ -263,7 +263,7 @@ namespace Hive.Both.General.Dispatchers
 
             public void Call(IDispatcher dispatcher, ISession sender, object message)
             {
-                if (message is T t) Handler.Invoke(new MessageContext<T>(sender,dispatcher, t));
+                if (message is T t) Handler.Invoke(new MessageContext<T>(sender, dispatcher, t));
             }
         }
     }
@@ -304,7 +304,8 @@ namespace Hive.Both.General.Dispatchers
         public static partial void LogListenOnceRemovedHandler(this ILogger logger, HandlerId handlerId);
 
         [LoggerMessage(LogLevel.Trace, "Listen once received message, session:{SessionId}, message:{Message}")]
-        public static partial void LogListenOnceMessageReceived(this ILogger logger, SessionId sessionId, object? message);
+        public static partial void LogListenOnceMessageReceived(this ILogger logger, SessionId sessionId,
+            object? message);
 
         [LoggerMessage(LogLevel.Error, "SendAndListenOnce canceled, send message failed: {Message}")]
         public static partial void LogSendAndListenOnceCanceled(this ILogger logger, object? message);

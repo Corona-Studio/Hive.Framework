@@ -39,6 +39,23 @@ namespace Hive.Network.Shared.Session
         public virtual bool IsConnected { get; protected set; } = true;
         public bool Running => SendingLoopRunning && ReceivingLoopRunning;
 
+        public virtual void Dispose()
+        {
+            if (SendPipe != null)
+            {
+                SendPipe.Reader.Complete();
+                SendPipe.Writer.Complete();
+                SendPipe = null;
+            }
+
+            if (ReceivePipe != null)
+            {
+                ReceivePipe.Reader.Complete();
+                ReceivePipe.Writer.Complete();
+                ReceivePipe = null;
+            }
+        }
+
         public SessionId Id { get; }
         public abstract IPEndPoint? LocalEndPoint { get; }
         public abstract IPEndPoint? RemoteEndPoint { get; }
@@ -55,10 +72,16 @@ namespace Hive.Network.Shared.Session
             return Task.WhenAll(sendTask, fillReceivePipeTask, receiveTask);
         }
 
+        public abstract void Close();
+
         protected void FireMessageReceived(ReadOnlyMemory<byte> data)
         {
             OnMessageReceived?.Invoke(this, data);
         }
+
+        public abstract ValueTask<int> SendOnce(ArraySegment<byte> data, CancellationToken token);
+
+        public abstract ValueTask<int> ReceiveOnce(ArraySegment<byte> buffer, CancellationToken token);
 
         #region Send
 
@@ -82,14 +105,15 @@ namespace Hive.Network.Shared.Session
         }
 
         /// <summary>
-        /// 将流中的数据复制到 <see cref="SendPipe"/>
-        /// <para>Copy and arrange data then send to the <see cref="SendPipe"/></para>
+        ///     将流中的数据复制到 <see cref="SendPipe" />
+        ///     <para>Copy and arrange data then send to the <see cref="SendPipe" /></para>
         /// </summary>
         /// <param name="writer"></param>
         /// <param name="stream"></param>
         /// <param name="token"></param>
         /// <returns></returns>
-        protected virtual async ValueTask<bool> FillSendPipeAsync(PipeWriter writer, MemoryStream stream, CancellationToken token = default)
+        protected virtual async ValueTask<bool> FillSendPipeAsync(PipeWriter writer, MemoryStream stream,
+            CancellationToken token = default)
         {
             stream.Seek(0, SeekOrigin.Begin);
 
@@ -124,8 +148,8 @@ namespace Hive.Network.Shared.Session
         }
 
         /// <summary>
-        /// 从 <see cref="SendPipe"/> 读取待发送数据并使用 Socket 发送
-        /// <para>Read from <see cref="SendPipe"/> and send the data using raw socket</para>
+        ///     从 <see cref="SendPipe" /> 读取待发送数据并使用 Socket 发送
+        ///     <para>Read from <see cref="SendPipe" /> and send the data using raw socket</para>
         /// </summary>
         /// <param name="token"></param>
         /// <returns></returns>
@@ -146,10 +170,12 @@ namespace Hive.Network.Shared.Session
                     var sequence = result.Buffer;
 
                     if (!SequenceMarshal.TryGetReadOnlyMemory(sequence, out var buffer))
-                        throw new InvalidOperationException("Failed to create ReadOnlyMemory<byte> from ReadOnlySequence<byte>!");
+                        throw new InvalidOperationException(
+                            "Failed to create ReadOnlyMemory<byte> from ReadOnlySequence<byte>!");
 
                     if (!MemoryMarshal.TryGetArray(buffer, out var segment))
-                        throw new InvalidOperationException("Failed to create ArraySegment<byte> from ReadOnlyMemory<byte>!");
+                        throw new InvalidOperationException(
+                            "Failed to create ArraySegment<byte> from ReadOnlyMemory<byte>!");
 
                     var totalLen = buffer.Length;
                     var sentLen = 0;
@@ -187,7 +213,8 @@ namespace Hive.Network.Shared.Session
                 var memory = writer.GetMemory(NetworkSettings.DefaultBufferSize);
 
                 if (!MemoryMarshal.TryGetArray<byte>(memory, out var segment))
-                    throw new InvalidOperationException("Failed to create ArraySegment<byte> from ReadOnlyMemory<byte>!");
+                    throw new InvalidOperationException(
+                        "Failed to create ArraySegment<byte> from ReadOnlyMemory<byte>!");
 
                 var receiveLen = await ReceiveOnce(segment, token);
 
@@ -222,9 +249,10 @@ namespace Hive.Network.Shared.Session
 
                     var result = await ReceivePipe.Reader.ReadAsync(token);
                     var sequence = result.Buffer;
-                    
+
                     if (!SequenceMarshal.TryGetReadOnlyMemory(sequence, out var buffer))
-                        throw new InvalidOperationException("Failed to create ReadOnlyMemory<byte> from ReadOnlySequence<byte>!");
+                        throw new InvalidOperationException(
+                            "Failed to create ReadOnlyMemory<byte> from ReadOnlySequence<byte>!");
 
                     // ReSharper disable once RedundantRangeBound
                     var totalLen = BitConverter.ToUInt16(buffer.Span[NetworkSettings.PacketLengthOffset..]);
@@ -259,29 +287,6 @@ namespace Hive.Network.Shared.Session
         }
 
         #endregion
-
-        public abstract void Close();
-
-        public abstract ValueTask<int> SendOnce(ArraySegment<byte> data, CancellationToken token);
-
-        public abstract ValueTask<int> ReceiveOnce(ArraySegment<byte> buffer, CancellationToken token);
-
-        public virtual void Dispose()
-        {
-            if (SendPipe != null)
-            {
-                SendPipe.Reader.Complete();
-                SendPipe.Writer.Complete();
-                SendPipe = null;
-            }
-
-            if (ReceivePipe != null)
-            {
-                ReceivePipe.Reader.Complete();
-                ReceivePipe.Writer.Complete();
-                ReceivePipe = null;
-            }
-        }
     }
 
     internal static partial class AbstractSessionLoggers

@@ -1,12 +1,11 @@
 ﻿using Hive.Codec.Abstractions;
 
-namespace Hive.Codec.Shared
+namespace Hive.Codec.Shared;
+
+public class DefaultCustomCodecProvider : ICustomCodecProvider
 {
-    public class DefaultCustomCodecProvider : ICustomCodecProvider
+    public ICustomPacketCodec? GetPacketCodec(PacketId id)
     {
-        public ICustomPacketCodec? GetPacketCodec(PacketId id)
-        {
-            return null;
-        }
+        return null;
     }
 }

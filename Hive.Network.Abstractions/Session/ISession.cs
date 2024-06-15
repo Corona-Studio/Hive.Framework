@@ -27,8 +27,8 @@ public interface ISession
 
 
     public Task StartAsync(CancellationToken token);
-    
-    
+
+
     ValueTask SendAsync(MemoryStream ms, CancellationToken token = default);
 
     /// <summary>

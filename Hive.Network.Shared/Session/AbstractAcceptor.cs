@@ -23,6 +23,13 @@ namespace Hive.Network.Shared.Session
 
         private int _curUsedSessionId = int.MinValue;
 
+        private Action<IAcceptor, SessionId, ISession>? _onSessionClosed;
+
+        // todo use async event
+        private Func<ISession, ValueTask>? _onSessionCreateAsync;
+
+        private Action<IAcceptor, SessionId, ISession>? _onSessionCreated;
+
         protected AbstractAcceptor(IServiceProvider serviceProvider, ILogger<AbstractAcceptor<TSession>> logger)
         {
             ServiceProvider = serviceProvider;
@@ -35,26 +42,22 @@ namespace Hive.Network.Shared.Session
         public bool IsSelfRunning { get; protected set; }
 
         public event Func<TSession, ValueTask>? OnSessionCreateAsync;
-        public event Action<IAcceptor,SessionId,TSession>? OnSessionCreated;
-        public event Action<IAcceptor,SessionId,TSession>? OnSessionClosed;
+        public event Action<IAcceptor, SessionId, TSession>? OnSessionCreated;
+        public event Action<IAcceptor, SessionId, TSession>? OnSessionClosed;
         public abstract Task SetupAsync(IPEndPoint listenEndPoint, CancellationToken token);
-        
-        private Action<IAcceptor,SessionId,ISession>? _onSessionCreated;
-        event Action<IAcceptor,SessionId,ISession>? IAcceptor.OnSessionCreated
+
+        event Action<IAcceptor, SessionId, ISession>? IAcceptor.OnSessionCreated
         {
             add => _onSessionCreated += value;
             remove => _onSessionCreated -= value;
         }
-        
-        private Action<IAcceptor,SessionId,ISession>? _onSessionClosed;
-        event Action<IAcceptor,SessionId,ISession>? IAcceptor.OnSessionClosed
+
+        event Action<IAcceptor, SessionId, ISession>? IAcceptor.OnSessionClosed
         {
             add => _onSessionClosed += value;
             remove => _onSessionClosed -= value;
         }
-        
-        // todo use async event
-        private Func<ISession, ValueTask>? _onSessionCreateAsync;
+
         event Func<ISession, ValueTask>? IAcceptor.OnSessionCreateAsync
         {
             add => _onSessionCreateAsync += value;
@@ -97,22 +100,23 @@ namespace Hive.Network.Shared.Session
         {
             return _idToSessionDict.TryGetValue(sessionId, out var session) ? session : default;
         }
-        
-        public async ValueTask<bool> TrySendToAsync(SessionId sessionId, MemoryStream buffer, CancellationToken token = default)
+
+        public async ValueTask<bool> TrySendToAsync(SessionId sessionId, MemoryStream buffer,
+            CancellationToken token = default)
         {
             var session = GetSession(sessionId);
             if (session == null)
                 return false;
-            
+
             return await session.TrySendAsync(buffer, token);
         }
 
         public ValueTask SendToAsync(SessionId sessionId, MemoryStream buffer, CancellationToken token = default)
         {
             var session = GetSession(sessionId);
-            if (session == null) 
+            if (session == null)
                 throw new ArgumentException($"Session {sessionId} not found.");
-            
+
             return session.SendAsync(buffer, token);
         }
 
@@ -140,7 +144,7 @@ namespace Hive.Network.Shared.Session
 
             OnSessionCreated?.Invoke(this, session.Id, session);
             _onSessionCreated?.Invoke(this, session.Id, session);
-            
+
             if (OnSessionCreateAsync != null)
                 try
                 {
@@ -150,7 +154,7 @@ namespace Hive.Network.Shared.Session
                 {
                     Logger.LogOnSessionCreateAsyncError(e);
                 }
-            
+
             if (_onSessionCreateAsync != null)
                 try
                 {
@@ -166,7 +170,7 @@ namespace Hive.Network.Shared.Session
         {
             Logger.LogSessionClosed(session.Id);
             _idToSessionDict.TryRemove(session.Id, out _);
-            
+
             OnSessionClosed?.Invoke(this, session.Id, session);
             _onSessionClosed?.Invoke(this, session.Id, session);
         }

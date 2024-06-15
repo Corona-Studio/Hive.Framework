@@ -7,52 +7,51 @@ using Hive.Network.Abstractions.Session;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace Hive.Network.Tcp
+namespace Hive.Network.Tcp;
+
+public class TcpConnector : IConnector<TcpSession>
 {
-    public class TcpConnector : IConnector<TcpSession>
+    private readonly ILogger<TcpConnector> _logger;
+    private readonly IServiceProvider _serviceProvider;
+    private int _currentSessionId;
+
+    public TcpConnector(
+        ILogger<TcpConnector> logger,
+        IServiceProvider serviceProvider)
     {
-        private readonly ILogger<TcpConnector> _logger;
-        private readonly IServiceProvider _serviceProvider;
-        private int _currentSessionId;
+        _logger = logger;
+        _serviceProvider = serviceProvider;
+    }
 
-        public TcpConnector(
-            ILogger<TcpConnector> logger,
-            IServiceProvider serviceProvider)
+    public async ValueTask<TcpSession?> ConnectAsync(IPEndPoint remoteEndPoint, CancellationToken token = default)
+    {
+        try
         {
-            _logger = logger;
-            _serviceProvider = serviceProvider;
+            var socket = new Socket(remoteEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            await socket.ConnectAsync(remoteEndPoint);
+
+            return ActivatorUtilities.CreateInstance<TcpSession>(_serviceProvider, GetNextSessionId(), socket);
         }
-
-        public async ValueTask<TcpSession?> ConnectAsync(IPEndPoint remoteEndPoint, CancellationToken token = default)
+        catch (SocketException e)
         {
-            try
-            {
-                var socket = new Socket(remoteEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-                await socket.ConnectAsync(remoteEndPoint);
-
-                return ActivatorUtilities.CreateInstance<TcpSession>(_serviceProvider, GetNextSessionId(), socket);
-            }
-            catch (SocketException e)
-            {
-                _logger.LogConnectFailed(e, remoteEndPoint);
-                return null;
-            }
-            catch (Exception e)
-            {
-                _logger.LogConnectFailed(e, remoteEndPoint);
-                throw;
-            }
+            _logger.LogConnectFailed(e, remoteEndPoint);
+            return null;
         }
-
-        public int GetNextSessionId()
+        catch (Exception e)
         {
-            return Interlocked.Increment(ref _currentSessionId);
+            _logger.LogConnectFailed(e, remoteEndPoint);
+            throw;
         }
     }
 
-    internal static partial class TcpConnectorLoggers
+    public int GetNextSessionId()
     {
-        [LoggerMessage(LogLevel.Error, "[TCP_CONN] Connect to {RemoteEndPoint} failed")]
-        public static partial void LogConnectFailed(this ILogger logger, Exception ex, IPEndPoint remoteEndPoint);
+        return Interlocked.Increment(ref _currentSessionId);
     }
+}
+
+internal static partial class TcpConnectorLoggers
+{
+    [LoggerMessage(LogLevel.Error, "[TCP_CONN] Connect to {RemoteEndPoint} failed")]
+    public static partial void LogConnectFailed(this ILogger logger, Exception ex, IPEndPoint remoteEndPoint);
 }

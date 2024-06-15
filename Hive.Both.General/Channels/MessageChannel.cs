@@ -6,24 +6,17 @@ using Hive.Network.Abstractions.Session;
 
 namespace Hive.Both.General.Channels
 {
-    public class MessageChannel<TRead, TWrite> : IMessageChannel<TRead,TWrite>
+    public class MessageChannel<TRead, TWrite> : IMessageChannel<TRead, TWrite>
     {
-        private readonly ISession _session;
-        private readonly IDispatcher _dispatcher;
         private readonly Channel<TRead> _channel = Channel.CreateUnbounded<TRead>();
+        private readonly IDispatcher _dispatcher;
+        private readonly ISession _session;
 
         public MessageChannel(ISession session, IDispatcher dispatcher)
         {
             _session = session;
             _dispatcher = dispatcher;
             dispatcher.AddHandler<TRead>(OnReceive);
-        }
-
-        private void OnReceive(MessageContext<TRead> context)
-        {
-            if (!_channel.Writer.TryWrite(context.Message))
-            {
-            }
         }
 
         public ValueTask<TRead> ReadAsync(CancellationToken token = default)
@@ -35,7 +28,14 @@ namespace Hive.Both.General.Channels
         {
             return _dispatcher.SendAsync(_session, message);
         }
-        
+
+        private void OnReceive(MessageContext<TRead> context)
+        {
+            if (!_channel.Writer.TryWrite(context.Message))
+            {
+            }
+        }
+
         ~MessageChannel()
         {
             _dispatcher.RemoveHandler<TRead>(OnReceive);
