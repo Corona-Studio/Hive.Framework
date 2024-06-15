@@ -17,9 +17,9 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="MemoryPack" Version="1.10.0" />
-      <PackageReference Include="MemoryPack.Core" Version="1.10.0" />
-      <PackageReference Include="MemoryPack.Generator" Version="1.10.0">
+      <PackageReference Include="MemoryPack" Version="1.21.1" />
+      <PackageReference Include="MemoryPack.Core" Version="1.21.1" />
+      <PackageReference Include="MemoryPack.Generator" Version="1.21.1">
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       </PackageReference>
