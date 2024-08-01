@@ -13,6 +13,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\Hive.Codec.Abstractions\Hive.Codec.Abstractions.csproj" />
+      <ProjectReference Include="..\Hive.Network.Abstractions\Hive.Network.Abstractions.csproj" />
       <ProjectReference Include="..\Hive.Network.Shared\Hive.Network.Shared.csproj" />
     </ItemGroup>
 
