@@ -16,6 +16,7 @@
     <ItemGroup>
       <PackageReference Include="MemoryPack" Version="1.21.1" />
       <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
+      <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.1" />
     </ItemGroup>
 
 
