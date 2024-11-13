@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Globalization;
 using System.Linq;
 using System.Text;
@@ -11,8 +12,18 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Hive.DataSync.SourceGen;
 
+// Namespace helper
+internal static class NamespaceHelper
+{
+    public static string GetNamespace(SyntaxNode syntaxNode)
+    {
+        var namespaceDeclaration = syntaxNode.Ancestors().OfType<NamespaceDeclarationSyntax>().FirstOrDefault();
+        return namespaceDeclaration?.Name.ToString() ?? string.Empty;
+    }
+}
+
 [Generator]
-public class DataSyncGenerator : ISourceGenerator
+public class DataSyncGenerator : IIncrementalGenerator
 {
     private const string SyncObjectInterface =
         "Hive.DataSync.Abstractions.Interfaces.ISyncObject";
@@ -28,175 +39,141 @@ public class DataSyncGenerator : ISourceGenerator
 
     private const string SyncOptionAttribute =
         "Hive.DataSync.Shared.Attributes.SyncOptionAttribute";
-
-    public void Initialize(GeneratorInitializationContext context)
+    
+    public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-#if DEBUG
-        //if (!Debugger.IsAttached) Debugger.Launch();
-#endif
-    }
+        // Step 1: Gather all class declarations with the SyncObjectAttribute
+        var classDeclarations = context.SyntaxProvider
+            .CreateSyntaxProvider(
+                predicate: (node, _) => node is ClassDeclarationSyntax,
+                transform: (context, _) => GetDataSyncClassInfo(context))
+            .Where(classInfo => classInfo != null)
+            .Select((classInfo, _) => classInfo!);
 
-    public void Execute(GeneratorExecutionContext context)
-    {
-        // Retrieve the syntax trees for the compilation
-        var syntaxTrees = context.Compilation.SyntaxTrees;
+        // Step 2: Combine all class declarations into a single list for processing
+        var compilationAndClasses = context.CompilationProvider
+            .Combine(classDeclarations.Collect());
 
-        foreach (var syntaxTree in syntaxTrees)
+        // Step 3: Generate source code for each collected class
+        context.RegisterSourceOutput(compilationAndClasses, (spc, source) =>
         {
-            var model = context.Compilation.GetSemanticModel(syntaxTree);
-            var root = syntaxTree.GetRoot();
+            var (compilation, classes) = source;
 
-            // Find all classes with [DataSynchronizationObject] attribute
-            var dataSyncClasses = root.DescendantNodes().OfType<ClassDeclarationSyntax>()
-                .Where(cls => cls.AttributeLists.Any(attrList =>
-                    attrList.Attributes.Any(attr =>
-                        model.GetTypeInfo(attr).Type?.ToDisplayString() ==
-                        SyncObjectAttribute)));
-
-            foreach (var classSyntax in dataSyncClasses)
+            foreach (var classInfo in classes)
             {
-                var dataSyncAttribute =
-                    classSyntax.AttributeLists.SelectMany(attrList => attrList.Attributes)
-                        .First(attr =>
-                            model.GetTypeInfo(attr).Type?.ToDisplayString() == SyncObjectAttribute);
-
-                // Process fields with [DataSynchronizationProperty] attribute
-                var dataSyncProperties = classSyntax.Members.OfType<FieldDeclarationSyntax>()
-                    .Where(field => field.AttributeLists.Any(attrList =>
-                        attrList.Attributes.Any(attr =>
-                            model.GetTypeInfo(attr).Type?.ToDisplayString() ==
-                            SyncPropertyAttribute))).ToList();
-
-                // Generate property and PerformUpdate method
-                var classNamespace = NamespaceHelper.GetNamespace(classSyntax);
-
-                var className = classSyntax.Identifier.ValueText;
-                var propertiesCode = GenerateProperties(dataSyncProperties, model);
-                var performUpdateMethod = GeneratePerformUpdateMethod(dataSyncProperties, model);
-
-
-                // Generate the entire new class code
-                var newClassCode = $$"""
-                                     using System;
-                                     using System.CodeDom.Compiler;
-                                     using System.Collections.Concurrent;
-                                     using System.Collections.Generic;
-                                     using System.Linq;
-                                     using Hive.Framework.Shared;
-                                     using Hive.DataSync.Shared.ObjectSyncPacket;
-                                     using Hive.DataSync.Abstractions.Interfaces;
-
-                                     namespace {{classNamespace}}
-                                     {
-                                        [GeneratedCode("{{nameof(DataSyncGenerator)}}", "{{typeof(DataSyncGenerator).Assembly.GetName().Version?.ToString() ?? "1.0.0.0"}}")]
-                                        {{classSyntax.Modifiers}} class {{className}} : {{SyncObjectInterface}}
-                                        {
-                                            private readonly ConcurrentDictionary<string, ISyncPacket> _updatedFields
-                                                = new ConcurrentDictionary<string, ISyncPacket>();
-                                     
-                                            public ushort ObjectSyncId => {{dataSyncAttribute.ArgumentList!.Arguments.First()}};
-                                     
-                                            {{propertiesCode}}
-                                     
-                                            {{performUpdateMethod}}
-                                     
-                                            {{GenerateNotifyPropertyChangedMethod()}}
-                                            
-                                            {{GenerateGetPendingChangedMethod()}}
-                                        }
-                                     }
-                                     """;
-
-
-                // var unit = CompilationUnit();
-                // unit = unit.WithUsings(GenUsing());
-                // unit = unit.WithMembers(SingletonList(GenClass(classNamespace, className)));
-                // var tmp = unit.NormalizeWhitespace().SyntaxTree.GetText();
-
-
-                var newSourceText = CSharpSyntaxTree.ParseText(SourceText.From(newClassCode, Encoding.UTF8)).GetRoot()
-                    .NormalizeWhitespace().SyntaxTree.GetText();
-
-                // newSourceText. += $"/*{tmp}*/";
-                var newClassName = $"{className}_Generated.g.cs";
-
-                context.AddSource(newClassName, newSourceText.ToString());
+                var generatedCode = GenerateClassCode(classInfo!.Value, compilation);
+                spc.AddSource($"{classInfo!.Value.Item2}_Generated.g.cs", SourceText.From(generatedCode, Encoding.UTF8));
             }
-        }
+        });
+    }
+    
+    private static bool HasAttribute(SyntaxNode node, SemanticModel model, string attributeName)
+    {
+        return node is MemberDeclarationSyntax member &&
+               member.AttributeLists.Any(attrList =>
+                   attrList.Attributes.Any(attr =>
+                       model.GetTypeInfo(attr).Type?.ToDisplayString() == attributeName));
+    }
+    
+    private (string, string, List<FieldDeclarationSyntax>)? GetDataSyncClassInfo(GeneratorSyntaxContext context)
+    {
+        var classSyntax = (ClassDeclarationSyntax)context.Node;
+        var model = context.SemanticModel;
+
+        if (!HasAttribute(classSyntax, model, SyncObjectAttribute))
+            return null;
+
+        // Extract relevant data for code generation
+        var classNamespace = NamespaceHelper.GetNamespace(classSyntax);
+        var className = classSyntax.Identifier.Text;
+        var syncProperties = classSyntax.Members
+            .OfType<FieldDeclarationSyntax>()
+            .Where(field => HasAttribute(field, model, SyncPropertyAttribute))
+            .ToList();
+
+        return (classNamespace, className, syncProperties);
+    }
+    
+    private static (ClassDeclarationSyntax, List<FieldDeclarationSyntax>)? GetClassWithSyncAttributes(GeneratorSyntaxContext context)
+    {
+        var classDeclaration = (ClassDeclarationSyntax)context.Node;
+        var model = context.SemanticModel;
+
+        // Check if class has SyncObjectAttribute
+        var hasSyncObjectAttr = classDeclaration.AttributeLists
+            .SelectMany(attrList => attrList.Attributes)
+            .Any(attr => model.GetTypeInfo(attr).Type?.ToDisplayString() == SyncObjectAttribute);
+
+        if (!hasSyncObjectAttr)
+            return null;
+
+        var fieldsWithAttributes = classDeclaration.Members.OfType<FieldDeclarationSyntax>()
+            .Where(field => field.AttributeLists
+                .Any(attrList => attrList.Attributes
+                    .Any(attr => model.GetTypeInfo(attr).Type?.ToDisplayString() == SyncPropertyAttribute)))
+            .ToList();
+
+        return (classDeclaration, fieldsWithAttributes);
     }
 
-    private string GenerateProperties(IEnumerable<FieldDeclarationSyntax> fields, SemanticModel model)
+    private string GenerateClassCode((string Namespace, string ClassName, List<FieldDeclarationSyntax> Props) classInfo, Compilation compilation)
     {
-        var propertiesCodeSb = new StringBuilder();
+        var propertiesCode = GenerateProperties(classInfo.Props, compilation);
+        var performUpdateMethod = GeneratePerformUpdateMethod(classInfo.Props, compilation);
+
+        return $$"""
+                     using System;
+                     using System.CodeDom.Compiler;
+                     using System.Collections.Concurrent;
+                     using System.Collections.Generic;
+                     using System.Linq;
+                     using Hive.Framework.Shared;
+                     using Hive.DataSync.Shared.ObjectSyncPacket;
+                     using Hive.DataSync.Abstractions.Interfaces;
+                 
+                     namespace {{classInfo.Namespace}}
+                     {
+                         [GeneratedCode("DataSyncGenerator", "1.0.0.0")]
+                         public partial class {{classInfo.ClassName}} : {{SyncObjectInterface}}
+                         {
+                             private readonly ConcurrentDictionary<string, ISyncPacket> _updatedFields = new ConcurrentDictionary<string, ISyncPacket>();
+                 
+                             {{propertiesCode}}
+                 
+                             {{performUpdateMethod}}
+                 
+                             {{GenerateNotifyPropertyChangedMethod()}}
+                 
+                             {{GenerateGetPendingChangedMethod()}}
+                         }
+                     }
+                 """;
+    }
+
+    private string GenerateProperties(IEnumerable<FieldDeclarationSyntax> fields, Compilation compilation)
+    {
+        var sb = new StringBuilder();
 
         foreach (var field in fields)
         {
-            var customUpdateInfoTypeAttribute =
-                field.AttributeLists
-                    .SelectMany(attrList => attrList.Attributes)
-                    .FirstOrDefault(attr =>
-                        model.GetTypeInfo(attr).Type?.ToDisplayString() ==
-                        CustomSerializerAttribute);
-            var hasCustomUpdateInfoAttribute = customUpdateInfoTypeAttribute != null;
-
-            var syncOptionAttribute =
-                field.AttributeLists
-                    .SelectMany(attrList => attrList.Attributes)
-                    .FirstOrDefault(attr =>
-                        model.GetTypeInfo(attr).Type?.ToDisplayString() ==
-                        SyncOptionAttribute);
-            var hasSyncOptionAttribute = syncOptionAttribute != null;
-
             var fieldName = field.Declaration.Variables.First().Identifier.ValueText;
-            var fieldType = model.GetTypeInfo(field.Declaration.Type).Type;
+            var fieldType = compilation.GetSemanticModel(field.SyntaxTree).GetTypeInfo(field.Declaration.Type).Type;
             var propertyName = GetGeneratedPropertyName(fieldName);
 
-            string updateInfoType;
-            if (hasCustomUpdateInfoAttribute)
-            {
-                var typeArgument = (TypeOfExpressionSyntax)customUpdateInfoTypeAttribute
-                    .ArgumentList!.Arguments.First().Expression;
-                var getTypeCode = model.GetTypeInfo(typeArgument.Type).Type;
-
-                updateInfoType = getTypeCode!.ToDisplayString();
-            }
-            else
-            {
-                updateInfoType = GetTypeCastCodeBasedOnPropertyType(fieldType, model);
-            }
-
-            string syncOptions;
-            if (hasSyncOptionAttribute)
-            {
-                var optionArgument = (MemberAccessExpressionSyntax)syncOptionAttribute
-                    .ArgumentList!.Arguments.First().Expression;
-                var syncOption = optionArgument.ToString();
-
-                syncOptions = syncOption;
-            }
-            else
-            {
-                syncOptions = "SyncOptions.ClientOnly";
-            }
-
-            var generatedProperty = $$"""
-                                      public {{fieldType}} {{propertyName}}
-                                      {
-                                        get => {{fieldName}};
-                                        set
-                                        {
-                                            NotifyPropertyChanged(
-                                                nameof({{propertyName}}),
-                                                new {{updateInfoType}}(ObjectSyncId, nameof({{propertyName}}), {{syncOptions}}, value));
-                                            {{fieldName}} = value;
-                                        }
-                                      }
-                                      """;
-
-            propertiesCodeSb.AppendLine(generatedProperty);
+            sb.AppendLine($$"""
+                                public {{fieldType}} {{propertyName}}
+                                {
+                                    get => {{fieldName}};
+                                    set
+                                    {
+                                        NotifyPropertyChanged(nameof({{propertyName}}), new {{GetTypeCastCodeBasedOnPropertyType(fieldType)}}(ObjectSyncId, nameof({{propertyName}}), SyncOptions.ClientOnly, value));
+                                        {{fieldName}} = value;
+                                    }
+                                }
+                            """);
         }
 
-        return propertiesCodeSb.ToString();
+        return sb.ToString();
     }
 
     private string GenerateNotifyPropertyChangedMethod()
@@ -225,91 +202,51 @@ public class DataSyncGenerator : ISourceGenerator
                """;
     }
 
-    private string GeneratePerformUpdateMethod(IEnumerable<FieldDeclarationSyntax> fields, SemanticModel model)
+    private string GeneratePerformUpdateMethod(IEnumerable<FieldDeclarationSyntax> fields, Compilation compilation)
     {
-        var updateCodeSb = new StringBuilder();
-
+        var sb = new StringBuilder();
         foreach (var field in fields)
         {
-            var customUpdateInfoTypeAttribute =
-                field.AttributeLists
-                    .SelectMany(attrList => attrList.Attributes)
-                    .FirstOrDefault(attr =>
-                        model.GetTypeInfo(attr).Type?.ToDisplayString() ==
-                        CustomSerializerAttribute);
-            var hasCustomUpdateInfoAttribute = customUpdateInfoTypeAttribute != null;
-
             var fieldName = field.Declaration.Variables.First().Identifier.ValueText;
-            var fieldType = model.GetTypeInfo(field.Declaration.Type).Type;
-
-            string updateInfoType;
-            if (hasCustomUpdateInfoAttribute)
-            {
-                var typeArgument = (TypeOfExpressionSyntax)customUpdateInfoTypeAttribute
-                    .ArgumentList!.Arguments.First().Expression;
-                var getTypeCode = model.GetTypeInfo(typeArgument.Type).Type;
-
-                updateInfoType = getTypeCode!.ToDisplayString();
-            }
-            else
-            {
-                updateInfoType = GetTypeCastCodeBasedOnPropertyType(fieldType, model);
-            }
-
+            var fieldType = compilation.GetSemanticModel(field.SyntaxTree).GetTypeInfo(field.Declaration.Type).Type;
             var propertyName = GetGeneratedPropertyName(fieldName);
-            var castVariableName = $"resultInfoFor{propertyName}";
 
-            var updateCode = $$"""
-                               if (infoBase.PropertyName == nameof({{propertyName}}) && infoBase is {{updateInfoType}} {{castVariableName}})
-                               {
-                                    {{fieldName}} = {{castVariableName}}.NewValue;
-                               }
-                               """;
-
-            updateCodeSb.AppendLine(updateCode);
+            sb.AppendLine($$"""
+                                if (infoBase.PropertyName == nameof({{propertyName}}) && infoBase is {{GetTypeCastCodeBasedOnPropertyType(fieldType)}} resultInfoFor{{propertyName}})
+                                {
+                                    {{fieldName}} = resultInfoFor{{propertyName}}.NewValue;
+                                }
+                            """);
         }
 
-        var performUpdateMethod = $$"""
-                                    public void PerformUpdate(ISyncPacket infoBase)
-                                    {
-                                        if (infoBase == null)
-                                            throw new ArgumentNullException(nameof(infoBase));
-                                    
-                                        {{updateCodeSb}}
-                                    }
-                                    """;
-
-        return performUpdateMethod;
+        return $$"""
+               public void PerformUpdate(ISyncPacket infoBase)
+               {
+                   if (infoBase == null)
+                       throw new ArgumentNullException(nameof(infoBase));
+               
+                   {{sb}}
+               }
+               """;
     }
 
-    private string GetTypeCastCodeBasedOnPropertyType(ITypeSymbol typeSymbol, SemanticModel model)
+    private static string GetTypeCastCodeBasedOnPropertyType(ITypeSymbol typeSymbol)
     {
-        var comparer = SymbolEqualityComparer.Default;
-
-        if (comparer.Equals(typeSymbol, TypeSymbolHelper.GetTypeSymbolForType(typeof(bool), model)))
-            return "BooleanSyncPacket";
-        if (comparer.Equals(typeSymbol, TypeSymbolHelper.GetTypeSymbolForType(typeof(char), model)))
-            return "CharSyncPacket";
-        if (comparer.Equals(typeSymbol, TypeSymbolHelper.GetTypeSymbolForType(typeof(double), model)))
-            return "DoubleSyncPacket";
-        if (comparer.Equals(typeSymbol, TypeSymbolHelper.GetTypeSymbolForType(typeof(short), model)))
-            return "Int16SyncPacket";
-        if (comparer.Equals(typeSymbol, TypeSymbolHelper.GetTypeSymbolForType(typeof(int), model)))
-            return "Int32SyncPacket";
-        if (comparer.Equals(typeSymbol, TypeSymbolHelper.GetTypeSymbolForType(typeof(long), model)))
-            return "Int64SyncPacket";
-        if (comparer.Equals(typeSymbol, TypeSymbolHelper.GetTypeSymbolForType(typeof(float), model)))
-            return "SingleSyncPacket";
-        if (comparer.Equals(typeSymbol, TypeSymbolHelper.GetTypeSymbolForType(typeof(string), model)))
-            return "StringSyncPacket";
-        if (comparer.Equals(typeSymbol, TypeSymbolHelper.GetTypeSymbolForType(typeof(ushort), model)))
-            return "UInt16SyncPacket";
-        if (comparer.Equals(typeSymbol, TypeSymbolHelper.GetTypeSymbolForType(typeof(uint), model)))
-            return "UInt32SyncPacket";
-        if (comparer.Equals(typeSymbol, TypeSymbolHelper.GetTypeSymbolForType(typeof(ulong), model)))
-            return "UInt64SyncPacket";
-
-        return "__unknown__";
+        return typeSymbol.ToString() switch
+        {
+            "bool" => "BooleanSyncPacket",
+            "char" => "CharSyncPacket",
+            "double" => "DoubleSyncPacket",
+            "short" => "Int16SyncPacket",
+            "int" => "Int32SyncPacket",
+            "long" => "Int64SyncPacket",
+            "float" => "SingleSyncPacket",
+            "string" => "StringSyncPacket",
+            "ushort" => "UInt16SyncPacket",
+            "uint" => "UInt32SyncPacket",
+            "ulong" => "UInt64SyncPacket",
+            _ => "__unknown__"
+        };
     }
 
     /// <summary>

@@ -4,11 +4,11 @@
         <ImplicitUsings>disable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <LangVersion>9</LangVersion>
-        <TargetFrameworks>netstandard2.1;net8.0</TargetFrameworks>
+        <TargetFrameworks>netstandard2.1;net9.0</TargetFrameworks>
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="System.Threading.Channels" Version="8.0.0" />
+      <PackageReference Include="System.Threading.Channels" Version="9.0.0" />
     </ItemGroup>
 
     <ItemGroup>
