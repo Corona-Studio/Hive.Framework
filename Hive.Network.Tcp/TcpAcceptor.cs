@@ -20,7 +20,7 @@ public sealed class TcpAcceptor : AbstractAcceptor<TcpSession>
         ILogger<TcpAcceptor> logger)
         : base(serviceProvider, logger)
     {
-        _sessionFactory = ActivatorUtilities.CreateFactory<TcpSession>(new[] { typeof(int), typeof(Socket) });
+        _sessionFactory = ActivatorUtilities.CreateFactory<TcpSession>([typeof(int), typeof(Socket)]);
     }
 
     public override IPEndPoint? EndPoint => _serverSocket?.LocalEndPoint as IPEndPoint;
@@ -71,7 +71,7 @@ public sealed class TcpAcceptor : AbstractAcceptor<TcpSession>
     private void CreateSession(Socket acceptSocket)
     {
         var sessionId = GetNextSessionId();
-        var clientSession = _sessionFactory.Invoke(ServiceProvider, new object[] { sessionId, acceptSocket });
+        var clientSession = _sessionFactory.Invoke(ServiceProvider, [sessionId, acceptSocket]);
         clientSession.OnSocketError += OnSocketError;
         FireOnSessionCreate(clientSession);
     }
