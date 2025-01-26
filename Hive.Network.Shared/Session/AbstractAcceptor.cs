@@ -21,7 +21,7 @@ namespace Hive.Network.Shared.Session
         protected readonly ILogger<AbstractAcceptor<TSession>> Logger;
         protected readonly IServiceProvider ServiceProvider;
 
-        private int _curUsedSessionId = int.MinValue;
+        private int _curUsedSessionId;
 
         private Action<IAcceptor, SessionId, ISession>? _onSessionClosed;
 
