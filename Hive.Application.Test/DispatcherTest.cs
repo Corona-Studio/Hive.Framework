@@ -1,5 +1,4 @@
 ﻿using Hive.Application.Test.TestMessage;
-using Hive.Both.General;
 using Hive.Both.General.Dispatchers;
 using Hive.Codec.Abstractions;
 using Hive.Codec.MemoryPack;
@@ -26,7 +25,7 @@ public class DispatcherTest
         using var ms = new MemoryStream();
         var codec = serviceProvider.GetRequiredService<IPacketCodec>();
         codec.Encode(originMessage, ms);
-        var mem = ms.GetBuffer().AsMemory().Slice(0, (int)ms.Length);
+        var mem = ms.GetBuffer().AsMemory()[..(int)ms.Length];
         ComplexMessage? receivedMessage = null;
 
         var cnt = 0;
@@ -42,7 +41,7 @@ public class DispatcherTest
             cnt++;
         }
 
-        Assert.Equals(3, cnt);
+        Assert.That(cnt, Is.EqualTo(3));
     }
 
     [Test]
@@ -75,7 +74,7 @@ public class DispatcherTest
             cnt++;
         }
 
-        Assert.Equals(1, cnt);
+        Assert.That(cnt, Is.EqualTo(1));
 
         // Test remove by id
         var handlerId = dispatcher.AddHandler<ComplexMessage>(Dispatcher);
@@ -83,7 +82,7 @@ public class DispatcherTest
         dispatcher.RemoveHandler(handlerId);
         dispatcher.Dispatch(dummySession, mem);
 
-        Assert.Equals(2, cnt);
+        Assert.That(cnt, Is.EqualTo(2));
     }
 
     [Test]

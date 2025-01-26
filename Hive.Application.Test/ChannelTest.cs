@@ -1,13 +1,10 @@
 ﻿using Hive.Application.Test.TestMessage;
-using Hive.Both.General;
 using Hive.Both.General.Channels;
 using Hive.Both.General.Dispatchers;
 using Hive.Codec.Abstractions;
 using Hive.Codec.MemoryPack;
-using Hive.Network.Abstractions.Session;
 using Hive.Network.Tcp;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using NUnit.Framework;
 
 namespace Hive.Application.Test;
@@ -73,9 +70,9 @@ public class ChannelTest
         
         cts.CancelAfter(1000);
         await task;
-        
-        Assert.Equals(3, cnt);
-        Assert.Equals(3, sent);
+
+        Assert.That(cnt, Is.EqualTo(3));
+        Assert.That(sent, Is.EqualTo(3));
     }
     
     [Test]
@@ -91,7 +88,7 @@ public class ChannelTest
         using var ms = new MemoryStream();
         var codec = serviceProvider.GetRequiredService<IPacketCodec>();
         codec.Encode(originMessage, ms);
-        var mem = ms.GetBuffer().AsMemory().Slice(0, (int)ms.Length);
+        var mem = ms.GetBuffer().AsMemory()[..(int)ms.Length];
 
         var cnt = 0;
         var sent = 0;
@@ -137,23 +134,8 @@ public class ChannelTest
         
         cts.CancelAfter(1000);
         await task;
-        
-        Assert.Equals(3, cnt);
-        Assert.Equals(3, sent);
-    }
 
-    private async void DelaySendMessage(IDispatcher dispatcher, ISession session, Memory<byte> message,
-        int delay)
-    {
-        try
-        {
-            await Task.Delay(delay);
-            dispatcher.Dispatch(session, message);
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine(e);
-            throw;
-        }
+        Assert.That(cnt, Is.EqualTo(3));
+        Assert.That(sent, Is.EqualTo(3));
     }
 }
