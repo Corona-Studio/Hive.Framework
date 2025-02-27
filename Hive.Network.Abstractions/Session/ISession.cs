@@ -19,9 +19,9 @@ public interface ISession
     long LastHeartBeatTime { get; }
 
     /// <summary>
-    ///     收到数据后的回调，不需要IO，无需异步。
-    ///     拿到后立刻处理，否则数据会被回收。
-    ///     <para>如果要缓存，必须复制一份数据</para>
+    /// 收到数据后的回调，不需要IO，无需异步。
+    /// 拿到后立刻处理，否则数据会被回收。
+    /// <para>如果要缓存，必须复制一份数据</para>
     /// </summary>
     event SessionReceivedHandler OnMessageReceived;
 

@@ -47,7 +47,7 @@ public class DefaultClientService<TSession> : BackgroundService, IClientService 
 
     public ClientHandle? GetClientHandle(ClientId clientId)
     {
-        return _clientDict.TryGetValue(clientId, out var clientHandle) ? clientHandle : null;
+        return _clientDict.GetValueOrDefault(clientId);
     }
 
     public void KickClient(ClientId clientId)
