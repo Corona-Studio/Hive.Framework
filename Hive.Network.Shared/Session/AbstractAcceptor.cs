@@ -98,7 +98,7 @@ namespace Hive.Network.Shared.Session
 
         public TSession? GetSession(SessionId sessionId)
         {
-            return _idToSessionDict.TryGetValue(sessionId, out var session) ? session : default;
+            return _idToSessionDict.GetValueOrDefault(sessionId);
         }
 
         public async ValueTask<bool> TrySendToAsync(SessionId sessionId, MemoryStream buffer,
@@ -113,10 +113,8 @@ namespace Hive.Network.Shared.Session
 
         public ValueTask SendToAsync(SessionId sessionId, MemoryStream buffer, CancellationToken token = default)
         {
-            var session = GetSession(sessionId);
-            if (session == null)
-                throw new ArgumentException($"Session {sessionId} not found.");
-
+            var session = GetSession(sessionId) ?? throw new ArgumentException($"Session {sessionId} not found.");
+            
             return session.SendAsync(buffer, token);
         }
 
