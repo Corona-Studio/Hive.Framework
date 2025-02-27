@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 
 namespace Hive.Codec.Abstractions
 {
@@ -8,6 +9,6 @@ namespace Hive.Codec.Abstractions
     public interface IPacketCodec
     {
         int Encode<T>(T message, Stream stream);
-        object? Decode(Stream stream);
+        object? Decode(ReadOnlyMemory<byte> bytes);
     }
 }

@@ -1,6 +1,5 @@
 ﻿using Hive.Codec.Abstractions;
 using Hive.Codec.Shared;
-using Hive.Codec.Shared.Helpers;
 using MemoryPack;
 
 namespace Hive.Codec.MemoryPack;
@@ -14,19 +13,15 @@ public class MemoryPackPacketCodec : AbstractPacketCodec
 
     protected override int EncodeBody<T>(T message, Stream stream)
     {
-        using var bufferWriter = new StreamBufferWriter(stream);
-        MemoryPackSerializer.Serialize(message.GetType(), bufferWriter, message);
-        bufferWriter.Flush();
-        return bufferWriter.WrittenCount;
+        var bytes = MemoryPackSerializer.Serialize(message).AsSpan();
+
+        stream.Write(bytes);
+
+        return bytes.Length;
     }
 
-    protected override object? DecodeBody(Stream stream, Type type)
+    protected override object? DecodeBody(ReadOnlyMemory<byte> bytes, Type type)
     {
-        var dataLength = (int)stream.Length - (int)stream.Position;
-        using var streamReader = new StreamBufferReader(stream);
-
-        var readSpan = streamReader.Read();
-        if (readSpan.Length != dataLength) throw new InvalidDataException($"Invalid packet id size: {readSpan.Length}");
-        return MemoryPackSerializer.Deserialize(type, readSpan);
+        return MemoryPackSerializer.Deserialize(type, bytes.Span);
     }
 }

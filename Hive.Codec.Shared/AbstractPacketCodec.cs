@@ -25,34 +25,27 @@ public abstract class AbstractPacketCodec : IPacketCodec
         writer.Write(buffer);
 
         var packetCodec = _customCodecProvider.GetPacketCodec(id);
-        var bodyLength = 0;
-        if (packetCodec != null)
-            bodyLength = packetCodec.EncodeBody(message, writer);
-        else
-            bodyLength = EncodeBody(message, writer);
+        var bodyLength = packetCodec?.EncodeBody(message, writer) ?? EncodeBody(message, writer);
 
         return PacketId.Size + bodyLength;
     }
 
-    public object? Decode(Stream stream)
+    public object? Decode(ReadOnlyMemory<byte> bytes)
     {
-        Span<byte> buffer = stackalloc byte[PacketId.Size];
-
-        var read = stream.Read(buffer);
-        if (read != PacketId.Size) throw new InvalidDataException($"Invalid packet id size: {read}");
-        var packetId = PacketId.From(buffer);
-
+        var packetId = PacketId.From(bytes.Span);
         var type = _packetIdMapper.GetPacketType(packetId);
         var packetCodec = _customCodecProvider.GetPacketCodec(packetId);
-        object? body = null;
-        if (packetCodec != null)
-            body = packetCodec.DecodeBody(stream, type);
-        else
-            body = DecodeBody(stream, type);
+
+        var slice = bytes[PacketId.Size..];
+
+        var body = packetCodec != null
+            ? packetCodec.DecodeBody(slice, type)
+            : DecodeBody(slice, type);
+
         return body;
     }
 
     protected abstract int EncodeBody<T>(T message, Stream stream);
 
-    protected abstract object? DecodeBody(Stream stream, Type type);
+    protected abstract object? DecodeBody(ReadOnlyMemory<byte> bytes, Type type);
 }

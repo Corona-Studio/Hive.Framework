@@ -18,8 +18,8 @@ public class ProtoBufPacketCodec : AbstractPacketCodec
         return (int)RuntimeTypeModel.Default.Serialize(stream, message);
     }
 
-    protected override object DecodeBody(Stream stream, Type type)
+    protected override object DecodeBody(ReadOnlyMemory<byte> bytes, Type type)
     {
-        return RuntimeTypeModel.Default.Deserialize(stream, null, type);
+        return RuntimeTypeModel.Default.Deserialize(bytes, null, type);
     }
 }

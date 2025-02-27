@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.IO;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
@@ -32,10 +31,8 @@ namespace Hive.Both.General.Dispatchers
 
         public void Dispatch(ISession session, ReadOnlyMemory<byte> rawMessage)
         {
-            using var stream = RecycleMemoryStreamManagerHolder.Shared.GetStream(rawMessage.Span);
-            stream.Seek(0, SeekOrigin.Begin);
+            var message = _packetCodec.Decode(rawMessage);
 
-            var message = _packetCodec.Decode(stream);
             if (message == null)
             {
                 _logger.LogMessageDecodeFailed();

@@ -10,6 +10,6 @@ namespace Hive.Codec.Abstractions
     {
         int EncodeBody<T>(T message, Stream stream);
 
-        object DecodeBody(Stream stream, Type type);
+        object DecodeBody(ReadOnlyMemory<byte> bytes, Type type);
     }
 }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 
 namespace Hive.Codec.Abstractions
@@ -41,7 +42,7 @@ namespace Hive.Codec.Abstractions
 
         public static int Size => sizeof(ushort);
 
-        public static PacketId From(Span<byte> buffer)
+        public static PacketId From(ReadOnlySpan<byte> buffer)
         {
             return new PacketId
             {
