@@ -65,9 +65,9 @@ namespace Hive.Network.Shared.Session
 
         public virtual Task StartAsync(CancellationToken token)
         {
-            var sendTask = SendLoop(token);
-            var fillReceivePipeTask = FillReceivePipeAsync(ReceivePipe!.Writer, token);
-            var receiveTask = ReceiveLoop(token);
+            var sendTask = Task.Run(async () => await SendLoop(token), CancellationToken.None);
+            var fillReceivePipeTask = Task.Run(async () => await FillReceivePipeAsync(ReceivePipe!.Writer, token), CancellationToken.None);
+            var receiveTask = Task.Run(async () => await ReceiveLoop(token), CancellationToken.None);
 
             return Task.WhenAll(sendTask, fillReceivePipeTask, receiveTask);
         }
@@ -180,7 +180,7 @@ namespace Hive.Network.Shared.Session
                     var totalLen = buffer.Length;
                     var sentLen = 0;
 
-                    while (sentLen < totalLen)
+                    while (sentLen < totalLen && IsConnected)
                     {
                         var sendThisTime = await SendOnce(segment[sentLen..], token);
 
