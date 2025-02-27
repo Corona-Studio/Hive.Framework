@@ -187,6 +187,8 @@ namespace Hive.Network.Shared.Session
                         sentLen += sendThisTime;
                     }
 
+                    Logger.LogDataSent(RemoteEndPoint!, sentLen);
+
                     SendPipe.Reader.AdvanceTo(result.Buffer.End);
 
                     if (result.IsCompleted) return;
@@ -219,6 +221,12 @@ namespace Hive.Network.Shared.Session
                 var receiveLen = await ReceiveOnce(segment, token);
 
                 if (receiveLen == 0) break;
+                if (receiveLen == -1)
+                {
+                    // Data is not ready yet, wait for a while and try again
+                    await Task.Delay(10, token);
+                    continue;
+                }
 
                 Logger.LogDataReceived(RemoteEndPoint!, receiveLen);
 
@@ -243,6 +251,7 @@ namespace Hive.Network.Shared.Session
                 {
                     if (!IsConnected || !CanReceive)
                     {
+                        Logger.LogSocketNotReady(IsConnected, CanReceive);
                         await Task.Delay(10, token);
                         continue;
                     }
@@ -291,6 +300,9 @@ namespace Hive.Network.Shared.Session
 
     internal static partial class AbstractSessionLoggers
     {
+        [LoggerMessage(LogLevel.Trace, "[Recv] Socket is not ready yet! [Connected: {isConnected}] [CanReceive {canReceive}]")]
+        public static partial void LogSocketNotReady(this ILogger logger, bool isConnected, bool canReceive);
+
         [LoggerMessage(LogLevel.Error, "Read {ReadLen} bytes from stream, but the stream length is {StreamLength}")]
         public static partial void LogReadBytesFromStreamFailed(this ILogger logger, int readLen, long streamLength);
 
@@ -299,6 +311,9 @@ namespace Hive.Network.Shared.Session
 
         [LoggerMessage(LogLevel.Trace, "Data received from [{endPoint}] with length [{length}]")]
         public static partial void LogDataReceived(this ILogger logger, IPEndPoint endPoint, int length);
+
+        [LoggerMessage(LogLevel.Trace, "Data sent to [{endPoint}] with length [{length}]")]
+        public static partial void LogDataSent(this ILogger logger, IPEndPoint endPoint, int length);
 
         [LoggerMessage(LogLevel.Error, "Received {ReadLen} bytes, but the packet length is {TotalLen}")]
         public static partial void LogReceiveError(this ILogger logger, int readLen, int totalLen);
