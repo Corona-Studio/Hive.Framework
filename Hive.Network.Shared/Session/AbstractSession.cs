@@ -105,8 +105,8 @@ namespace Hive.Network.Shared.Session
         }
 
         /// <summary>
-        ///     将流中的数据复制到 <see cref="SendPipe" />
-        ///     <para>Copy and arrange data then send to the <see cref="SendPipe" /></para>
+        /// 将流中的数据复制到 <see cref="SendPipe" />
+        /// <para>Copy and arrange data then send to the <see cref="SendPipe" /></para>
         /// </summary>
         /// <param name="writer"></param>
         /// <param name="stream"></param>
@@ -148,8 +148,8 @@ namespace Hive.Network.Shared.Session
         }
 
         /// <summary>
-        ///     从 <see cref="SendPipe" /> 读取待发送数据并使用 Socket 发送
-        ///     <para>Read from <see cref="SendPipe" /> and send the data using raw socket</para>
+        /// 从 <see cref="SendPipe" /> 读取待发送数据并使用 Socket 发送
+        /// <para>Read from <see cref="SendPipe" /> and send the data using raw socket</para>
         /// </summary>
         /// <param name="token"></param>
         /// <returns></returns>
