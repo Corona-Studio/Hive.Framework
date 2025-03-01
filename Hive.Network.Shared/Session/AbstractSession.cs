@@ -193,7 +193,7 @@ namespace Hive.Network.Shared.Session
 
                     SendPipe.Reader.AdvanceTo(result.Buffer.End);
 
-                    if (result.IsCompleted) return;
+                    if (result.IsCompleted) break;
                 }
             }
             catch (OperationCanceledException)

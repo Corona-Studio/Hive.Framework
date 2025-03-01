@@ -105,7 +105,9 @@ namespace Hive.Network.Shared.Session
             return _idToSessionDict.GetValueOrDefault(sessionId);
         }
 
-        public async ValueTask<bool> TrySendToAsync(SessionId sessionId, MemoryStream buffer,
+        public async ValueTask<bool> TrySendToAsync(
+            SessionId sessionId,
+            MemoryStream buffer,
             CancellationToken token = default)
         {
             var session = GetSession(sessionId);

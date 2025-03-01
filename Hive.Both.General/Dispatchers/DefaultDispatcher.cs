@@ -180,7 +180,7 @@ namespace Hive.Both.General.Dispatchers
         {
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(token);
             var task = HandleOnce<TResp>(session, cts.Token);
-            var sentSucceed = await SendAsync(session, message);
+            var sentSucceed = await SendAsync(session, message, token);
 
             if (!sentSucceed)
             {
