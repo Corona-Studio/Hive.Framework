@@ -19,9 +19,9 @@ public interface IAcceptor : IDisposable
 
     ISession? GetSession(SessionId sessionId);
     Task SetupAsync(IPEndPoint listenEndPoint, CancellationToken token);
-    void StartAcceptLoop(CancellationToken token);
-     Task<bool> TryCloseAsync(CancellationToken token);
-     ValueTask<bool> TryDoOnceAcceptAsync(CancellationToken token);
+    Task StartAcceptLoop(CancellationToken token);
+    Task<bool> TryCloseAsync(CancellationToken token);
+    ValueTask<bool> TryDoOnceAcceptAsync(CancellationToken token);
 
     ValueTask<bool> TrySendToAsync(SessionId sessionId, MemoryStream buffer, CancellationToken token = default);
     ValueTask SendToAsync(SessionId sessionId, MemoryStream buffer, CancellationToken token = default);

@@ -22,6 +22,6 @@ namespace Hive.Both.General.Dispatchers
         Task<TResp?> SendAndListenOnce<TReq, TResp>(ISession session, TReq message,
             CancellationToken cancellationToken = default);
 
-        ValueTask<bool> SendAsync<T>(ISession session, T message);
+        ValueTask<bool> SendAsync<T>(ISession session, T message, CancellationToken cancellationToken = default);
     }
 }

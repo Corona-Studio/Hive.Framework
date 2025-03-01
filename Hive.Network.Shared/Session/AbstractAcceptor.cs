@@ -70,16 +70,16 @@ namespace Hive.Network.Shared.Session
         }
 
 
-        public virtual async void StartAcceptLoop(CancellationToken token)
+        public virtual async Task StartAcceptLoop(CancellationToken token)
         {
+            IsSelfRunning = true;
+
             try
             {
-                await Task.Run(async () =>
+                while (!token.IsCancellationRequested)
                 {
-                    IsSelfRunning = true;
-                    while (!token.IsCancellationRequested) await TryDoOnceAcceptAsync(token);
-                    IsSelfRunning = false;
-                }, token);
+                    await TryDoOnceAcceptAsync(token);
+                }
             }
             catch (TaskCanceledException e)
             {
@@ -88,6 +88,10 @@ namespace Hive.Network.Shared.Session
             catch (Exception e)
             {
                 Logger.LogAcceptLoopError(e);
+            }
+            finally
+            {
+                IsSelfRunning = false;
             }
         }
 

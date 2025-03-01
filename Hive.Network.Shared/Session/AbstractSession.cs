@@ -65,9 +65,9 @@ namespace Hive.Network.Shared.Session
 
         public virtual Task StartAsync(CancellationToken token)
         {
-            var sendTask = Task.Run(async () => await SendLoop(token), CancellationToken.None);
-            var fillReceivePipeTask = Task.Run(async () => await FillReceivePipeAsync(ReceivePipe!.Writer, token), CancellationToken.None);
-            var receiveTask = Task.Run(async () => await ReceiveLoop(token), CancellationToken.None);
+            var sendTask = Task.Run(async () => await SendLoop(token), token);
+            var fillReceivePipeTask = Task.Run(async () => await FillReceivePipeAsync(ReceivePipe!.Writer, token), token);
+            var receiveTask = Task.Run(async () => await ReceiveLoop(token), token);
 
             return Task.WhenAll(sendTask, fillReceivePipeTask, receiveTask);
         }
@@ -112,7 +112,9 @@ namespace Hive.Network.Shared.Session
         /// <param name="stream"></param>
         /// <param name="token"></param>
         /// <returns></returns>
-        protected virtual async ValueTask<bool> FillSendPipeAsync(PipeWriter writer, MemoryStream stream,
+        protected virtual async ValueTask<bool> FillSendPipeAsync(
+            PipeWriter writer,
+            MemoryStream stream,
             CancellationToken token = default)
         {
             stream.Seek(0, SeekOrigin.Begin);

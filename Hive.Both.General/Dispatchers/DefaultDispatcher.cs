@@ -173,7 +173,9 @@ namespace Hive.Both.General.Dispatchers
             }
         }
 
-        public async Task<TResp?> SendAndListenOnce<TReq, TResp>(ISession session, TReq message,
+        public async Task<TResp?> SendAndListenOnce<TReq, TResp>(
+            ISession session,
+            TReq message,
             CancellationToken token = default)
         {
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(token);
@@ -190,12 +192,12 @@ namespace Hive.Both.General.Dispatchers
             return await task;
         }
 
-        public async ValueTask<bool> SendAsync<T>(ISession session, T message)
+        public async ValueTask<bool> SendAsync<T>(ISession session, T message, CancellationToken cancellationToken = default)
         {
             await using var stream = RecycleMemoryStreamManagerHolder.Shared.GetStream();
             _packetCodec.Encode(message, stream);
 
-            return await session.TrySendAsync(stream);
+            return await session.TrySendAsync(stream, cancellationToken);
         }
 
         private void AddHandler<T>(HandlerWarp<T> warp)
