@@ -193,19 +193,26 @@ namespace Hive.Network.Shared.Session
                     {
                         foreach (var seq in buffer)
                         {
-                            if (!MemoryMarshal.TryGetArray(seq, out var segment))
-                                throw new InvalidOperationException(
-                                    "Failed to create ArraySegment<byte> from ReadOnlyMemory<byte>!");
+                            var seqSent = 0;
 
-                            var sendThisTime = await SendOnce(segment[sentLen..], token);
+                            while (seqSent < seq.Length)
+                            {
+                                if (!MemoryMarshal.TryGetArray(seq, out var segment))
+                                    throw new InvalidOperationException(
+                                        "Failed to create ArraySegment<byte> from ReadOnlyMemory<byte>!");
 
-                            sentLen += sendThisTime;
+                                var sendThisTime = await SendOnce(segment[seqSent..], token);
+
+                                seqSent += sendThisTime;
+                            }
+
+                            sentLen += seqSent;
                         }
                     }
 
                     Logger.LogDataSent(RemoteEndPoint!, sentLen);
 
-                    SendPipe.Reader.AdvanceTo(result.Buffer.End);
+                    SendPipe.Reader.AdvanceTo(buffer.End);
 
                     if (result.IsCompleted) break;
                 }
@@ -300,7 +307,7 @@ namespace Hive.Network.Shared.Session
                         if (totalLen > buffer.Length)
                         {
                             // Not enough data to read the whole packet
-                            Logger.LogReceiveError(buffer.Length, totalLen);
+                            Logger.LogPacketIsNotLongEnough(buffer.Length, totalLen);
                             examined = buffer.End;
                             break;
                         }
@@ -356,8 +363,8 @@ namespace Hive.Network.Shared.Session
         [LoggerMessage(LogLevel.Trace, "Data sent to [{endPoint}] with length [{length}]")]
         public static partial void LogDataSent(this ILogger logger, IPEndPoint endPoint, int length);
 
-        [LoggerMessage(LogLevel.Error, "Received {ReadLen} bytes, but the packet length is {TotalLen}")]
-        public static partial void LogReceiveError(this ILogger logger, long readLen, int totalLen);
+        [LoggerMessage(LogLevel.Warning, "Received {ReadLen} bytes, but the packet length is {TotalLen}")]
+        public static partial void LogPacketIsNotLongEnough(this ILogger logger, long readLen, int totalLen);
 
         [LoggerMessage(LogLevel.Trace, "Packet Length: {length}")]
         public static partial void LogPacketLength(this ILogger logger, int length);
