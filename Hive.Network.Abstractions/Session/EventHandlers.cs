@@ -1,5 +1,5 @@
-﻿using System;
+﻿using System.Buffers;
 
 namespace Hive.Network.Abstractions.Session;
 
-public delegate void SessionReceivedHandler(ISession session, ReadOnlyMemory<byte> rawMessage);
+public delegate void SessionReceivedHandler(ISession session, ReadOnlySequence<byte> buffer);

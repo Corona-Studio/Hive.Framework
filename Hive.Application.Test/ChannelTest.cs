@@ -1,4 +1,5 @@
-﻿using Hive.Application.Test.TestMessage;
+﻿using System.Buffers;
+using Hive.Application.Test.TestMessage;
 using Hive.Both.General.Channels;
 using Hive.Both.General.Dispatchers;
 using Hive.Codec.Abstractions;
@@ -24,7 +25,9 @@ public class ChannelTest
         using var ms = new MemoryStream();
         var codec = serviceProvider.GetRequiredService<IPacketCodec>();
         codec.Encode(originMessage, ms);
-        var mem = ms.GetBuffer().AsMemory().Slice(0, (int)ms.Length);
+
+        var mem = ms.GetBuffer().AsMemory()[..(int)ms.Length];
+        var buffer = new ReadOnlySequence<byte>(mem);
 
         var cnt = 0;
         var sent = 0;
@@ -35,7 +38,7 @@ public class ChannelTest
             sent++;
         };
         
-        dispatcher.Dispatch(dummySession, mem);
+        dispatcher.Dispatch(dummySession, buffer);
 
         var channel = dispatcher.CreateServerChannel<ComplexMessage, ComplexMessage>();
         using CancellationTokenSource cts = new();
@@ -63,9 +66,9 @@ public class ChannelTest
             
         }, cts.Token);
         
-        dispatcher.Dispatch(dummySession, mem);
-        dispatcher.Dispatch(dummySession, mem);
-        dispatcher.Dispatch(dummySession, mem);
+        dispatcher.Dispatch(dummySession, buffer);
+        dispatcher.Dispatch(dummySession, buffer);
+        dispatcher.Dispatch(dummySession, buffer);
         
         
         cts.CancelAfter(1000);
@@ -89,6 +92,7 @@ public class ChannelTest
         var codec = serviceProvider.GetRequiredService<IPacketCodec>();
         codec.Encode(originMessage, ms);
         var mem = ms.GetBuffer().AsMemory()[..(int)ms.Length];
+        var buffer = new ReadOnlySequence<byte>(mem);
 
         var cnt = 0;
         var sent = 0;
@@ -99,7 +103,7 @@ public class ChannelTest
             sent++;
         };
         
-        dispatcher.Dispatch(dummySession, mem);
+        dispatcher.Dispatch(dummySession, buffer);
 
         var channel = dispatcher.CreateChannel<ComplexMessage, ComplexMessage>(dummySession);
         using CancellationTokenSource cts = new();
@@ -127,9 +131,9 @@ public class ChannelTest
             
         }, cts.Token);
         
-        dispatcher.Dispatch(dummySession, mem);
-        dispatcher.Dispatch(dummySession, mem);
-        dispatcher.Dispatch(dummySession, mem);
+        dispatcher.Dispatch(dummySession, buffer);
+        dispatcher.Dispatch(dummySession, buffer);
+        dispatcher.Dispatch(dummySession, buffer);
         
         
         cts.CancelAfter(1000);

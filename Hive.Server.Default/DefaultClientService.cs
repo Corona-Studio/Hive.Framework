@@ -1,4 +1,5 @@
-﻿using System.Collections.Concurrent;
+﻿using System.Buffers;
+using System.Collections.Concurrent;
 using Hive.Both.General.Dispatchers;
 using Hive.Both.Messages.C2S;
 using Hive.Both.Messages.S2C;
@@ -70,7 +71,7 @@ public class DefaultClientService<TSession> : BackgroundService, IClientService 
         _sessionIdToClientDict.TryAdd(sessionId, clientHandle);
     }
 
-    private void OnReceiveMessage(object? sender, ReadOnlyMemory<byte> e)
+    private void OnReceiveMessage(object? sender, ReadOnlySequence<byte> e)
     {
         if (sender is not TSession session)
             return;

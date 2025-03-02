@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.IO;
 using System.IO.Pipelines;
 using System.Net;
@@ -78,9 +79,9 @@ namespace Hive.Network.Shared.Session
 
         public abstract void Close();
 
-        protected void FireMessageReceived(ReadOnlyMemory<byte> data)
+        protected void FireMessageReceived(ReadOnlySequence<byte> buffer)
         {
-            OnMessageReceived?.Invoke(this, data);
+            OnMessageReceived?.Invoke(this, buffer);
         }
 
         public abstract ValueTask<int> SendOnce(ArraySegment<byte> data, CancellationToken token);
@@ -183,24 +184,23 @@ namespace Hive.Network.Shared.Session
                 while (!token.IsCancellationRequested)
                 {
                     var result = await SendPipe.Reader.ReadAsync(token);
-                    var sequence = result.Buffer;
-
-                    if (!SequenceMarshal.TryGetReadOnlyMemory(sequence, out var buffer))
-                        throw new InvalidOperationException(
-                            "Failed to create ReadOnlyMemory<byte> from ReadOnlySequence<byte>!");
-
-                    if (!MemoryMarshal.TryGetArray(buffer, out var segment))
-                        throw new InvalidOperationException(
-                            "Failed to create ArraySegment<byte> from ReadOnlyMemory<byte>!");
+                    var buffer = result.Buffer;
 
                     var totalLen = buffer.Length;
                     var sentLen = 0;
 
                     while (sentLen < totalLen && IsConnected)
                     {
-                        var sendThisTime = await SendOnce(segment[sentLen..], token);
+                        foreach (var seq in buffer)
+                        {
+                            if (!MemoryMarshal.TryGetArray(seq, out var segment))
+                                throw new InvalidOperationException(
+                                    "Failed to create ArraySegment<byte> from ReadOnlyMemory<byte>!");
 
-                        sentLen += sendThisTime;
+                            var sendThisTime = await SendOnce(segment[sentLen..], token);
+
+                            sentLen += sendThisTime;
+                        }
                     }
 
                     Logger.LogDataSent(RemoteEndPoint!, sentLen);
@@ -273,30 +273,50 @@ namespace Hive.Network.Shared.Session
                     }
 
                     var result = await ReceivePipe.Reader.ReadAsync(token);
-                    var sequence = result.Buffer;
+                    var buffer = result.Buffer;
 
-                    if (!SequenceMarshal.TryGetReadOnlyMemory(sequence, out var buffer))
-                        throw new InvalidOperationException(
-                            "Failed to create ReadOnlyMemory<byte> from ReadOnlySequence<byte>!");
-
-                    // ReSharper disable once RedundantRangeBound
-                    var totalLen = BitConverter.ToUInt16(buffer.Span[NetworkSettings.PacketLengthOffset..]);
-
-                    if (totalLen > buffer.Length)
+                    if (buffer.Length == 0)
                     {
-                        Logger.LogReceiveError(buffer.Length, totalLen);
-                        continue;
+                        // No more data coming, break the loop
+                        break;
                     }
 
-                    var bodyLen = totalLen - NetworkSettings.PacketBodyOffset;
-                    var data = buffer.Slice(NetworkSettings.PacketBodyOffset, bodyLen);
+                    var consumed = buffer.Start;
+                    var examined = buffer.Start;
 
-                    Logger.LogPacketLength(totalLen);
-                    Logger.LogBodyLength(bodyLen);
+                    while (buffer.Length > 0)
+                    {
+                        if (buffer.Length < NetworkSettings.PacketBodyOffset)
+                        {
+                            // Not enough data to read the packet header
+                            examined = buffer.End;
+                            break;
+                        }
 
-                    FireMessageReceived(data);
+                        // ReSharper disable once RedundantRangeBound
+                        var headerSlice = buffer.Slice(NetworkSettings.PacketLengthOffset, NetworkSettings.PacketBodyOffset);
+                        var totalLen = BitConverter.ToUInt16(headerSlice.ToArray().AsSpan());
 
-                    ReceivePipe.Reader.AdvanceTo(sequence.GetPosition(totalLen));
+                        if (totalLen > buffer.Length)
+                        {
+                            // Not enough data to read the whole packet
+                            Logger.LogReceiveError(buffer.Length, totalLen);
+                            examined = buffer.End;
+                            break;
+                        }
+
+                        var bodyLen = totalLen - NetworkSettings.PacketBodyOffset;
+                        var data = buffer.Slice(NetworkSettings.PacketBodyOffset, bodyLen);
+
+                        Logger.LogPacketLength(totalLen);
+                        Logger.LogBodyLength(bodyLen);
+
+                        FireMessageReceived(data);
+
+                        consumed = buffer.GetPosition(totalLen);
+                    }
+
+                    ReceivePipe.Reader.AdvanceTo(consumed, examined);
 
                     if (result.IsCompleted) break;
                 }
@@ -335,7 +355,7 @@ namespace Hive.Network.Shared.Session
         public static partial void LogDataSent(this ILogger logger, IPEndPoint endPoint, int length);
 
         [LoggerMessage(LogLevel.Error, "Received {ReadLen} bytes, but the packet length is {TotalLen}")]
-        public static partial void LogReceiveError(this ILogger logger, int readLen, int totalLen);
+        public static partial void LogReceiveError(this ILogger logger, long readLen, int totalLen);
 
         [LoggerMessage(LogLevel.Trace, "Packet Length: {length}")]
         public static partial void LogPacketLength(this ILogger logger, int length);

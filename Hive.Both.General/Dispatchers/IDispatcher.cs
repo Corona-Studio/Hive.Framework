@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Threading;
 using System.Threading.Tasks;
 using Hive.Network.Abstractions.Session;
@@ -7,7 +8,7 @@ namespace Hive.Both.General.Dispatchers
 {
     public interface IDispatcher
     {
-        void Dispatch(ISession session, ReadOnlyMemory<byte> rawMessage);
+        void Dispatch(ISession session, ReadOnlySequence<byte> buffer);
 
         void Dispatch<T>(ISession session, T message) where T : class;
         void Dispatch(ISession session, Type type, object message);

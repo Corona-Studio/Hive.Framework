@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using System.Buffers;
+using System.Net;
 using System.Net.Quic;
 using System.Net.Security;
 using System.Runtime.InteropServices;
@@ -210,7 +211,7 @@ public abstract class SessionTest<T> where T : class, ISession
         {
             session.OnMessageReceived += (_, mem) =>
             {
-                var text = Encoding.UTF8.GetString(mem.Span);
+                var text = Encoding.UTF8.GetString(mem);
                 if (clientSentText.TryGetValue(session.RemoteEndPoint.Port, out var sentText))
                     if (sentText == text)
                         Interlocked.Increment(ref c2sCorrectCount);
@@ -222,7 +223,7 @@ public abstract class SessionTest<T> where T : class, ISession
         {
             session.OnMessageReceived += (_, mem) =>
             {
-                var text = Encoding.UTF8.GetString(mem.Span);
+                var text = Encoding.UTF8.GetString(mem);
                 if (serverSentText.TryGetValue(session.LocalEndPoint.Port, out var sentText))
                     if (sentText == text)
                         Interlocked.Increment(ref s2cCorrectCount);

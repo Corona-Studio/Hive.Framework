@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.IO;
 using Hive.Codec.Abstractions;
 
@@ -30,22 +31,26 @@ public abstract class AbstractPacketCodec : IPacketCodec
         return PacketId.Size + bodyLength;
     }
 
-    public object? Decode(ReadOnlyMemory<byte> bytes)
+    public object? Decode(ReadOnlySequence<byte> buffer)
     {
-        var packetId = PacketId.From(bytes.Span);
+        if (buffer.Length < PacketId.Size)
+            throw new InvalidDataException($"Invalid packet id size: {buffer.Length}");
+
+        Span<byte> headerBuffer = stackalloc byte[PacketId.Size];
+
+        buffer.Slice(0, PacketId.Size).CopyTo(headerBuffer);
+
+        var packetId = PacketId.From(headerBuffer);
         var type = _packetIdMapper.GetPacketType(packetId);
         var packetCodec = _customCodecProvider.GetPacketCodec(packetId);
+        var bodySlice = buffer.Slice(PacketId.Size);
 
-        var slice = bytes[PacketId.Size..];
-
-        var body = packetCodec != null
-            ? packetCodec.DecodeBody(slice, type)
-            : DecodeBody(slice, type);
-
-        return body;
+        return packetCodec != null
+            ? packetCodec.DecodeBody(bodySlice, type)
+            : DecodeBody(bodySlice, type);
     }
 
     protected abstract int EncodeBody<T>(T message, Stream stream);
 
-    protected abstract object? DecodeBody(ReadOnlyMemory<byte> bytes, Type type);
+    protected abstract object? DecodeBody(ReadOnlySequence<byte> buffer, Type type);
 }

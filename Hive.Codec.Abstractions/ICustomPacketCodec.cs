@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.IO;
 
 namespace Hive.Codec.Abstractions
@@ -10,6 +11,6 @@ namespace Hive.Codec.Abstractions
     {
         int EncodeBody<T>(T message, Stream stream);
 
-        object DecodeBody(ReadOnlyMemory<byte> bytes, Type type);
+        object DecodeBody(ReadOnlySequence<byte> buffer, Type type);
     }
 }

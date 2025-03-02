@@ -1,6 +1,7 @@
 ﻿using Hive.Codec.Abstractions;
 using Hive.Codec.Shared;
 using MemoryPack;
+using System.Buffers;
 
 namespace Hive.Codec.MemoryPack;
 
@@ -20,8 +21,8 @@ public class MemoryPackPacketCodec : AbstractPacketCodec
         return bytes.Length;
     }
 
-    protected override object? DecodeBody(ReadOnlyMemory<byte> bytes, Type type)
+    protected override object? DecodeBody(ReadOnlySequence<byte> buffer, Type type)
     {
-        return MemoryPackSerializer.Deserialize(type, bytes.Span);
+        return MemoryPackSerializer.Deserialize(type, buffer);
     }
 }

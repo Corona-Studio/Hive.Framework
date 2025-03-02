@@ -1,6 +1,6 @@
 ﻿using System;
+using System.Buffers;
 using System.IO;
-using CommunityToolkit.HighPerformance;
 using Hive.Codec.Abstractions;
 using Hive.Codec.Shared;
 using MongoDB.Bson.IO;
@@ -22,9 +22,9 @@ public class BsonPacketCodec : AbstractPacketCodec
         return (int)bsonWriter.Position;
     }
 
-    protected override object? DecodeBody(ReadOnlyMemory<byte> bytes, Type type)
+    protected override object? DecodeBody(ReadOnlySequence<byte> buffer, Type type)
     {
-        using var ms = bytes.AsStream();
+        using var ms = new ReadOnlySequenceStream(buffer);
 
         return BsonSerializer.Deserialize(ms, type);
     }

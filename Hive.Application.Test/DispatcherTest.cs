@@ -1,4 +1,5 @@
-﻿using Hive.Application.Test.TestMessage;
+﻿using System.Buffers;
+using Hive.Application.Test.TestMessage;
 using Hive.Both.General.Dispatchers;
 using Hive.Codec.Abstractions;
 using Hive.Codec.MemoryPack;
@@ -25,15 +26,18 @@ public class DispatcherTest
         using var ms = new MemoryStream();
         var codec = serviceProvider.GetRequiredService<IPacketCodec>();
         codec.Encode(originMessage, ms);
+
         var mem = ms.GetBuffer().AsMemory()[..(int)ms.Length];
+        var buffer = new ReadOnlySequence<byte>(mem);
+
         ComplexMessage? receivedMessage = null;
 
         var cnt = 0;
-        dispatcher.Dispatch(dummySession, mem);
+        dispatcher.Dispatch(dummySession, buffer);
         dispatcher.AddHandler<ComplexMessage>(Dispatcher);
-        dispatcher.Dispatch(dummySession, mem);
-        dispatcher.Dispatch(dummySession, mem);
-        dispatcher.Dispatch(dummySession, mem);
+        dispatcher.Dispatch(dummySession, buffer);
+        dispatcher.Dispatch(dummySession, buffer);
+        dispatcher.Dispatch(dummySession, buffer);
 
 
         void Dispatcher(MessageContext<ComplexMessage> complexMessage)
@@ -58,16 +62,19 @@ public class DispatcherTest
         using var ms = new MemoryStream();
         var codec = serviceProvider.GetRequiredService<IPacketCodec>();
         codec.Encode(originMessage, ms);
-        var mem = ms.GetBuffer().AsMemory().Slice(0, (int)ms.Length);
+
+        var mem = ms.GetBuffer().AsMemory()[..(int)ms.Length];
+        var buffer = new ReadOnlySequence<byte>(mem);
+
         ComplexMessage? receivedMessage = null;
 
         var cnt = 0;
 
         // Test remove by handler
         dispatcher.AddHandler<ComplexMessage>(Dispatcher);
-        dispatcher.Dispatch(dummySession, mem);
+        dispatcher.Dispatch(dummySession, buffer);
         dispatcher.RemoveHandler<ComplexMessage>(Dispatcher);
-        dispatcher.Dispatch(dummySession, mem);
+        dispatcher.Dispatch(dummySession, buffer);
 
         void Dispatcher(MessageContext<ComplexMessage> complexMessage)
         {
@@ -78,9 +85,9 @@ public class DispatcherTest
 
         // Test remove by id
         var handlerId = dispatcher.AddHandler<ComplexMessage>(Dispatcher);
-        dispatcher.Dispatch(dummySession, mem);
+        dispatcher.Dispatch(dummySession, buffer);
         dispatcher.RemoveHandler(handlerId);
-        dispatcher.Dispatch(dummySession, mem);
+        dispatcher.Dispatch(dummySession, buffer);
 
         Assert.That(cnt, Is.EqualTo(2));
     }
@@ -116,10 +123,12 @@ public class DispatcherTest
     private async void DelaySendMessage(IDispatcher dispatcher, ISession session, Memory<byte> message,
         int delay)
     {
+        var buffer = new ReadOnlySequence<byte>(message);
+
         try
         {
             await Task.Delay(delay);
-            dispatcher.Dispatch(session, message);
+            dispatcher.Dispatch(session, buffer);
         }
         catch (Exception e)
         {

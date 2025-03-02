@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.IO;
 using Hive.Codec.Abstractions;
 using Hive.Codec.Shared;
@@ -18,8 +19,9 @@ public class ProtoBufPacketCodec : AbstractPacketCodec
         return (int)RuntimeTypeModel.Default.Serialize(stream, message);
     }
 
-    protected override object DecodeBody(ReadOnlyMemory<byte> bytes, Type type)
+    protected override object DecodeBody(ReadOnlySequence<byte> buffer, Type type)
     {
-        return RuntimeTypeModel.Default.Deserialize(bytes, null, type);
+        using var stream = new ReadOnlySequenceStream(buffer);
+        return RuntimeTypeModel.Default.Deserialize(stream, null, type);
     }
 }

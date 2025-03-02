@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Threading;
@@ -29,16 +30,16 @@ namespace Hive.Both.General.Dispatchers
             _logger = logger;
         }
 
-        public void Dispatch(ISession session, ReadOnlyMemory<byte> rawMessage)
+        public void Dispatch(ISession session, ReadOnlySequence<byte> buffer)
         {
-            var message = _packetCodec.Decode(rawMessage);
+            var message = _packetCodec.Decode(buffer);
 
             if (message == null)
             {
                 _logger.LogMessageDecodeFailed();
 
 #if DEBUG
-                var base64 = Convert.ToBase64String(rawMessage.Span);
+                var base64 = Convert.ToBase64String(buffer.ToArray());
                 _logger.LogRawMessage(base64);
 #endif
 
