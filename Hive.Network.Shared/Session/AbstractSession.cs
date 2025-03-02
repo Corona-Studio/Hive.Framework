@@ -115,7 +115,8 @@ namespace Hive.Network.Shared.Session
             }
             finally
             {
-                _sendSemaphore.Release();
+                if (_sendSemaphore.CurrentCount == 0)
+                    _sendSemaphore.Release();
             }
         }
 
