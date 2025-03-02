@@ -16,6 +16,8 @@ namespace Hive.Network.Shared.Session
     /// </summary>
     public abstract class AbstractSession : ISession, IDisposable
     {
+        private readonly SemaphoreSlim _sendSemaphore = new(1, 1);
+
         protected readonly ILogger<AbstractSession> Logger;
 
         protected bool ReceivingLoopRunning;
@@ -41,6 +43,8 @@ namespace Hive.Network.Shared.Session
 
         public virtual void Dispose()
         {
+            _sendSemaphore.Dispose();
+
             if (SendPipe != null)
             {
                 SendPipe.Reader.Complete();
@@ -90,10 +94,7 @@ namespace Hive.Network.Shared.Session
             if (SendPipe == null)
                 throw new NullReferenceException(nameof(SendPipe));
 
-            var result = await FillSendPipeAsync(SendPipe.Writer, ms, token);
-
-            if (!result)
-                throw new InvalidOperationException($"Failed to fill pipe, data size: {ms.Length}");
+            await TrySendAsync(ms, token);
         }
 
         public virtual async ValueTask<bool> TrySendAsync(MemoryStream ms, CancellationToken token = default)
@@ -101,7 +102,20 @@ namespace Hive.Network.Shared.Session
             if (SendPipe == null)
                 return false;
 
-            return await FillSendPipeAsync(SendPipe.Writer, ms, token);
+            try
+            {
+                await _sendSemaphore.WaitAsync(token);
+                return await FillSendPipeAsync(SendPipe.Writer, ms, token);
+            }
+            catch (Exception e)
+            {
+                Logger.LogSendDataFailed(e);
+                return false;
+            }
+            finally
+            {
+                _sendSemaphore.Release();
+            }
         }
 
         /// <summary>
@@ -302,6 +316,9 @@ namespace Hive.Network.Shared.Session
 
     internal static partial class AbstractSessionLoggers
     {
+        [LoggerMessage(LogLevel.Critical, "[Recv] Failed to send data!")]
+        public static partial void LogSendDataFailed(this ILogger logger, Exception ex);
+
         [LoggerMessage(LogLevel.Trace, "[Recv] Socket is not ready yet! [Connected: {isConnected}] [CanReceive {canReceive}]")]
         public static partial void LogSocketNotReady(this ILogger logger, bool isConnected, bool canReceive);
 
