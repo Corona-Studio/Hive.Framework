@@ -314,6 +314,7 @@ namespace Hive.Network.Shared.Session
                         FireMessageReceived(data);
 
                         consumed = buffer.GetPosition(totalLen);
+                        examined = consumed;
                         buffer = buffer.Slice(totalLen);
                     }
 
