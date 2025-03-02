@@ -363,7 +363,7 @@ namespace Hive.Network.Shared.Session
         [LoggerMessage(LogLevel.Trace, "Data sent to [{endPoint}] with length [{length}]")]
         public static partial void LogDataSent(this ILogger logger, IPEndPoint endPoint, int length);
 
-        [LoggerMessage(LogLevel.Warning, "Received {ReadLen} bytes, but the packet length is {TotalLen}")]
+        [LoggerMessage(LogLevel.Debug, "Received {ReadLen} bytes, but the packet length is {TotalLen}, wait for the next iteration...")]
         public static partial void LogPacketIsNotLongEnough(this ILogger logger, long readLen, int totalLen);
 
         [LoggerMessage(LogLevel.Trace, "Packet Length: {length}")]
