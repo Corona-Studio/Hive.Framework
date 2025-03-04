@@ -2,6 +2,8 @@
 
 蜂巢，一个开源的游戏服务器框架，旨在提供高性能、高扩展性、高度自由的游戏后端服务器的开发流程。（包括一个官方示例实现）
 
+<img width="1290" alt="image" src="https://github.com/user-attachments/assets/ffd54c02-5a9d-4782-9755-ed48f05bc59d" />
+
 ## 项目简介
 
 + BenchmarksAndTests
