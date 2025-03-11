@@ -113,8 +113,7 @@ namespace Hive.Network.Shared.Session
             }
             finally
             {
-                if (_sendSemaphore.CurrentCount == 0)
-                    _sendSemaphore.Release();
+                _sendSemaphore.Release();
             }
         }
 
