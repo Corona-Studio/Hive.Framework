@@ -123,7 +123,7 @@ namespace Hive.Both.General.Dispatchers
             cancellationToken.Register(() =>
             {
                 _logger.LogListenOnceCanceledByToken(id);
-                tcs.SetCanceled(cancellationToken);
+                tcs.SetCanceled();
             });
 
             // todo cancel by session close
@@ -165,7 +165,7 @@ namespace Hive.Both.General.Dispatchers
                 if (cancellationToken.IsCancellationRequested)
                 {
                     if (tcs.Task.Status != TaskStatus.Canceled)
-                        tcs.SetCanceled(cancellationToken);
+                        tcs.SetCanceled();
                 }
                 else
                 {
@@ -186,7 +186,7 @@ namespace Hive.Both.General.Dispatchers
             if (!sentSucceed)
             {
                 _logger.LogSendAndListenOnceCanceled(message);
-                await cts.CancelAsync();
+                cts.Cancel();
                 return default;
             }
 
