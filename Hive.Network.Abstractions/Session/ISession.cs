@@ -16,8 +16,6 @@ public interface ISession
     IPEndPoint? LocalEndPoint { get; }
     IPEndPoint? RemoteEndPoint { get; }
 
-    long LastHeartBeatTime { get; }
-
     /// <summary>
     /// 收到数据后的回调，不需要IO，无需异步。
     /// 拿到后立刻处理，否则数据会被回收。

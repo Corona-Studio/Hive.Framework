@@ -31,7 +31,6 @@ namespace Hive.Network.Shared.Session
             Logger = logger;
 
             Id = id;
-            LastHeartBeatTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         }
 
         protected Pipe? SendPipe { get; set; } = new();
@@ -64,7 +63,6 @@ namespace Hive.Network.Shared.Session
         public SessionId Id { get; }
         public abstract IPEndPoint? LocalEndPoint { get; }
         public abstract IPEndPoint? RemoteEndPoint { get; }
-        public long LastHeartBeatTime { get; }
 
         public event SessionReceivedHandler? OnMessageReceived;
 

@@ -49,12 +49,4 @@ public interface IAcceptor<TSession> : IAcceptor where TSession : ISession
     new event Action<IAcceptor, SessionId, TSession> OnSessionClosed;
 
     new TSession? GetSession(SessionId sessionId);
-
-    /// <summary>
-    ///     进行一次心跳检查
-    ///     <para>作为客户端的一方主动发送心跳包，SessionManager记录受到心跳包的时间</para>
-    ///     <para>作为服务端的一方主动检查心跳包，如果超过一定时间没有收到心跳包，则断开连接</para>
-    /// </summary>
-    /// <returns></returns>
-    void DoHeartBeatCheck();
 }

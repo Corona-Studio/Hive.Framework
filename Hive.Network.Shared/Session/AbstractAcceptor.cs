@@ -124,21 +124,6 @@ namespace Hive.Network.Shared.Session
             return session.SendAsync(buffer, token);
         }
 
-        public virtual void DoHeartBeatCheck()
-        {
-            var now = DateTimeOffset.Now.ToUnixTimeMilliseconds();
-            foreach (var (sessionId, session) in _idToSessionDict)
-                if (session.LastHeartBeatTime + NetworkSettings.MaxHeartBeatTimeout < now)
-                {
-                    Logger.LogSessionHeartBeatTimeout(sessionId);
-                    session.Close();
-                    _sessionsToClose.Add(session);
-                }
-
-            foreach (var session in _sessionsToClose) _idToSessionDict.TryRemove(session.Id, out _);
-            _sessionsToClose.Clear();
-        }
-
         public abstract void Dispose();
 
         protected void FireOnSessionCreate(TSession session)
