@@ -139,7 +139,7 @@ namespace Hive.Both.General.Dispatchers
                 var result = await tcs.Task;
                 return result;
             }
-            catch (TaskCanceledException e)
+            catch (TaskCanceledException)
             {
                 _logger.LogListenOnceCanceled(id);
             }
