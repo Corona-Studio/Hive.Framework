@@ -352,7 +352,7 @@ namespace Hive.Network.Shared.Session
         [LoggerMessage(LogLevel.Error, "Read {ReadLen} bytes from stream, but the stream length is {StreamLength}")]
         public static partial void LogReadBytesFromStreamFailed(this ILogger logger, int readLen, long streamLength);
 
-        [LoggerMessage(LogLevel.Warning, "Send loop canceled, SessionId:{SessionId}")]
+        [LoggerMessage(LogLevel.Warning, "Send loop canceled, SessionId: {SessionId}")]
         public static partial void LogSendLoopCanceled(this ILogger logger, int sessionId);
 
         [LoggerMessage(LogLevel.Trace, "Data received from [{endPoint}] with length [{length}]")]
@@ -370,7 +370,7 @@ namespace Hive.Network.Shared.Session
         [LoggerMessage(LogLevel.Trace, "Body Length: {length}")]
         public static partial void LogBodyLength(this ILogger logger, int length);
 
-        [LoggerMessage(LogLevel.Warning, "Receive loop canceled, SessionId:{SessionId}")]
+        [LoggerMessage(LogLevel.Warning, "Receive loop canceled, SessionId: {SessionId}")]
         public static partial void LogReceiveLoopCanceled(this ILogger logger, int sessionId);
     }
 }
