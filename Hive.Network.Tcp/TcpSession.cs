@@ -30,9 +30,9 @@ public sealed class TcpSession : AbstractSession
 
     public override IPEndPoint? RemoteEndPoint => Socket?.RemoteEndPoint as IPEndPoint;
 
-    public override bool CanSend => IsConnected;
+    public override bool CanSend => IsConnected && SendingLoopRunning;
 
-    public override bool CanReceive => IsConnected;
+    public override bool CanReceive => IsConnected && ReceivingLoopRunning;
 
     public override bool IsConnected => Socket is { Connected: true };
 
