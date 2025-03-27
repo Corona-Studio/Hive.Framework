@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 namespace Hive.Codec.Abstractions
 {
@@ -42,11 +43,18 @@ namespace Hive.Codec.Abstractions
 
         public static int Size => sizeof(ushort);
 
-        public static PacketId From(ReadOnlySpan<byte> buffer)
+        public static PacketId From(ReadOnlySequence<byte> buffer)
         {
+            var reader = new SequenceReader<byte>(buffer);
+
+            if (!reader.TryReadLittleEndian(out short id))
+            {
+                throw new InvalidOperationException("Failed to read packet id");
+            }
+            
             return new PacketId
             {
-                Id = BitConverter.ToUInt16(buffer)
+                Id = Unsafe.ReadUnaligned<ushort>(ref Unsafe.As<short, byte>(ref id))
             };
         }
 #endif

@@ -36,11 +36,7 @@ public abstract class AbstractPacketCodec : IPacketCodec
         if (buffer.Length < PacketId.Size)
             throw new InvalidDataException($"Invalid packet id size: {buffer.Length}");
 
-        Span<byte> headerBuffer = stackalloc byte[PacketId.Size];
-
-        buffer.Slice(0, PacketId.Size).CopyTo(headerBuffer);
-
-        var packetId = PacketId.From(headerBuffer);
+        var packetId = PacketId.From(buffer);
         var type = _packetIdMapper.GetPacketType(packetId);
         var packetCodec = _customCodecProvider.GetPacketCodec(packetId);
         var bodySlice = buffer.Slice(PacketId.Size);
