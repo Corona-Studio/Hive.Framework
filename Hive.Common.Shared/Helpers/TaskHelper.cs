@@ -13,6 +13,18 @@ namespace Hive.Common.Shared.Helpers
     {
         public const int OptimalMaxSpinWaitsPerSpinIteration = 12;
 
+        private static readonly TaskFactory TaskFactory = new(TaskScheduler.Default);
+
+        public static Task<Task> Fire(Func<Task> func)
+        {
+            return TaskFactory.StartNew(async () => await func());
+        }
+
+        public static void FireAndForget(Func<Task> func)
+        {
+            TaskFactory.StartNew(async () => await func());
+        }
+
         public static async Task WaitUtil(Func<bool> condition, int interval = 5)
         {
             while (!condition()) await Task.Delay(interval);

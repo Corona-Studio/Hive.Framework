@@ -6,6 +6,7 @@ using System.Net;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Hive.Common.Shared.Helpers;
 using Hive.Network.Abstractions;
 using Hive.Network.Abstractions.Session;
 using Microsoft.Extensions.Logging;
@@ -68,9 +69,9 @@ namespace Hive.Network.Shared.Session
 
         public virtual Task StartAsync(CancellationToken token)
         {
-            var sendTask = Task.Run(async () => await SendLoop(token), token);
-            var fillReceivePipeTask = Task.Run(async () => await FillReceivePipeAsync(ReceivePipe!.Writer, token), token);
-            var receiveTask = Task.Run(async () => await ReceiveLoop(token), token);
+            var sendTask = TaskHelper.Fire(() => SendLoop(token)).Unwrap();
+            var fillReceivePipeTask = TaskHelper.Fire(() => FillReceivePipeAsync(ReceivePipe!.Writer, token)).Unwrap();
+            var receiveTask = TaskHelper.Fire(() => ReceiveLoop(token)).Unwrap();
 
             return Task.WhenAll(sendTask, fillReceivePipeTask, receiveTask);
         }
