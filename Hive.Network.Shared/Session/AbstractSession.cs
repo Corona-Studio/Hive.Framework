@@ -247,7 +247,7 @@ namespace Hive.Network.Shared.Session
                 if (receiveLen == -1)
                 {
                     // Data is not ready yet, wait for a while and try again
-                    await Task.Delay(10, token);
+                    await Task.Yield();
                     continue;
                 }
 
@@ -275,7 +275,7 @@ namespace Hive.Network.Shared.Session
                     if (!IsConnected || !CanReceive)
                     {
                         Logger.LogSocketNotReady(IsConnected, CanReceive);
-                        await Task.Delay(10, token);
+                        await Task.Yield();
                         continue;
                     }
 
