@@ -22,7 +22,15 @@ namespace Hive.Common.Shared.Helpers
 
         public static void FireAndForget(Func<Task> func)
         {
-            TaskFactory.StartNew(async () => await func());
+            try
+            {
+                TaskFactory.StartNew(async () => await func());
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
         }
 
         public static async Task WaitUtil(Func<bool> condition, int interval = 5)
