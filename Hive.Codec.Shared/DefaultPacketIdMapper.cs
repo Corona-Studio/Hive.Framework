@@ -1,25 +1,28 @@
 ﻿using System;
 using System.Data;
-using System.Reflection;
-using System.Threading;
 using Hive.Codec.Abstractions;
 using Hive.Codec.Shared.Helpers;
 using Hive.Common.Shared.Collections;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Hive.Codec.Shared;
 
 public class DefaultPacketIdMapper : IPacketIdMapper
 {
-    private readonly ReaderWriterLockSlim _lock = new();
+    private readonly object _lock = new();
 
     private readonly ILogger<DefaultPacketIdMapper> _logger;
     private readonly BiDictionary<Type, PacketId> _typeIdMapping = new();
 
-    public DefaultPacketIdMapper(ILogger<DefaultPacketIdMapper> logger)
+    public DefaultPacketIdMapper(
+        IOptions<PacketIdMapperOptions> registerOptions,
+        ILogger<DefaultPacketIdMapper> logger)
     {
         _logger = logger;
-        ScanAll();
+
+        foreach (var packetType in registerOptions.Value.RegisteredPackets)
+            Register(packetType);
     }
 
     public void Register<TPacket>()
@@ -34,30 +37,23 @@ public class DefaultPacketIdMapper : IPacketIdMapper
 
     public void Register(Type type, out PacketId id)
     {
-        if (_lock.TryEnterWriteLock(10))
-            try
-            {
-                if (_typeIdMapping.ContainsKey(type))
-                    throw new DuplicateNameException(
-                        $"Failed to register msg type {type}. You already registered it!");
+        lock (_lock)
+        {
+            if (_typeIdMapping.ContainsKey(type))
+                throw new DuplicateNameException(
+                    $"Failed to register msg type {type}. You already registered it!");
 
-                var newId = TypeHashUtil.GetTypeHash(type);
+            var newId = TypeHashUtil.GetTypeHash(type);
 
-                if (_typeIdMapping.ContainsValue(newId))
-                    throw new DuplicateNameException(
-                        $"Failed to register msg type {type}. Duplicate id found [ID - {newId}]!");
+            if (_typeIdMapping.ContainsValue(newId))
+                throw new DuplicateNameException(
+                    $"Failed to register msg type {type}. Duplicate id found [ID - {newId}]!");
 
-                _typeIdMapping.Add(type, newId);
-                id = newId;
+            _typeIdMapping.Add(type, newId);
+            id = newId;
 
-                _logger.RegisteredMsgType(type, newId);
-            }
-            finally
-            {
-                _lock.ExitWriteLock();
-            }
-        else
-            throw new TimeoutException($"Failed to register msg type {type}. Timeout!");
+            _logger.RegisteredMsgType(type, newId);
+        }
     }
 
     PacketId IPacketIdMapper.GetPacketId(Type type)
@@ -67,44 +63,20 @@ public class DefaultPacketIdMapper : IPacketIdMapper
 
     public Type GetPacketType(PacketId id)
     {
-        if (_lock.TryEnterReadLock(10))
-            try
-            {
-                if (_typeIdMapping.TryGetKeyByValue(id, out var type)) return type;
-            }
-            finally
-            {
-                _lock.ExitReadLock();
-            }
+        lock (_lock)
+        {
+            if (_typeIdMapping.TryGetKeyByValue(id, out var type)) return type;
+        }
 
         throw new InvalidOperationException($"Cannot get type of msg id {id}");
     }
 
-    public void ScanAll()
-    {
-        var assemblies = AppDomain.CurrentDomain.GetAssemblies();
-        foreach (var assembly in assemblies) Scan(assembly);
-    }
-
-    public void Scan(Assembly assembly)
-    {
-        var types = assembly.GetTypes();
-        foreach (var type in types)
-            if (type.IsDefined(typeof(MessageDefineAttribute), false))
-                Register(type);
-    }
-
     public PacketId GetPacketId(Type type)
     {
-        if (_lock.TryEnterReadLock(10))
-            try
-            {
-                if (_typeIdMapping.TryGetValueByKey(type, out var id)) return id;
-            }
-            finally
-            {
-                _lock.ExitReadLock();
-            }
+        lock (_lock)
+        {
+            if (_typeIdMapping.TryGetValueByKey(type, out var id)) return id;
+        }
 
         throw new InvalidOperationException($"Cannot get id of msg type {type}");
     }
