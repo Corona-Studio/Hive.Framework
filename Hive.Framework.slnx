@@ -1,0 +1,56 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+  </Configurations>
+  <Folder Name="/BenchmarksAndTests/">
+    <Project Path="Hive.Application.Test/Hive.Application.Test.csproj" />
+    <Project Path="Hive.Benchmark/Hive.Benchmark.csproj" />
+    <Project Path="Hive.DataSync.SourceGen.Tests/Hive.DataSync.SourceGen.Tests.csproj" />
+    <Project Path="Hive.Network.Tests/Hive.Network.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Both/">
+    <Project Path="Hive.Both.General/Hive.Both.General.csproj" />
+    <Project Path="Hive.Both.Messages/Hive.Both.Messages.csproj" />
+  </Folder>
+  <Folder Name="/Client/" />
+  <Folder Name="/Common/">
+    <Project Path="Hive.Common.ECS/Hive.Common.ECS.csproj" />
+    <Project Path="Hive.Common.Shared/Hive.Common.Shared.csproj" />
+    <Project Path="Unity.Mathematics/src/Unity.Mathematics/Unity.Mathematics.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+  </Folder>
+  <Folder Name="/Common/Codecs/">
+    <Project Path="Hive.Codec.Abstractions/Hive.Codec.Abstractions.csproj" />
+    <Project Path="Hive.Codec.Bson/Hive.Codec.Bson.csproj" />
+    <Project Path="Hive.Codec.MemoryPack/Hive.Codec.MemoryPack.csproj" />
+    <Project Path="Hive.Codec.Protobuf/Hive.Codec.Protobuf.csproj" />
+    <Project Path="Hive.Codec.Shared/Hive.Codec.Shared.csproj" />
+  </Folder>
+  <Folder Name="/Common/Network/">
+    <Project Path="Hive.Network.Abstractions/Hive.Network.Abstractions.csproj" />
+    <Project Path="Hive.Network.Kcp/Hive.Network.Kcp.csproj" />
+    <Project Path="Hive.Network.Quic/Hive.Network.Quic.csproj" />
+    <Project Path="Hive.Network.Shared/Hive.Network.Shared.csproj" />
+    <Project Path="Hive.Network.Tcp/Hive.Network.Tcp.csproj" />
+    <Project Path="Hive.Network.Udp/Hive.Network.Udp.csproj" />
+  </Folder>
+  <Folder Name="/RPC/">
+    <Project Path="Hive.DataSync.Abstractions/Hive.DataSync.Abstractions.csproj" />
+    <Project Path="Hive.DataSync.Shared/Hive.DataSync.Shared.csproj" />
+    <Project Path="Hive.DataSync.SourceGen/Hive.DataSync.SourceGen.csproj" />
+    <Project Path="Hive.DataSync/Hive.DataSync.csproj" />
+  </Folder>
+  <Folder Name="/Server/">
+    <Project Path="Hive.Server.Abstractions/Hive.Server.Abstractions.csproj" />
+    <Project Path="Hive.Server.Actor/Hive.Server.Actor.csproj" />
+    <Project Path="Hive.Server.App/Hive.Server.App.csproj" />
+    <Project Path="Hive.Server.Cluster/Hive.Server.Cluster.csproj" />
+    <Project Path="Hive.Server.Common.Abstract/Hive.Server.Common.Abstract.csproj" />
+    <Project Path="Hive.Server.Common.Application.Generator/Hive.Server.Common.Application.Generator.csproj" />
+    <Project Path="Hive.Server.Common.Application/Hive.Server.Common.Application.csproj" />
+    <Project Path="Hive.Server.Default/Hive.Server.Default.csproj" />
+    <Project Path="Hive.Server.Shared/Hive.Server.Shared.csproj" />
+  </Folder>
+</Solution>
