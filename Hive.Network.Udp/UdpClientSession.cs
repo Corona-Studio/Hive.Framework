@@ -42,6 +42,8 @@ namespace Hive.Network.Udp
 
         public override void Close()
         {
+            base.Close();
+
             IsConnected = false;
             _socket?.Close();
             _socket?.Dispose();

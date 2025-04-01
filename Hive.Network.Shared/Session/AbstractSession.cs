@@ -25,6 +25,8 @@ namespace Hive.Network.Shared.Session
         protected bool ReceivingLoopRunning;
         protected bool SendingLoopRunning;
 
+        protected CancellationTokenSource? CancellationTokenSource;
+
         protected AbstractSession(
             int id,
             ILogger<AbstractSession> logger)
@@ -69,14 +71,22 @@ namespace Hive.Network.Shared.Session
 
         public virtual Task StartAsync(CancellationToken token)
         {
-            var sendTask = TaskHelper.Fire(() => SendLoop(token)).Unwrap();
-            var fillReceivePipeTask = TaskHelper.Fire(() => FillReceivePipeAsync(ReceivePipe!.Writer, token)).Unwrap();
-            var receiveTask = TaskHelper.Fire(() => ReceiveLoop(token)).Unwrap();
+            CancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(token);
+
+            var linkedToken = CancellationTokenSource.Token;
+            var sendTask = TaskHelper.Fire(() => SendLoop(linkedToken)).Unwrap();
+            var fillReceivePipeTask = TaskHelper.Fire(() => FillReceivePipeAsync(ReceivePipe!.Writer, linkedToken)).Unwrap();
+            var receiveTask = TaskHelper.Fire(() => ReceiveLoop(linkedToken)).Unwrap();
 
             return Task.WhenAll(sendTask, fillReceivePipeTask, receiveTask);
         }
 
-        public abstract void Close();
+        public virtual void Close()
+        {
+            CancellationTokenSource?.Cancel();
+            CancellationTokenSource?.Dispose();
+            CancellationTokenSource = null;
+        }
 
         protected void FireMessageReceived(ReadOnlySequence<byte> buffer)
         {
@@ -244,12 +254,6 @@ namespace Hive.Network.Shared.Session
                 var receiveLen = await ReceiveOnce(segment, token);
 
                 if (receiveLen == 0) break;
-                if (receiveLen == -1)
-                {
-                    // Data is not ready yet, wait for a while and try again
-                    await Task.Yield();
-                    continue;
-                }
 
                 Logger.LogDataReceived(RemoteEndPoint!, receiveLen);
 
@@ -275,7 +279,7 @@ namespace Hive.Network.Shared.Session
                     if (!IsConnected || !CanReceive)
                     {
                         Logger.LogSocketNotReady(IsConnected, CanReceive);
-                        await Task.Yield();
+                        await Task.Delay(50, token);
                         continue;
                     }
 

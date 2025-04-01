@@ -17,18 +17,18 @@
   <Folder Name="/Common/">
     <Project Path="Hive.Common.ECS/Hive.Common.ECS.csproj" />
     <Project Path="Hive.Common.Shared/Hive.Common.Shared.csproj" />
-    <Project Path="Unity.Mathematics/src/Unity.Mathematics/Unity.Mathematics.csproj">
+    <Project Path="Unity.Mathematics/src/Unity.Mathematics/Unity.Mathematics.csproj" Id="a47e7967-bdaf-4d41-9586-a1efdf684b56">
       <Platform Solution="*|x64" Project="x64" />
     </Project>
   </Folder>
-  <Folder Name="/Common/Codecs/">
+  <Folder Name="/Common/Codecs/" Id="304c17c9-df99-887a-fe48-cf0e1958893b">
     <Project Path="Hive.Codec.Abstractions/Hive.Codec.Abstractions.csproj" />
     <Project Path="Hive.Codec.Bson/Hive.Codec.Bson.csproj" />
     <Project Path="Hive.Codec.MemoryPack/Hive.Codec.MemoryPack.csproj" />
     <Project Path="Hive.Codec.Protobuf/Hive.Codec.Protobuf.csproj" />
     <Project Path="Hive.Codec.Shared/Hive.Codec.Shared.csproj" />
   </Folder>
-  <Folder Name="/Common/Network/">
+  <Folder Name="/Common/Network/" Id="d3b490a5-4cf3-171d-4990-207ec68ca28d">
     <Project Path="Hive.Network.Abstractions/Hive.Network.Abstractions.csproj" />
     <Project Path="Hive.Network.Kcp/Hive.Network.Kcp.csproj" />
     <Project Path="Hive.Network.Quic/Hive.Network.Quic.csproj" />

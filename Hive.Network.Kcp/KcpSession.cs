@@ -159,6 +159,8 @@ namespace Hive.Network.Kcp
 
         public override void Close()
         {
+            base.Close();
+
             IsConnected = false;
             Kcp?.Dispose();
             Kcp = null;

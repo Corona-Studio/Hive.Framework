@@ -55,6 +55,8 @@ public sealed class TcpSession : AbstractSession
 
     public override void Close()
     {
+        base.Close();
+
         IsConnected = false;
         Socket?.Close();
         Socket?.Dispose();

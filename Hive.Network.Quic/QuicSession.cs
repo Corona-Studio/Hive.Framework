@@ -70,6 +70,8 @@ public sealed class QuicSession : AbstractSession
 
     public override void Close()
     {
+        base.Close();
+
         IsConnected = false;
 
         if (QuicStream != null)
