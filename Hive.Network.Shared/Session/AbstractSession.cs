@@ -279,7 +279,7 @@ namespace Hive.Network.Shared.Session
                     if (!IsConnected || !CanReceive)
                     {
                         Logger.LogSocketNotReady(IsConnected, CanReceive);
-                        await Task.Delay(50, token);
+                        await Task.Delay(10, token);
                         continue;
                     }
 
