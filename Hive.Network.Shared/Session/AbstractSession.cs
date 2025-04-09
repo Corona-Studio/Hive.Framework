@@ -10,6 +10,7 @@ using Hive.Common.Shared.Helpers;
 using Hive.Network.Abstractions;
 using Hive.Network.Abstractions.Session;
 using Microsoft.Extensions.Logging;
+using Microsoft.IO;
 
 namespace Hive.Network.Shared.Session
 {
@@ -36,8 +37,8 @@ namespace Hive.Network.Shared.Session
             Id = id;
         }
 
-        protected Pipe? SendPipe { get; set; } = new();
-        protected Pipe? ReceivePipe { get; set; } = new();
+        protected Pipe? SendPipe { get; set; } = new(new PipeOptions(minimumSegmentSize: RecyclableMemoryStreamManager.DefaultBlockSize));
+        protected Pipe? ReceivePipe { get; set; } = new(new PipeOptions(minimumSegmentSize: RecyclableMemoryStreamManager.DefaultBlockSize));
 
         public abstract bool CanSend { get; }
         public abstract bool CanReceive { get; }
