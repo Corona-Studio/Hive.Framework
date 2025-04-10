@@ -33,15 +33,15 @@ namespace Hive.Network.Udp
 
         public override IPEndPoint? EndPoint => _serverSocket?.LocalEndPoint as IPEndPoint;
 
-        private void InitSocket(IPEndPoint listenEndPoint)
+        private void InitSocket()
         {
-            _serverSocket = new Socket(listenEndPoint.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
+            _serverSocket = new Socket(SocketType.Dgram, ProtocolType.Udp);
         }
 
         public override Task SetupAsync(IPEndPoint listenEndPoint, CancellationToken token)
         {
             if (_serverSocket == null)
-                InitSocket(listenEndPoint);
+                InitSocket();
 
             if (_serverSocket == null) throw new NullReferenceException("ServerSocket is null and InitSocket failed.");
 

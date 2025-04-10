@@ -33,7 +33,7 @@ namespace Hive.Network.Udp
         {
             try
             {
-                var socket = new Socket(remoteEndPoint.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
+                var socket = new Socket(SocketType.Dgram, ProtocolType.Udp);
                 var shakeResult = await socket.HandShakeWith(remoteEndPoint);
 
                 if (!shakeResult.HasValue) return null;

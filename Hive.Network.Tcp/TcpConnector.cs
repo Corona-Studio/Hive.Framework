@@ -27,7 +27,7 @@ public class TcpConnector : IConnector<TcpSession>
     {
         try
         {
-            var socket = new Socket(remoteEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            var socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
             await socket.ConnectAsync(remoteEndPoint);
 
             return ActivatorUtilities.CreateInstance<TcpSession>(_serviceProvider, GetNextSessionId(), socket);

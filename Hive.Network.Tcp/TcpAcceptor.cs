@@ -26,15 +26,15 @@ public sealed class TcpAcceptor : AbstractAcceptor<TcpSession>
     public override IPEndPoint? EndPoint => _serverSocket?.LocalEndPoint as IPEndPoint;
     public override bool IsValid => _serverSocket != null;
 
-    private void InitSocket(IPEndPoint listenEndPoint)
+    private void InitSocket()
     {
-        _serverSocket = new Socket(listenEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+        _serverSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
     }
 
     public override Task SetupAsync(IPEndPoint listenEndPoint, CancellationToken token)
     {
         if (_serverSocket == null)
-            InitSocket(listenEndPoint);
+            InitSocket();
 
         if (_serverSocket == null)
             throw new NullReferenceException("ServerSocket is null and InitSocket failed.");
