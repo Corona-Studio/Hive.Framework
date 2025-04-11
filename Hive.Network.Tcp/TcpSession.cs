@@ -40,17 +40,45 @@ public sealed class TcpSession : AbstractSession
 
     public override async ValueTask<int> SendOnce(ArraySegment<byte> data, CancellationToken token)
     {
-        var len = await Socket.SendAsync(data, SocketFlags.None, token);
+        try
+        {
+            var len = await Socket.SendAsync(data, SocketFlags.None, token);
 
-        if (len == 0)
-            OnSocketError?.Invoke(this, SocketError.ConnectionReset);
+            if (len == 0)
+                OnSocketError?.Invoke(this, SocketError.ConnectionReset);
 
-        return len;
+            return len;
+        }
+        catch (SocketException e)
+        {
+            if (e.SocketErrorCode == SocketError.OperationAborted)
+                return 0;
+
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            return 0;
+        }
     }
 
     public override async ValueTask<int> ReceiveOnce(ArraySegment<byte> buffer, CancellationToken token)
     {
-        return await Socket.ReceiveAsync(buffer, SocketFlags.None, token);
+        try
+        {
+            return await Socket.ReceiveAsync(buffer, SocketFlags.None, token);
+        }
+        catch (SocketException e)
+        {
+            if (e.SocketErrorCode == SocketError.OperationAborted)
+                return 0;
+
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            return 0;
+        }
     }
 
     public override void Close()

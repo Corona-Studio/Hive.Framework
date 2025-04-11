@@ -31,6 +31,7 @@ public class SystemTest
         core.FixedUpdate();
 
         var entity = core.EntityManager.EntityBfsEnumerateList.First(entity => entity is ObjectEntity);
+
         Assert.That(entity.GetComponent<NumberComponent>().Number == 22, Is.True);
     }
 

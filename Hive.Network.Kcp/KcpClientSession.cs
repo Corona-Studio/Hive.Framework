@@ -2,18 +2,17 @@
 using System.Buffers;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Hive.Common.Shared.Helpers;
 using Hive.Network.Shared;
 using Microsoft.Extensions.Logging;
 
 namespace Hive.Network.Kcp
 {
-    public class KcpClientSession : KcpSession
+    public sealed class KcpClientSession : KcpSession
     {
-        private readonly ArrayBufferWriter<byte> _receiveBuffer = new();
-        private readonly OpenArrayBufferWriter<byte> _sendBuffer = new();
-
         private Socket? _socket;
 
         public KcpClientSession(
@@ -24,13 +23,13 @@ namespace Hive.Network.Kcp
             : base(sessionId, remoteEndPoint, (IPEndPoint)socket.LocalEndPoint, logger)
         {
             _socket = socket;
-            base.StartKcpLogicAsync(CancellationToken.None);
+            StartKcpLogicAsync(CancellationToken.None);
         }
 
         public override Task StartKcpLogicAsync(CancellationToken token)
         {
             var baseTask = base.StartKcpLogicAsync(token);
-            var receiveTask = Task.Run(() => KcpRawReceiveLoop(token), token);
+            var receiveTask = TaskHelper.Fire(() => KcpRawReceiveLoop(token)).Unwrap();
 
             return Task.WhenAll(baseTask, receiveTask);
         }
@@ -38,23 +37,22 @@ namespace Hive.Network.Kcp
         public override async ValueTask<int> SendOnce(ArraySegment<byte> data, CancellationToken token)
         {
             var sentLen = 0;
+            var sendBuffer = new ArrayBufferWriter<byte>(NetworkSettings.DefaultBufferSize);
 
-            await Kcp!.OutputAsync(_sendBuffer);
+            await Kcp!.OutputAsync(sendBuffer);
 
-            var sendData = _sendBuffer.Buffer;
-            var segment = new ArraySegment<byte>(sendData, 0, _sendBuffer.WrittenCount);
+            if (!MemoryMarshal.TryGetArray(sendBuffer.WrittenMemory, out var sendData))
+                throw new ArgumentException("SendBuffer is not a valid array segment.");
 
-            while (sentLen < segment.Count)
+            while (sentLen < sendData.Count)
             {
                 var sendThisTime = await _socket.SendToAsync(
-                    segment[sentLen..],
+                    sendData[sentLen..],
                     SocketFlags.None,
                     RemoteEndPoint);
 
                 sentLen += sendThisTime;
             }
-
-            _sendBuffer.Clear();
 
             return sentLen;
         }
@@ -63,28 +61,22 @@ namespace Hive.Network.Kcp
         {
             if (!IsConnected) return 0;
 
-            _receiveBuffer.Clear();
+            var receiveLen = await Kcp!.RecvAsync(buffer);
 
-            await Kcp!.RecvAsync(_receiveBuffer);
+            Logger.LogReceiveClient(receiveLen);
 
-            Logger.LogReceiveClient(_receiveBuffer.WrittenCount);
-
-            if (_receiveBuffer.WrittenCount > buffer.Count) return 0;
-
-            _receiveBuffer.WrittenMemory.CopyTo(buffer);
-
-            return _receiveBuffer.WrittenCount;
+            return receiveLen;
         }
 
         private async Task KcpRawReceiveLoop(CancellationToken token)
         {
             var buffer = ArrayPool<byte>.Shared.Rent(NetworkSettings.DefaultBufferSize);
+            var segment = new ArraySegment<byte>(buffer);
 
             try
             {
                 while (!token.IsCancellationRequested)
                 {
-                    var segment = new ArraySegment<byte>(buffer);
                     var receivedResult = await _socket!.ReceiveFromAsync(segment, SocketFlags.None, RemoteEndPoint);
                     var received = receivedResult.ReceivedBytes;
 

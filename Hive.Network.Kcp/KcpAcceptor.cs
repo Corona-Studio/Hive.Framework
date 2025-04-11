@@ -1,5 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Buffers;
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -14,10 +15,7 @@ namespace Hive.Network.Kcp
 {
     public sealed class KcpAcceptor : AbstractAcceptor<KcpSession>
     {
-        private readonly ReaderWriterLockSlim _dictLock = new();
-        private readonly Dictionary<IPEndPoint, KcpServerSession> _kcpSessions = new();
-
-        private readonly byte[] _receiveBuffer = new byte[NetworkSettings.DefaultBufferSize];
+        private readonly ConcurrentDictionary<IPEndPoint, KcpServerSession> _kcpSessions = new();
         private readonly ObjectFactory<KcpServerSession> _sessionFactory;
         private Socket? _serverSocket;
 
@@ -33,15 +31,15 @@ namespace Hive.Network.Kcp
 
         public override IPEndPoint? EndPoint => _serverSocket?.LocalEndPoint as IPEndPoint;
 
-        private void InitSocket(IPEndPoint listenEndPoint)
+        private void InitSocket()
         {
-            _serverSocket = new Socket(listenEndPoint.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
+            _serverSocket = new Socket(SocketType.Dgram, ProtocolType.Udp);
         }
 
         public override Task SetupAsync(IPEndPoint listenEndPoint, CancellationToken token)
         {
             if (_serverSocket == null)
-                InitSocket(listenEndPoint);
+                InitSocket();
 
             if (_serverSocket == null) throw new NullReferenceException("ServerSocket is null and InitSocket failed.");
 
@@ -62,7 +60,9 @@ namespace Hive.Network.Kcp
             return Task.FromResult(true);
         }
 
-        internal async ValueTask<int> SendAsync(ArraySegment<byte> segment, IPEndPoint endPoint,
+        internal async ValueTask<int> SendAsync(
+            ArraySegment<byte> segment,
+            IPEndPoint endPoint,
             CancellationToken token)
         {
             var sentLen = 0;
@@ -81,16 +81,18 @@ namespace Hive.Network.Kcp
             if (_serverSocket == null)
                 return false;
 
+            var buffer = ArrayPool<byte>.Shared.Rent(NetworkSettings.DefaultBufferSize);
+            var arraySegment = new ArraySegment<byte>(buffer);
+
             try
             {
                 var endPoint = new IPEndPoint(IPAddress.Any, 0);
-                var arraySegment = new ArraySegment<byte>(_receiveBuffer);
                 var receivedArg = await _serverSocket.ReceiveFromAsync(arraySegment, SocketFlags.None, endPoint);
 
                 var received = receivedArg.ReceivedBytes;
                 endPoint = (IPEndPoint)receivedArg.RemoteEndPoint;
 
-                var headMem = _receiveBuffer.AsMemory(0, NetworkSettings.PacketHeaderLength);
+                var headMem = arraySegment.AsMemory(0, NetworkSettings.PacketHeaderLength);
                 // ReSharper disable once RedundantRangeBound
                 var length = BitConverter.ToUInt16(headMem.Span[NetworkSettings.PacketLengthOffset..]);
                 var sessionId = BitConverter.ToInt32(headMem.Span[NetworkSettings.SessionIdOffset..]);
@@ -106,7 +108,7 @@ namespace Hive.Network.Kcp
                 if (isPendingHandShake)
                 {
                     var handshake =
-                        HandShakePacket.ReadFrom(_receiveBuffer.AsSpan()[NetworkSettings.PacketBodyOffset..]);
+                        HandShakePacket.ReadFrom(arraySegment.AsSpan()[NetworkSettings.PacketBodyOffset..]);
                     HandShakePacket next;
                     if (handshake.IsServerFinished())
                     {
@@ -115,59 +117,28 @@ namespace Hive.Network.Kcp
 
                         next = handshake.CreateFinal(id);
 
-                        if (_dictLock.TryEnterWriteLock(10))
-                        {
-                            try
-                            {
-                                _kcpSessions.Add(endPoint, session);
-                                FireOnSessionCreate(session);
-                            }
-                            finally
-                            {
-                                _dictLock.ExitWriteLock();
-                            }
-                        }
-                        else
-                        {
-                            Logger.LogEnterWriteLockFailed();
-                            return false;
-                        }
+                        _kcpSessions.TryAdd(endPoint, session);
+                        FireOnSessionCreate(session);
                     }
                     else
                     {
                         next = handshake.Next();
                     }
 
-                    next.WriteTo(_receiveBuffer.AsSpan()[NetworkSettings.PacketBodyOffset..]);
+                    next.WriteTo(arraySegment.AsSpan()[NetworkSettings.PacketBodyOffset..]);
 
                     await SendAsync(
-                        new ArraySegment<byte>(_receiveBuffer, 0,
-                            NetworkSettings.PacketBodyOffset + HandShakePacket.Size),
+                        arraySegment[..(NetworkSettings.PacketBodyOffset + HandShakePacket.Size)],
                         endPoint,
                         token);
                 }
                 else
                 {
-                    if (_dictLock.TryEnterReadLock(10))
-                    {
-                        try
-                        {
-                            if (_kcpSessions.TryGetValue(endPoint, out var session))
-                                // Copy one time
-                                session.OnReceived(_receiveBuffer.AsMemory()[..received], token);
-                            else
-                                return false;
-                        }
-                        finally
-                        {
-                            _dictLock.ExitReadLock();
-                        }
-                    }
+                    if (_kcpSessions.TryGetValue(endPoint, out var session))
+                        // Copy one time
+                        session.OnReceived(arraySegment.AsMemory()[..received], token);
                     else
-                    {
-                        Logger.LogEnterReadLockFailed();
                         return false;
-                    }
                 }
 
                 return received != 0;
@@ -176,6 +147,10 @@ namespace Hive.Network.Kcp
             {
                 Logger.LogAcceptFailed(e);
                 throw;
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
             }
         }
 
@@ -195,7 +170,6 @@ namespace Hive.Network.Kcp
         public override void Dispose()
         {
             _serverSocket?.Dispose();
-            _dictLock.Dispose();
         }
     }
 
@@ -206,12 +180,6 @@ namespace Hive.Network.Kcp
 
         [LoggerMessage(LogLevel.Warning, "Received: [{recv}] Actual: [{actual}]")]
         public static partial void LogReceivedLengthNotEqualToActualLength(this ILogger logger, int recv, int actual);
-
-        [LoggerMessage(LogLevel.Error, "Enter write lock failed.")]
-        public static partial void LogEnterWriteLockFailed(this ILogger logger);
-
-        [LoggerMessage(LogLevel.Error, "Enter read lock failed.")]
-        public static partial void LogEnterReadLockFailed(this ILogger logger);
 
         [LoggerMessage(LogLevel.Error, "Accept failed.")]
         public static partial void LogAcceptFailed(this ILogger logger, Exception ex);

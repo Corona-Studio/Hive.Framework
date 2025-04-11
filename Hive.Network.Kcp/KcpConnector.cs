@@ -39,6 +39,7 @@ namespace Hive.Network.Kcp
                 if (!shakeResult.HasValue) return null;
 
                 var sessionId = shakeResult.Value.SessionId;
+
                 return _sessionFactory.Invoke(_serviceProvider, new object[]
                 {
                     (int)sessionId,

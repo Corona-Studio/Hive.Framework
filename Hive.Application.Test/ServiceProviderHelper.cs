@@ -1,4 +1,5 @@
-﻿using Hive.Both.General.Dispatchers;
+﻿using Hive.Application.Test.TestMessage;
+using Hive.Both.General.Dispatchers;
 using Hive.Codec.Abstractions;
 using Hive.Codec.Shared;
 using Hive.Network.Abstractions.Session;
@@ -40,6 +41,11 @@ public static class ServiceProviderHelper
         services.BuildSession<TSession, TAcceptor, TConnector, TCodec>();
 
         services.AddSingleton<IDispatcher, DefaultDispatcher>();
+
+        services.Configure<PacketIdMapperOptions>(options =>
+        {
+            options.Register<ComplexMessage>();
+        });
 
         return services.BuildServiceProvider();
     }

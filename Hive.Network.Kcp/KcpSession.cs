@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Net;
 using System.Net.Sockets.Kcp;
-using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Hive.Common.Shared.Helpers;
 using Hive.Network.Shared.Session;
 using Microsoft.Extensions.Logging;
 
@@ -40,8 +40,8 @@ namespace Hive.Network.Kcp
 
         public virtual Task StartKcpLogicAsync(CancellationToken token)
         {
-            var updateTask = Task.Run(() => KcpRawUpdateLoop(token), token);
-            var fillBufferTask = Task.Run(() => FillKcpBufferLoop(token), token);
+            var updateTask = TaskHelper.Fire(() => KcpRawUpdateLoop(token)).Unwrap();
+            var fillBufferTask = TaskHelper.Fire(() => FillKcpBufferLoop(token)).Unwrap();
 
             return Task.WhenAll(updateTask, fillBufferTask);
         }
@@ -86,9 +86,9 @@ namespace Hive.Network.Kcp
         {
             var kcp = new UnSafeSegManager.KcpIO(conv);
             kcp.NoDelay(1, 10, 2, 1);
-            // kcp.WndSize(128, 128);
-            // kcp.SetMtu(512);
-            // kcp.fastlimit = -1;
+            kcp.WndSize(128, 128);
+            kcp.SetMtu(512);
+            kcp.fastlimit = -1;
 
             return kcp;
         }
@@ -118,35 +118,39 @@ namespace Hive.Network.Kcp
 
         private async Task FillKcpBufferLoop(CancellationToken token)
         {
+            if (Kcp == null)
+                throw new NullReferenceException("Kcp Init Failed!");
+            if (SendPipe == null)
+                throw new NullReferenceException(nameof(SendPipe));
+
             try
             {
-                if (Kcp == null)
-                    throw new NullReferenceException("Kcp Init Failed!");
-                if (SendPipe == null)
-                    throw new NullReferenceException(nameof(SendPipe));
-
                 while (!token.IsCancellationRequested && IsConnected)
                 {
                     var result = await SendPipe.Reader.ReadAsync(token);
-                    var sequence = result.Buffer;
+                    var buffer = result.Buffer;
 
-                    if (!SequenceMarshal.TryGetReadOnlyMemory(sequence, out var buffer))
-                        throw new InvalidOperationException(
-                            "Failed to create ReadOnlyMemory<byte> from ReadOnlySequence<byte>!");
-
+                    var totalLen = buffer.Length;
                     var sentLen = 0;
 
-                    while (sentLen < buffer.Length)
+                    while (sentLen < totalLen && IsConnected)
                     {
-                        var sendThisTime = Kcp!.Send(buffer.Span[sentLen..]);
+                        foreach (var seq in buffer)
+                        {
+                            var seqSent = 0;
 
-                        if (sendThisTime < 0)
-                            throw new InvalidOperationException("KCP 返回了小于零的发送长度，可能为 KcpCore 的内部错误！");
+                            while (seqSent < seq.Length)
+                            {
+                                var sendThisTime = Kcp!.Send(seq.Span[sentLen..]);
 
-                        sentLen += sendThisTime;
+                                seqSent += sendThisTime;
+                            }
+
+                            sentLen += seqSent;
+                        }
                     }
 
-                    SendPipe.Reader.AdvanceTo(sequence.GetPosition(sentLen));
+                    SendPipe.Reader.AdvanceTo(buffer.End);
 
                     if (result.IsCompleted) break;
                 }

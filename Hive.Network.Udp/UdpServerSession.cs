@@ -10,7 +10,7 @@ namespace Hive.Network.Udp
     /// <summary>
     ///     基于 Socket 的 UDP 传输层实现
     /// </summary>
-    public class UdpServerSession : UdpSession
+    public sealed class UdpServerSession : UdpSession
     {
         public UdpServerSession(
             int sessionId,

@@ -8,11 +8,8 @@ using Microsoft.Extensions.Logging;
 
 namespace Hive.Network.Kcp
 {
-    public class KcpServerSession : KcpSession
+    public sealed class KcpServerSession : KcpSession
     {
-        private readonly ArrayBufferWriter<byte> _receiveBuffer = new(NetworkSettings.DefaultBufferSize);
-        private readonly ArrayBufferWriter<byte> _sendBuffer = new(NetworkSettings.DefaultBufferSize);
-
         public KcpServerSession(
             int sessionId,
             IPEndPoint remoteEndPoint,
@@ -20,7 +17,7 @@ namespace Hive.Network.Kcp
             ILogger<KcpSession> logger)
             : base(sessionId, remoteEndPoint, localEndPoint, logger)
         {
-            base.StartKcpLogicAsync(CancellationToken.None);
+            StartKcpLogicAsync(CancellationToken.None);
         }
 
         public event Func<ArraySegment<byte>, IPEndPoint, CancellationToken, ValueTask<int>>? OnSendAsync;
@@ -30,15 +27,15 @@ namespace Hive.Network.Kcp
             if (!IsConnected)
                 return 0;
 
-            _sendBuffer.Clear();
+            var sendBuffer = new ArrayBufferWriter<byte>(NetworkSettings.DefaultBufferSize);
 
-            await Kcp!.OutputAsync(_sendBuffer);
+            await Kcp!.OutputAsync(sendBuffer);
 
-            if (_sendBuffer.WrittenCount == 0) return 0;
+            if (sendBuffer.WrittenCount == 0) return 0;
             if (OnSendAsync == null) return 0;
 
-            var result = new ArraySegment<byte>(new byte[_sendBuffer.WrittenCount]);
-            _sendBuffer.WrittenSpan.CopyTo(result);
+            var result = new ArraySegment<byte>(new byte[sendBuffer.WrittenCount]);
+            sendBuffer.WrittenSpan.CopyTo(result);
 
             return await OnSendAsync.Invoke(result, RemoteEndPoint, token);
         }
@@ -57,15 +54,9 @@ namespace Hive.Network.Kcp
         {
             if (!IsConnected) return 0;
 
-            _receiveBuffer.Clear();
+            var receiveLen = await Kcp!.RecvAsync(buffer);
 
-            await Kcp!.RecvAsync(_receiveBuffer);
-
-            if (_receiveBuffer.WrittenCount > buffer.Count) return 0;
-
-            _receiveBuffer.WrittenSpan.CopyTo(buffer);
-
-            return _receiveBuffer.WrittenCount;
+            return receiveLen;
         }
     }
 

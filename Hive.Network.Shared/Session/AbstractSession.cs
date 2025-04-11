@@ -192,7 +192,7 @@ namespace Hive.Network.Shared.Session
             {
                 SendingLoopRunning = true;
 
-                while (!token.IsCancellationRequested)
+                while (!token.IsCancellationRequested && IsConnected)
                 {
                     var result = await SendPipe.Reader.ReadAsync(token);
                     var buffer = result.Buffer;

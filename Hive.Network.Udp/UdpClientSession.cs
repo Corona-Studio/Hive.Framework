@@ -10,7 +10,7 @@ namespace Hive.Network.Udp
     /// <summary>
     ///     基于 Socket 的 UDP 传输层实现
     /// </summary>
-    public class UdpClientSession : UdpSession
+    public sealed class UdpClientSession : UdpSession
     {
         private Socket? _socket;
 
@@ -26,18 +26,47 @@ namespace Hive.Network.Udp
 
         public override async ValueTask<int> SendOnce(ArraySegment<byte> data, CancellationToken token)
         {
-            if (!IsConnected)
+            if (token.IsCancellationRequested || !IsConnected)
                 return 0;
 
-            return await _socket.SendToAsync(data, SocketFlags.None, RemoteEndPoint);
+            try
+            {
+                return await _socket.SendToAsync(data, SocketFlags.None, RemoteEndPoint);
+            }
+            catch (SocketException e)
+            {
+                if (e.SocketErrorCode == SocketError.OperationAborted)
+                    return 0;
+
+                throw;
+            }
+            catch (OperationCanceledException)
+            {
+                return 0;
+            }
         }
 
         public override async ValueTask<int> ReceiveOnce(ArraySegment<byte> buffer, CancellationToken token)
         {
-            if (!IsConnected) return 0;
+            if (token.IsCancellationRequested || !IsConnected)
+                return 0;
 
-            var received = await _socket.ReceiveFromAsync(buffer, SocketFlags.None, RemoteEndPoint);
-            return received.ReceivedBytes;
+            try
+            {
+                var received = await _socket.ReceiveFromAsync(buffer, SocketFlags.None, RemoteEndPoint);
+                return received.ReceivedBytes;
+            }
+            catch (SocketException e)
+            {
+                if (e.SocketErrorCode == SocketError.OperationAborted)
+                    return 0;
+
+                throw;
+            }
+            catch (OperationCanceledException)
+            {
+                return 0;
+            }
         }
 
         public override void Close()

@@ -1,4 +1,5 @@
-﻿using System.Threading;
+﻿using System;
+using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Hive.Both.General.Dispatchers;
@@ -38,7 +39,14 @@ namespace Hive.Both.General.Channels
 
         ~MessageChannel()
         {
-            _dispatcher.RemoveHandler<TRead>(OnReceive);
+            try
+            {
+                _dispatcher.RemoveHandler<TRead>(OnReceive);
+            }
+            catch (ObjectDisposedException)
+            {
+                // Ignore
+            }
         }
     }
 }
