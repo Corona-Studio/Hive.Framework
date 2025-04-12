@@ -7,13 +7,11 @@ namespace Hive.Application.Test;
 public class DummySession : ISession
 {
     public SessionId Id { get; }
-    public bool StreamMode { get; set; }
     public IPEndPoint? LocalEndPoint { get; }
     public IPEndPoint? RemoteEndPoint { get; }
     public long LastHeartBeatTime { get; }  
 
     public event SessionReceivedHandler? OnMessageReceived;
-    public event SessionRawReceivedHandler? OnRawStreamReceived;
 
     public Task StartAsync(CancellationToken token)
     {
