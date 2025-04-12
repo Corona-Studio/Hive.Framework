@@ -12,6 +12,7 @@ namespace Hive.Network.Abstractions.Session;
 public interface ISession
 {
     public SessionId Id { get; }
+    public bool StreamMode { get; set; }
 
     IPEndPoint? LocalEndPoint { get; }
     IPEndPoint? RemoteEndPoint { get; }
@@ -23,11 +24,13 @@ public interface ISession
     /// </summary>
     event SessionReceivedHandler OnMessageReceived;
 
+    event SessionRawReceivedHandler OnRawStreamReceived;
+
 
     public Task StartAsync(CancellationToken token);
 
 
-    ValueTask SendAsync(MemoryStream ms, CancellationToken token = default);
+    ValueTask SendAsync(Stream ms, CancellationToken token = default);
 
     /// <summary>
     ///     发送数据
@@ -35,7 +38,7 @@ public interface ISession
     /// <param name="ms"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    ValueTask<bool> TrySendAsync(MemoryStream ms, CancellationToken token = default);
+    ValueTask<bool> TrySendAsync(Stream ms, CancellationToken token = default);
 
     void Close();
 }

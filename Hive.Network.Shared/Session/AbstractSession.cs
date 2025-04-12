@@ -65,10 +65,12 @@ namespace Hive.Network.Shared.Session
         }
 
         public SessionId Id { get; }
+        public bool StreamMode { get; set; } = false;
         public abstract IPEndPoint? LocalEndPoint { get; }
         public abstract IPEndPoint? RemoteEndPoint { get; }
 
         public event SessionReceivedHandler? OnMessageReceived;
+        public event SessionRawReceivedHandler? OnRawStreamReceived;
 
         public virtual Task StartAsync(CancellationToken token)
         {
@@ -94,13 +96,18 @@ namespace Hive.Network.Shared.Session
             OnMessageReceived?.Invoke(this, buffer);
         }
 
+        protected void FireRawStreamReceived(ReadOnlySequence<byte> buffer)
+        {
+            OnRawStreamReceived?.Invoke(this, buffer);
+        }
+
         public abstract ValueTask<int> SendOnce(ArraySegment<byte> data, CancellationToken token);
 
         public abstract ValueTask<int> ReceiveOnce(ArraySegment<byte> buffer, CancellationToken token);
 
         #region Send
 
-        public virtual async ValueTask SendAsync(MemoryStream ms, CancellationToken token = default)
+        public virtual async ValueTask SendAsync(Stream ms, CancellationToken token = default)
         {
             if (SendPipe == null)
                 throw new NullReferenceException(nameof(SendPipe));
@@ -108,7 +115,7 @@ namespace Hive.Network.Shared.Session
             await TrySendAsync(ms, token);
         }
 
-        public virtual async ValueTask<bool> TrySendAsync(MemoryStream ms, CancellationToken token = default)
+        public virtual async ValueTask<bool> TrySendAsync(Stream ms, CancellationToken token = default)
         {
             if (SendPipe == null)
                 return false;
@@ -140,7 +147,7 @@ namespace Hive.Network.Shared.Session
         /// <returns></returns>
         protected virtual async ValueTask<bool> FillSendPipeAsync(
             PipeWriter writer,
-            MemoryStream stream,
+            Stream stream,
             CancellationToken token = default)
         {
             stream.Seek(0, SeekOrigin.Begin);
@@ -298,6 +305,15 @@ namespace Hive.Network.Shared.Session
 
                     while (buffer.Length > 0)
                     {
+                        if (StreamMode)
+                        {
+                            // Stream mode, no need to parse the packet
+                            FireRawStreamReceived(buffer);
+                            consumed = buffer.End;
+                            examined = buffer.End;
+                            break;
+                        }
+
                         if (buffer.Length < NetworkSettings.PacketBodyOffset)
                         {
                             // Not enough data to read the packet header
