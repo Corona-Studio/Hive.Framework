@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
+using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using Hive.Network.Abstractions;
@@ -78,7 +79,17 @@ namespace Hive.Network.Shared.Session
             {
                 while (!token.IsCancellationRequested)
                 {
-                    await TryDoOnceAcceptAsync(token);
+                    try
+                    {
+                        await TryDoOnceAcceptAsync(token);
+                    }
+                    catch (SocketException e)
+                    {
+                        if (e.ErrorCode != 125) throw;
+
+                        // Operation canceled
+                        Logger.LogClientAcceptInterrupted();
+                    }
                 }
             }
             catch (TaskCanceledException e)
@@ -190,5 +201,8 @@ namespace Hive.Network.Shared.Session
 
         [LoggerMessage(LogLevel.Information, "Session {SessionId} closed")]
         public static partial void LogSessionClosed(this ILogger logger, SessionId sessionId);
+
+        [LoggerMessage(LogLevel.Warning, "Client accept interrupted")]
+        public static partial void LogClientAcceptInterrupted(this ILogger logger);
     }
 }
