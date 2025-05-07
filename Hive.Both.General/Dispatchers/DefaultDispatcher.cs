@@ -70,7 +70,14 @@ namespace Hive.Both.General.Dispatchers
                     if (warp.BindingSession != null && warp.BindingSession != session)
                         continue;
 
-                    warp.Call(this, session, message);
+                    try
+                    {
+                        warp.Call(this, session, message);
+                    }
+                    catch (Exception e)
+                    {
+                        _logger.LogFailedToInvokeMessageHandler(e, message);
+                    }
                 }
         }
 
@@ -318,5 +325,8 @@ namespace Hive.Both.General.Dispatchers
 
         [LoggerMessage(LogLevel.Trace, "Add handler succeed, id: {HandlerId}, message type: {type}")]
         public static partial void LogAddHandlerSucceed(this ILogger logger, HandlerId handlerId, Type type);
+
+        [LoggerMessage(LogLevel.Critical, "Failed to invoke handler message! {@msg}")]
+        public static partial void LogFailedToInvokeMessageHandler(this ILogger logger, Exception ex, object? msg);
     }
 }
