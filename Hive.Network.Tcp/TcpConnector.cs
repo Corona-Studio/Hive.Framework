@@ -25,12 +25,21 @@ public class TcpConnector : IConnector<TcpSession>
 
     public async ValueTask<TcpSession?> ConnectAsync(IPEndPoint remoteEndPoint, CancellationToken token = default)
     {
+        var socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
+        await using var registration = token.Register(() =>
+        {
+            try { socket.Close(); } catch { /* Ignore */ }
+        });
+
         try
         {
-            var socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
             await socket.ConnectAsync(remoteEndPoint);
 
             return ActivatorUtilities.CreateInstance<TcpSession>(_serviceProvider, GetNextSessionId(), socket);
+        }
+        catch (ObjectDisposedException) when (token.IsCancellationRequested)
+        {
+            throw new OperationCanceledException(token);
         }
         catch (SocketException e)
         {
