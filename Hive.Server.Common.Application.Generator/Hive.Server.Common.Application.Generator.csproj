@@ -6,7 +6,7 @@
         <Nullable>disable</Nullable>
         <RootNamespace>Hive.Server.Common.Application.SourceGen</RootNamespace>
 		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
-		<LangVersion>11</LangVersion>
+		<LangVersion>latest</LangVersion>
 	</PropertyGroup>
 
     <ItemGroup>
