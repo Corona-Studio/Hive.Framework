@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace Hive.Common.Shared.Collections
 {
-    public class MultiHashSetDictionary<TK, TV> : Dictionary<TK, HashSet<TV>>
+    public class MultiHashSetDictionary<TK, TV> : Dictionary<TK, HashSet<TV>> where TK : notnull
     {
         /// <summary>
         ///     返回内部的list

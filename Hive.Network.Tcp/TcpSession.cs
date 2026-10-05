@@ -40,9 +40,13 @@ public sealed class TcpSession : AbstractSession
 
     public override async ValueTask<int> SendOnce(ArraySegment<byte> data, CancellationToken token)
     {
+        var socket = Socket;
+        if (socket is null || token.IsCancellationRequested)
+            return 0;
+
         try
         {
-            var len = await Socket.SendAsync(data, SocketFlags.None, token);
+            var len = await socket.SendAsync(data, SocketFlags.None, token);
 
             if (len == 0)
                 OnSocketError?.Invoke(this, SocketError.ConnectionReset);
@@ -64,9 +68,13 @@ public sealed class TcpSession : AbstractSession
 
     public override async ValueTask<int> ReceiveOnce(ArraySegment<byte> buffer, CancellationToken token)
     {
+        var socket = Socket;
+        if (socket is null || token.IsCancellationRequested)
+            return 0;
+
         try
         {
-            return await Socket.ReceiveAsync(buffer, SocketFlags.None, token);
+            return await socket.ReceiveAsync(buffer, SocketFlags.None, token);
         }
         catch (SocketException e)
         {

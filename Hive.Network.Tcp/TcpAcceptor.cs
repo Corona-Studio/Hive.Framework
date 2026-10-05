@@ -76,7 +76,7 @@ public sealed class TcpAcceptor : AbstractAcceptor<TcpSession>
         FireOnSessionCreate(clientSession);
     }
 
-    private void OnSocketError(object sender, SocketError e)
+    private void OnSocketError(object? sender, SocketError e)
     {
         if (sender is TcpSession session)
         {

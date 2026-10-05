@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Hive.Common.Shared.Collections
 {
@@ -8,7 +9,7 @@ namespace Hive.Common.Shared.Collections
     /// </summary>
     /// <typeparam name="TK">键类型</typeparam>
     /// <typeparam name="TV">值类型</typeparam>
-    public class BiDictionary<TK, TV>
+    public class BiDictionary<TK, TV> where TK : notnull where TV : notnull
     {
         private readonly Dictionary<TK, TV> _kv = new();
         private readonly Dictionary<TV, TK> _vk = new();
@@ -106,12 +107,12 @@ namespace Hive.Common.Shared.Collections
             return _kv.ContainsKey(key) && _vk.ContainsKey(value);
         }
 
-        public bool TryGetValueByKey(TK key, out TV value)
+        public bool TryGetValueByKey(TK key, [MaybeNullWhen(false)] out TV value)
         {
             return _kv.TryGetValue(key, out value);
         }
 
-        public bool TryGetKeyByValue(TV value, out TK key)
+        public bool TryGetKeyByValue(TV value, [MaybeNullWhen(false)] out TK key)
         {
             return _vk.TryGetValue(value, out key);
         }

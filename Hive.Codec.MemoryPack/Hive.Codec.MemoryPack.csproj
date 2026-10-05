@@ -15,4 +15,8 @@
     <ProjectReference Include="..\Hive.Codec.Shared\Hive.Codec.Shared.csproj" />
   </ItemGroup>
 
+  <PropertyGroup>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+
 </Project>

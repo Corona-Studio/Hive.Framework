@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Hive.Common.Shared.Collections
 {
-    public class MultiDictionary<TK, TV> : Dictionary<TK, List<TV>>
+    public class MultiDictionary<TK, TV> : Dictionary<TK, List<TV>> where TK : notnull
     {
         /// <summary>
         ///     返回内部的list

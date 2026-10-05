@@ -65,11 +65,15 @@ namespace Hive.Network.Udp
         internal async ValueTask<int> SendAsync(ArraySegment<byte> segment, IPEndPoint endPoint,
             CancellationToken token)
         {
+            var socket = _serverSocket;
+            if (socket is null)
+                return 0;
+
             var sentLen = 0;
 
             while (sentLen < segment.Count)
             {
-                var len = await _serverSocket.SendToAsync(segment[sentLen..], SocketFlags.None, endPoint);
+                var len = await socket.SendToAsync(segment[sentLen..], SocketFlags.None, endPoint);
                 sentLen += len;
             }
 
@@ -78,14 +82,15 @@ namespace Hive.Network.Udp
 
         public override async ValueTask<bool> TryDoOnceAcceptAsync(CancellationToken token)
         {
-            if (_serverSocket == null)
+            var socket = _serverSocket;
+            if (socket is null)
                 return false;
 
             try
             {
                 var endPoint = new IPEndPoint(IPAddress.Any, 0);
                 var arraySegment = new ArraySegment<byte>(_receiveBuffer);
-                var receivedArg = await _serverSocket.ReceiveFromAsync(arraySegment, SocketFlags.None, endPoint);
+                var receivedArg = await socket.ReceiveFromAsync(arraySegment, SocketFlags.None, endPoint);
 
                 var received = receivedArg.ReceivedBytes;
                 endPoint = (IPEndPoint)receivedArg.RemoteEndPoint;
@@ -111,7 +116,7 @@ namespace Hive.Network.Udp
                     if (handshake.IsServerFinished())
                     {
                         var id = GetNextSessionId();
-                        var session = CreateUdpSession(id, endPoint, (IPEndPoint)_serverSocket.LocalEndPoint);
+                        var session = CreateUdpSession(id, endPoint, socket.LocalEndPoint as IPEndPoint ?? throw new InvalidOperationException("Server socket must be bound to an IP endpoint."));
                         next = handshake.CreateFinal(id);
                         if (_dictLock.TryEnterWriteLock(10))
                         {

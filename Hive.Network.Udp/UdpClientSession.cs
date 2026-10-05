@@ -19,19 +19,20 @@ namespace Hive.Network.Udp
             Socket socket,
             IPEndPoint remoteEndPoint,
             ILogger<UdpClientSession> logger)
-            : base(sessionId, remoteEndPoint, (IPEndPoint)socket.LocalEndPoint, logger)
+            : base(sessionId, remoteEndPoint, socket.LocalEndPoint as IPEndPoint ?? throw new ArgumentException("Socket must be bound to an IP endpoint.", nameof(socket)), logger)
         {
             _socket = socket;
         }
 
         public override async ValueTask<int> SendOnce(ArraySegment<byte> data, CancellationToken token)
         {
-            if (token.IsCancellationRequested || !IsConnected)
+            var socket = _socket;
+            if (token.IsCancellationRequested || !IsConnected || socket is null)
                 return 0;
 
             try
             {
-                return await _socket.SendToAsync(data, SocketFlags.None, RemoteEndPoint);
+                return await socket.SendToAsync(data, SocketFlags.None, RemoteEndPoint);
             }
             catch (SocketException e)
             {
@@ -48,12 +49,13 @@ namespace Hive.Network.Udp
 
         public override async ValueTask<int> ReceiveOnce(ArraySegment<byte> buffer, CancellationToken token)
         {
-            if (token.IsCancellationRequested || !IsConnected)
+            var socket = _socket;
+            if (token.IsCancellationRequested || !IsConnected || socket is null)
                 return 0;
 
             try
             {
-                var received = await _socket.ReceiveFromAsync(buffer, SocketFlags.None, RemoteEndPoint);
+                var received = await socket.ReceiveFromAsync(buffer, SocketFlags.None, RemoteEndPoint);
                 return received.ReceivedBytes;
             }
             catch (SocketException e)
