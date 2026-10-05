@@ -2,6 +2,7 @@
 using Hive.Codec.Shared;
 using MemoryPack;
 using System.Buffers;
+using Hive.Common.Shared.Pooling;
 
 namespace Hive.Codec.MemoryPack;
 
@@ -21,11 +22,10 @@ public class MemoryPackPacketCodec(
             return (int)(stream.Position - position);
         }
         
-        var bytes = MemoryPackSerializer.Serialize(message).AsSpan();
-
-        stream.Write(bytes);
-
-        return bytes.Length;
+        using var buffer = PooledBufferStream.Rent(int.MaxValue);
+        MemoryPackSerializer.Serialize(buffer, message);
+        stream.Write(buffer.Memory.Span);
+        return (int)buffer.Length;
     }
 
     protected override object? DecodeBody(ReadOnlySequence<byte> buffer, Type type)

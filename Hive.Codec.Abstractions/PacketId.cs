@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -23,10 +23,10 @@ namespace Hive.Codec.Abstractions
         
         public static PacketId From(ReadOnlySequence<byte> buffer)
         {
-            return new PacketId()
-            {
-                Id = BitConverter.ToInt32(buffer.FirstSpan)
-            };
+            var reader = new SequenceReader<byte>(buffer);
+            if (!reader.TryReadLittleEndian(out int id))
+                throw new InvalidOperationException("Failed to read packet id");
+            return new PacketId { Id = id };
         }
 #else
         public ushort Id;

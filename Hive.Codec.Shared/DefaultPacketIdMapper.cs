@@ -1,8 +1,9 @@
-﻿using System;
+using System;
 using System.Data;
 using Hive.Codec.Abstractions;
 using Hive.Codec.Shared.Helpers;
-using Hive.Common.Shared.Collections;
+using System.Collections.Generic;
+using System.Threading;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -13,7 +14,17 @@ public class DefaultPacketIdMapper : IPacketIdMapper
     private readonly object _lock = new();
 
     private readonly ILogger<DefaultPacketIdMapper> _logger;
-    private readonly BiDictionary<Type, PacketId> _typeIdMapping = new();
+    private sealed class Mapping
+    {
+        public readonly Dictionary<Type, PacketId> Types;
+        public readonly Dictionary<PacketId, Type> Ids;
+        public Mapping(Dictionary<Type, PacketId> types, Dictionary<PacketId, Type> ids)
+        {
+            Types = types;
+            Ids = ids;
+        }
+    }
+    private Mapping _mapping = new(new Dictionary<Type, PacketId>(), new Dictionary<PacketId, Type>());
 
     public DefaultPacketIdMapper(
         IOptions<PacketIdMapperOptions> registerOptions,
@@ -39,17 +50,20 @@ public class DefaultPacketIdMapper : IPacketIdMapper
     {
         lock (_lock)
         {
-            if (_typeIdMapping.ContainsKey(type))
+            var mapping = _mapping;
+            if (mapping.Types.ContainsKey(type))
                 throw new DuplicateNameException(
                     $"Failed to register msg type {type}. You already registered it!");
 
             var newId = TypeHashUtil.GetTypeHash(type);
 
-            if (_typeIdMapping.ContainsValue(newId))
+            if (mapping.Ids.ContainsKey(newId))
                 throw new DuplicateNameException(
                     $"Failed to register msg type {type}. Duplicate id found [ID - {newId}]!");
 
-            _typeIdMapping.Add(type, newId);
+            var types = new Dictionary<Type, PacketId>(mapping.Types) { [type] = newId };
+            var ids = new Dictionary<PacketId, Type>(mapping.Ids) { [newId] = type };
+            Volatile.Write(ref _mapping, new Mapping(types, ids));
             id = newId;
 
             _logger.RegisteredMsgType(type, newId);
@@ -63,20 +77,14 @@ public class DefaultPacketIdMapper : IPacketIdMapper
 
     public Type GetPacketType(PacketId id)
     {
-        lock (_lock)
-        {
-            if (_typeIdMapping.TryGetKeyByValue(id, out var type)) return type;
-        }
+        if (Volatile.Read(ref _mapping).Ids.TryGetValue(id, out var type)) return type;
 
         throw new InvalidOperationException($"Cannot get type of msg id {id}");
     }
 
     public PacketId GetPacketId(Type type)
     {
-        lock (_lock)
-        {
-            if (_typeIdMapping.TryGetValueByKey(type, out var id)) return id;
-        }
+        if (Volatile.Read(ref _mapping).Types.TryGetValue(type, out var id)) return id;
 
         throw new InvalidOperationException($"Cannot get id of msg type {type}");
     }

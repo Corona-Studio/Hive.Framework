@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
@@ -19,7 +19,7 @@ public interface ISession
     /// <summary>
     /// 收到数据后的回调，不需要IO，无需异步。
     /// 拿到后立刻处理，否则数据会被回收。
-    /// <para>如果要缓存，必须复制一份数据</para>
+    /// <para>异步无拷贝消费请使用 IBorrowedBufferSession.ReceiveHandler，并等待消费完成。</para>
     /// </summary>
     event SessionReceivedHandler OnMessageReceived;
 

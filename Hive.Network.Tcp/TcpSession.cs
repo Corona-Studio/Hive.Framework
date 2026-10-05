@@ -1,4 +1,7 @@
-﻿using System;
+using System;
+using System.Buffers;
+using System.Runtime.CompilerServices;
+using Hive.Network.Abstractions.Session;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -12,7 +15,7 @@ namespace Hive.Network.Tcp;
 /// <summary>
 ///     基于 Socket 的 TCP 传输层实现
 /// </summary>
-public sealed class TcpSession : AbstractSession
+public sealed class TcpSession : AbstractSession, IWritableFrameSession
 {
     public TcpSession(
         int sessionId,
@@ -21,14 +24,18 @@ public sealed class TcpSession : AbstractSession
         : base(sessionId, logger)
     {
         Socket = socket;
+        _localEndPoint = socket.LocalEndPoint as IPEndPoint;
+        _remoteEndPoint = socket.RemoteEndPoint as IPEndPoint;
         socket.ReceiveBufferSize = NetworkSettings.DefaultSocketBufferSize;
     }
 
+    private readonly IPEndPoint? _localEndPoint;
+    private readonly IPEndPoint? _remoteEndPoint;
     public Socket? Socket { get; private set; }
 
-    public override IPEndPoint? LocalEndPoint => Socket?.LocalEndPoint as IPEndPoint;
+    public override IPEndPoint? LocalEndPoint => Socket == null ? null : _localEndPoint;
 
-    public override IPEndPoint? RemoteEndPoint => Socket?.RemoteEndPoint as IPEndPoint;
+    public override IPEndPoint? RemoteEndPoint => Socket == null ? null : _remoteEndPoint;
 
     public override bool CanSend => IsConnected && SendingLoopRunning;
 
@@ -38,6 +45,15 @@ public sealed class TcpSession : AbstractSession
 
     public event EventHandler<SocketError>? OnSocketError;
 
+    public ValueTask<bool> TrySendFrameAsync(Memory<byte> frame, CancellationToken token = default)
+        => SendWritableFrameAsync(frame, token);
+
+    public ValueTask<bool> TrySendAsync(ReadOnlySequence<byte> payload, CancellationToken token = default)
+        => SendBorrowedSequenceAsync(payload, token);
+
+#if NET10_0_OR_GREATER
+    [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
+#endif
     public override async ValueTask<int> SendOnce(ArraySegment<byte> data, CancellationToken token)
     {
         var socket = Socket;
@@ -66,6 +82,9 @@ public sealed class TcpSession : AbstractSession
         }
     }
 
+#if NET10_0_OR_GREATER
+    [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
+#endif
     public override async ValueTask<int> ReceiveOnce(ArraySegment<byte> buffer, CancellationToken token)
     {
         var socket = Socket;
