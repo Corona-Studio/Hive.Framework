@@ -11,8 +11,8 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="MemoryPack" Version="1.21.4" />
-      <PackageReference Include="MemoryPack.Core" Version="1.21.4" />
+      <PackageReference Include="MemoryPack" />
+      <PackageReference Include="MemoryPack.Core" />
     </ItemGroup>
 
 </Project>

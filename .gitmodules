@@ -1,3 +1,6 @@
 [submodule "Common/Unity.Mathematics"]
 	path = Common/Unity.Mathematics
 	url = https://github.com/Corona-Studio/Unity.Mathematics.git
+[submodule "SourceGeneration"]
+	path = SourceGeneration
+	url = https://github.com/Corona-Studio/Corona.SourceGeneration.git

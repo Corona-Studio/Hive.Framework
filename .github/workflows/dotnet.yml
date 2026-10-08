@@ -20,6 +20,7 @@ jobs:
       with:
         fetch-depth: 0
         submodules: recursive
+        token: ${{ secrets.ACCESS_TOKEN || github.token }}
     
     - name: Setup .NET
       uses: actions/setup-dotnet@v3

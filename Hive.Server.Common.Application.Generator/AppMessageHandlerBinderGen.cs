@@ -1,143 +1,60 @@
-﻿#define GENERATE_BY_TEMPLATE
-
-using System.Collections.Generic;
+using System;
 using System.Linq;
-using System.Text;
+using Corona.SourceGeneration;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
-using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
-namespace Hive.Server.Common.Application.SourceGen
+namespace Hive.Server.Common.Application.SourceGen;
+
+[Generator]
+public sealed class AppMessageHandlerBinderGen : IIncrementalGenerator
 {
-    [Generator]
-    public class AppMessageHandlerBinderGen : IIncrementalGenerator
+    private static readonly DiagnosticDescriptor InvalidHandler = new("HIVEAPP001", "Invalid application message handler",
+        "Handler '{0}' must be an accessible instance method in a top-level non-generic ServerApplicationBase, accept a request or MessageContext<T> (and optional ISession), and return ValueTask<ResultContext<T>>",
+        "Hive.Application", DiagnosticSeverity.Error, true);
+
+    public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        private static DiagnosticDescriptor _descriptor = new DiagnosticDescriptor("Hive0001", "Hive0001", "Hive0001", "Hive",
-            DiagnosticSeverity.Error, true);
-        
-        
-        private const string Template = """
-
-{0}
-
-namespace {1}
-{{
-    public class {2}HandlerBinder : IMessageHandlerBinder
-    {{
-        public Task BindAndStart(ServerApplicationBase appBase, IDispatcher dispatcher, CancellationToken stoppingToken)
-        {{
-            IMessageHandlerBinder binder = this;
-            {3} app = ({3})appBase;
-            List<Task> taskList = new List<Task>
-            {{
-                {4}
-            }};
-            return Task.WhenAll(taskList);
-        }}
-    }}
-}}
-                             
-""";
-        
-        public void Initialize(IncrementalGeneratorInitializationContext context)
-        {
-            var classDeclarations = context.SyntaxProvider
-                .CreateSyntaxProvider(
-                    static (s, _) => s is ClassDeclarationSyntax,
-                    static (ctx, _) => (ClassDeclarationSyntax)ctx.Node)
-                .Where(classDecl => classDecl.AttributeLists.Count > 0);
-
-            var compilationAndClasses = context.CompilationProvider.Combine(classDeclarations.Collect());
-
-            context.RegisterSourceOutput(compilationAndClasses, (spc, source) =>
+        var results = context.SyntaxProvider.ForAttributeWithMetadataName("Hive.Server.Common.Application.MessageHandlerAttribute",
+            static (node, _) => node is MethodDeclarationSyntax, static (ctx, token) =>
             {
-                var (compilation, sourceClassDeclarations) = source;
-
-                var serverAppBaseType = compilation.GetTypeByMetadataName("Hive.Server.Common.Application.ServerApplicationBase");
-
-                foreach (var classDecl in sourceClassDeclarations)
+                token.ThrowIfCancellationRequested();
+                var method = (IMethodSymbol)ctx.TargetSymbol;
+                var type = method.ContainingType;
+                var identity = CSharpNames.MetadataName(type);
+                if (type.ContainingType is not null || type.Arity != 0 || !type.InheritsFrom("Hive.Server.Common.Application.ServerApplicationBase") ||
+                    method.IsStatic || method.Arity != 0 || method.DeclaredAccessibility is not (Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal) ||
+                    method.Parameters.Length is < 1 or > 2 || method.Parameters.Any(static p => p.RefKind != RefKind.None) ||
+                    (method.Parameters.Length == 2 && method.Parameters[1].Type.ToDisplayString() != "Hive.Network.Abstractions.Session.ISession") ||
+                    method.ReturnType is not INamedTypeSymbol { Name: "ValueTask", Arity: 1 } valueTask ||
+                    valueTask.ContainingNamespace.ToDisplayString() != "System.Threading.Tasks" ||
+                    valueTask.TypeArguments[0] is not INamedTypeSymbol { Name: "ResultContext", Arity: 1 } result ||
+                    result.ContainingNamespace.ToDisplayString() != "Hive.Both.General.Dispatchers")
+                    return new BinderResult(identity, null, DiagnosticInfo.Create(InvalidHandler, method.Locations.FirstOrDefault(), method.Name));
+                var request = method.Parameters[0].Type;
+                if (request is INamedTypeSymbol { Name: "MessageContext", Arity: 1 } message &&
+                    message.ContainingNamespace.ToDisplayString() == "Hive.Both.General.Dispatchers")
                 {
-                    var model = compilation.GetSemanticModel(classDecl.SyntaxTree);
-                    var classSymbol = model.GetDeclaredSymbol(classDecl);
-
-                    if (classSymbol == null || !InheritsFrom(classSymbol, serverAppBaseType))
-                    {
-                        continue;
-                    }
-
-                    var handlerMethods = GetHandlerMethods(classDecl, model);
-                    if (handlerMethods.Count > 0)
-                    {
-                        GenerateUsingTemplate(spc, model, classSymbol, handlerMethods);
-                    }
+                    if (method.Parameters.Length != 1) return new BinderResult(identity, null,
+                        DiagnosticInfo.Create(InvalidHandler, method.Locations.FirstOrDefault(), method.Name));
+                    request = message.TypeArguments[0];
                 }
+                return new BinderResult(identity, new(CSharpNames.Namespace(type.ContainingNamespace),
+                    CSharpNames.Identifier(type.Name + "HandlerBinder"), type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                    CSharpNames.Identifier(method.Name), request.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                    result.TypeArguments[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)), null);
             });
-        }
-        
-        private static bool InheritsFrom(ITypeSymbol symbol, ITypeSymbol type)
-        {
-            var baseType = symbol.BaseType;
-            while (baseType != null)
-            {
-                if (type.Equals(baseType))
-                    return true;
-
-                baseType = baseType.BaseType;
-            }
-
-            return false;
-        }
-        
-        private static List<MethodDeclarationSyntax> GetHandlerMethods(ClassDeclarationSyntax classDecl, SemanticModel model)
-        {
-            return classDecl.Members
-                .OfType<MethodDeclarationSyntax>()
-                .Where(method =>
-                    method.AttributeLists.Any(attrList =>
-                        attrList.Attributes.Any(attr =>
-                        {
-                            var typeInfo = model.GetTypeInfo(attr).Type;
-                            return typeInfo?.Name == "MessageHandlerAttribute";
-                        })))
-                .ToList();
-        }
-
-        private static void GenerateUsingTemplate(SourceProductionContext context,
-            SemanticModel model, INamedTypeSymbol classSymbol, List<MethodDeclarationSyntax> handlerMethods)
-        {
-            var usingBuilder = new StringBuilder()
-                .AppendLine("using Hive.Server.Common.Application;")
-                .AppendLine("using Hive.Both.General.Dispatchers;")
-                .AppendLine("using Microsoft.Extensions.Logging;");
-
-            var namespaceName = classSymbol.ContainingNamespace.ToDisplayString();
-            var binderInvokeList = new List<string>();
-
-            foreach (var handlerMethod in handlerMethods)
-            {
-                var methodName = handlerMethod.Identifier.Text;
-                var requestType = model.GetTypeInfo(handlerMethod.ParameterList.Parameters[0].Type).Type;
-                var responseType = model.GetTypeInfo(handlerMethod.ReturnType).Type;
-
-                if (requestType != null && responseType != null)
-                {
-                    binderInvokeList.Add(
-                        $"appBase.StartMessageProcessLoop<{requestType.ToDisplayString()},{responseType.ToDisplayString()}>(dispatcher, app.{methodName}, stoppingToken)");
-                }
-            }
-
-            var binderInvoke = string.Join(",\n", binderInvokeList);
-            var generatedCode = string.Format(
-                Template,
-                usingBuilder,
-                namespaceName,
-                classSymbol.Name,
-                classSymbol.ToDisplayString(),
-                binderInvoke);
-
-            context.AddSource($"{classSymbol.Name}HandlerBinder.g.cs", SourceText.From(generatedCode, Encoding.UTF8));
-        }
+        context.RegisterSourceOutput(results.Where(static result => result.Error is not null),
+            static (output, result) => output.ReportDiagnostic(result.Error!.ToDiagnostic()));
+        var models = results.Collect().SelectMany(static (items, _) => items.GroupBy(static item => item.Identity)
+            .Where(static group => group.All(static item => item.Method is not null)).OrderBy(static group => group.Key, StringComparer.Ordinal)
+            .Select(static group => new BinderModel(group.Key, new(group.Select(static item => item.Method!)
+                .OrderBy(static method => method.Name, StringComparer.Ordinal).ThenBy(static method => method.Request, StringComparer.Ordinal))))
+            .ToArray()).WithTrackingName("BinderModels");
+        context.RegisterSourceOutput(models, static (output, model) => output.AddSource(BinderEmitter.Emit(model)));
     }
 }
+
+internal sealed record BinderResult(string Identity, BinderMethod? Method, DiagnosticInfo? Error);
+internal sealed record BinderMethod(string Namespace, string BinderName, string Owner, string Name, string Request, string Reply);
+internal sealed record BinderModel(string Identity, EquatableArray<BinderMethod> Methods);

@@ -5,4 +5,4 @@
 
 Rule ID | Category | Severity | Notes
 --------|----------|----------|-------
-Hive0001 | Hive | Error | AppMessageHandlerBinderGen
+HIVEAPP001 | Hive.Application | Error | Invalid application handler signature or owner

@@ -4,6 +4,7 @@
     <Platform Name="x64" />
   </Configurations>
   <Folder Name="/BenchmarksAndTests/">
+    <Project Path="Hive.SourceGeneration.Tests/Hive.SourceGeneration.Tests.csproj" />
     <Project Path="Hive.Application.Test/Hive.Application.Test.csproj" />
     <Project Path="Hive.Benchmark/Hive.Benchmark.csproj" />
     <Project Path="Hive.DataSync.SourceGen.Tests/Hive.DataSync.SourceGen.Tests.csproj" />

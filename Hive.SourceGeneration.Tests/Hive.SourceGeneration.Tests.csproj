@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsTestProject>true</IsTestProject>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="NUnit" />
+    <PackageReference Include="NUnit3TestAdapter" />
+    <ProjectReference Include="..\Hive.DataSync.SourceGen\Hive.DataSync.SourceGen.csproj" />
+    <ProjectReference Include="..\Hive.Server.Common.Application.Generator\Hive.Server.Common.Application.Generator.csproj" />
+  </ItemGroup>
+  <Import Project="..\SourceGeneration\testing\SourceGeneration.Testing.props" />
+</Project>
