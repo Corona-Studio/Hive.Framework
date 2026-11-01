@@ -1,9 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.1;net10.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.1;net11.0</TargetFrameworks>
     <Nullable>enable</Nullable>
-    <LangVersion>latest</LangVersion>
+    <LangVersion>15.0</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -15,7 +15,7 @@
     <ProjectReference Include="..\Hive.Codec.Abstractions\Hive.Codec.Abstractions.csproj" />
   </ItemGroup>
 
-  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net11.0'">
     <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
 

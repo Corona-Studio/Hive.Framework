@@ -3,8 +3,8 @@
   <PropertyGroup>
     <Nullable>enable</Nullable>
     <RootNamespace>$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>
-    <LangVersion>10</LangVersion>
-    <TargetFrameworks>netstandard2.1;net10.0</TargetFrameworks>
+    <LangVersion>15.0</LangVersion>
+    <TargetFrameworks>netstandard2.1;net11.0</TargetFrameworks>
     <AssemblyName>$(MSBuildProjectName)</AssemblyName>
   </PropertyGroup>
 
@@ -12,7 +12,7 @@
     <ProjectReference Include="..\Hive.Network.Shared\Hive.Network.Shared.csproj" />
   </ItemGroup>
 
-  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net11.0'">
     <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
 
