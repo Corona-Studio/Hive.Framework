@@ -52,6 +52,7 @@ public class GuidSyncPacket : AbstractObjectSyncPacket<Guid>
 [SetSyncInterval(100)]
 public class Class1
 {
+#pragma warning disable CS0169, IDE0051
     [SyncProperty] [SyncOption(SyncOptions.AllSession)] [CustomSerializer(typeof(GuidSyncPacket))]
     private Guid _guidTest;
 
@@ -59,4 +60,5 @@ public class Class1
     private int _in;
 
     [SyncProperty] private double _test;
+#pragma warning restore CS0169, IDE0051
 }

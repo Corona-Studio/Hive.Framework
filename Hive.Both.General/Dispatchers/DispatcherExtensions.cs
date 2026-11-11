@@ -4,16 +4,22 @@ namespace Hive.Both.General.Dispatchers
 {
     public static class DispatcherExtensions
     {
-        public static void BindTo(this ISession session, IDispatcher dispatcher)
+        extension(ISession session)
         {
-            session.OnMessageReceived += dispatcher.Dispatch;
+            public void BindTo(IDispatcher dispatcher)
+            {
+                session.OnMessageReceived += dispatcher.Dispatch;
+            }
         }
 
-        public static void BindTo(this IAcceptor acceptor, IDispatcher dispatcher)
+        extension(IAcceptor acceptor)
         {
-            acceptor.OnSessionCreated += (_, _, session) => { session.OnMessageReceived += dispatcher.Dispatch; };
+            public void BindTo(IDispatcher dispatcher)
+            {
+                acceptor.OnSessionCreated += (_, _, session) => { session.OnMessageReceived += dispatcher.Dispatch; };
 
-            acceptor.OnSessionClosed += (_, _, session) => { session.OnMessageReceived -= dispatcher.Dispatch; };
+                acceptor.OnSessionClosed += (_, _, session) => { session.OnMessageReceived -= dispatcher.Dispatch; };
+            }
         }
     }
 }

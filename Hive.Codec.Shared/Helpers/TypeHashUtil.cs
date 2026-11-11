@@ -11,13 +11,16 @@ public static class TypeHashUtil
 
     public static PacketId GetTypeHash(Type type)
     {
-        var typeName = type.FullName;
+        var typeName = type.FullName ?? throw new ArgumentException($"Failed to register type {type}");
 
-        if (typeName == null)
-            throw new ArgumentException($"Failed to register type {type}");
-
+        var bytes = Encoding.ASCII.GetBytes(typeName);
+#if NET5_0_OR_GREATER
+        var hash = MD5.HashData(bytes);
+#else
         using var md5 = MD5.Create();
-        var hashCode = BitConverter.ToUInt64(md5.ComputeHash(Encoding.ASCII.GetBytes(typeName)));
+        var hash = md5.ComputeHash(bytes);
+#endif
+        var hashCode = BitConverter.ToUInt64(hash);
         var id = (ushort)(hashCode % HashMod);
 
         return id;

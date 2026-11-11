@@ -6,7 +6,7 @@ namespace Hive.Common.ECS.Component;
 
 public class ComponentManager : IBelongToECSArch
 {
-    private readonly Dictionary<Type, object> _typeToComponentListDict = new();
+    private readonly Dictionary<Type, object> _typeToComponentListDict = [];
 
     public ComponentManager(IECSArch arch)
     {

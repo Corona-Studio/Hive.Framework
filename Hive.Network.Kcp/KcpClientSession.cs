@@ -20,7 +20,7 @@ namespace Hive.Network.Kcp
             Socket socket,
             IPEndPoint remoteEndPoint,
             ILogger<KcpClientSession> logger)
-            : base(sessionId, remoteEndPoint, (IPEndPoint)socket.LocalEndPoint, logger)
+            : base(sessionId, remoteEndPoint, socket.LocalEndPoint as IPEndPoint ?? throw new ArgumentException("Socket must have a local IP endpoint.", nameof(socket)), logger)
         {
             _socket = socket;
             StartKcpLogicAsync(CancellationToken.None);
@@ -44,9 +44,13 @@ namespace Hive.Network.Kcp
             if (!MemoryMarshal.TryGetArray(sendBuffer.WrittenMemory, out var sendData))
                 throw new ArgumentException("SendBuffer is not a valid array segment.");
 
+            var socket = _socket;
+            if (socket is null)
+                return 0;
+
             while (sentLen < sendData.Count)
             {
-                var sendThisTime = await _socket.SendToAsync(
+                var sendThisTime = await socket.SendToAsync(
                     sendData[sentLen..],
                     SocketFlags.None,
                     RemoteEndPoint);

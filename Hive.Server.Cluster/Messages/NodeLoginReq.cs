@@ -8,13 +8,13 @@ namespace Hive.Server.Cluster.Messages;
 [MessageDefine]
 public partial class NodeLoginReq
 {
-    public string Signature;
+    public string Signature = string.Empty;
 
-    public string PublicKey;
+    public string PublicKey = string.Empty;
     
-    public string MachineId;
+    public string MachineId = string.Empty;
     
-    public List<ServiceKey> Services;
+    public List<ServiceKey> Services = [];
 }
 
 

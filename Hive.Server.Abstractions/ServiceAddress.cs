@@ -1,6 +1,4 @@
-﻿using System.Net;
-
-namespace Hive.Server.Abstractions;
+﻿namespace Hive.Server.Abstractions;
 
 public struct ServiceAddress
 {

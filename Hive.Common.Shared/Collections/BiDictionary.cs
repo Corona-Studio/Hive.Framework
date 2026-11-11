@@ -11,8 +11,8 @@ namespace Hive.Common.Shared.Collections
     /// <typeparam name="TV">值类型</typeparam>
     public class BiDictionary<TK, TV> where TK : notnull where TV : notnull
     {
-        private readonly Dictionary<TK, TV> _kv = new();
-        private readonly Dictionary<TV, TK> _vk = new();
+        private readonly Dictionary<TK, TV> _kv = [];
+        private readonly Dictionary<TV, TK> _vk = [];
 
         public BiDictionary()
         {
@@ -20,13 +20,13 @@ namespace Hive.Common.Shared.Collections
 
         public BiDictionary(int capacity)
         {
-            _kv = new Dictionary<TK, TV>(capacity);
-            _vk = new Dictionary<TV, TK>(capacity);
+            _kv = [with(capacity)];
+            _vk = [with(capacity)];
         }
 
-        public List<TK> Keys => new(_kv.Keys);
+        public List<TK> Keys => [.. _kv.Keys];
 
-        public List<TV> Values => new(_vk.Keys);
+        public List<TV> Values => [.. _vk.Keys];
 
         public void ForEach(Action<TK, TV> action)
         {
@@ -56,9 +56,9 @@ namespace Hive.Common.Shared.Collections
 
         public bool TrySetValue(TK key, TV value)
         {
-            if (key == null || value == null || !_kv.ContainsKey(key) || _vk.ContainsKey(value)) return false;
+            if (key == null || value == null || !_kv.TryGetValue(key, out var oldValue) || _vk.ContainsKey(value)) return false;
 
-            _vk.Remove(_kv[key]);
+            _vk.Remove(oldValue);
             _kv[key] = value;
             _vk.Add(value, key);
 

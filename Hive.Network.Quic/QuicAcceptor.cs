@@ -28,8 +28,8 @@ public sealed class QuicAcceptor : AbstractAcceptor<QuicSession>
         _listenerOptions = quicOptions.Value.QuicListenerOptions ??
                            throw new NullReferenceException(nameof(quicOptions.Value.QuicListenerOptions));
         _sessionFactory =
-            ActivatorUtilities.CreateFactory<QuicSession>(new[]
-                { typeof(int), typeof(QuicConnection), typeof(QuicStream) });
+            ActivatorUtilities.CreateFactory<QuicSession>(
+                [typeof(int), typeof(QuicConnection), typeof(QuicStream)]);
     }
 
     public override IPEndPoint? EndPoint => _listener?.LocalEndPoint;
@@ -81,12 +81,12 @@ public sealed class QuicAcceptor : AbstractAcceptor<QuicSession>
     private void CreateSession(QuicConnection conn, QuicStream stream)
     {
         var sessionId = GetNextSessionId();
-        var clientSession = _sessionFactory.Invoke(ServiceProvider, new object[] { sessionId, conn, stream });
+        var clientSession = _sessionFactory.Invoke(ServiceProvider, [sessionId, conn, stream]);
         clientSession.OnQuicError += OnQuicError;
         FireOnSessionCreate(clientSession);
     }
 
-    private void OnQuicError(object sender, QuicError e)
+    private void OnQuicError(object? sender, QuicError e)
     {
         if (sender is QuicSession session)
         {

@@ -36,7 +36,7 @@ public class GenericServer : IServer
         _logger.LogServerStarted(ipEndPoint);
         
         _acceptorLoopTokenSource = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
-        _acceptor.StartAcceptLoop(_acceptorLoopTokenSource.Token);
+        _ = _acceptor.StartAcceptLoop(_acceptorLoopTokenSource.Token);
         
         await _application.OnStartAsync(_acceptor,_dispatcher,_acceptorLoopTokenSource.Token);
     }

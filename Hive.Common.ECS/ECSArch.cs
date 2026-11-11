@@ -1,5 +1,4 @@
-﻿using System.Linq;
-using Hive.Common.ECS.Component;
+﻿using Hive.Common.ECS.Component;
 using Hive.Common.ECS.Compositor;
 using Hive.Common.ECS.Entity;
 using Hive.Common.ECS.System;
@@ -43,13 +42,13 @@ public class ECSCore : IECSArch
 
     public void LastUpdate()
     {
-        SystemManager.ExecuteSystems(SystemPhase.Awake, EntityManager.GetEntityReadyToAwake().ToList());
+        SystemManager.ExecuteSystems(SystemPhase.Awake, [.. EntityManager.GetEntityReadyToAwake()]);
         EntityManager.ApplyAwake();
     }
 
     public void LastPostLateUpdate()
     {
-        SystemManager.ExecuteSystems(SystemPhase.Destroy, EntityManager.GetEntityReadyToDestroy().ToList());
+        SystemManager.ExecuteSystems(SystemPhase.Destroy, [.. EntityManager.GetEntityReadyToDestroy()]);
         EntityManager.ApplyDestroy();
         EntityManager.UpdateBfsEnumerateList();
     }

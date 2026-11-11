@@ -25,8 +25,8 @@ namespace Hive.Network.Kcp
             : base(serviceProvider, logger)
         {
             _sessionFactory =
-                ActivatorUtilities.CreateFactory<KcpServerSession>(new[]
-                    { typeof(int), typeof(IPEndPoint), typeof(IPEndPoint) });
+                ActivatorUtilities.CreateFactory<KcpServerSession>(
+                    [typeof(int), typeof(IPEndPoint), typeof(IPEndPoint)]);
         }
 
         public override IPEndPoint? EndPoint => _serverSocket?.LocalEndPoint as IPEndPoint;
@@ -65,11 +65,15 @@ namespace Hive.Network.Kcp
             IPEndPoint endPoint,
             CancellationToken token)
         {
+            var socket = _serverSocket;
+            if (socket is null)
+                return 0;
+
             var sentLen = 0;
 
             while (sentLen < segment.Count)
             {
-                var len = await _serverSocket.SendToAsync(segment[sentLen..], SocketFlags.None, endPoint);
+                var len = await socket.SendToAsync(segment[sentLen..], SocketFlags.None, endPoint);
                 sentLen += len;
             }
 
@@ -78,7 +82,8 @@ namespace Hive.Network.Kcp
 
         public override async ValueTask<bool> TryDoOnceAcceptAsync(CancellationToken token)
         {
-            if (_serverSocket == null)
+            var socket = _serverSocket;
+            if (socket is null)
                 return false;
 
             var buffer = ArrayPool<byte>.Shared.Rent(NetworkSettings.DefaultBufferSize);
@@ -87,7 +92,7 @@ namespace Hive.Network.Kcp
             try
             {
                 var endPoint = new IPEndPoint(IPAddress.Any, 0);
-                var receivedArg = await _serverSocket.ReceiveFromAsync(arraySegment, SocketFlags.None, endPoint);
+                var receivedArg = await socket.ReceiveFromAsync(arraySegment, SocketFlags.None, endPoint);
 
                 var received = receivedArg.ReceivedBytes;
                 endPoint = (IPEndPoint)receivedArg.RemoteEndPoint;
@@ -113,7 +118,7 @@ namespace Hive.Network.Kcp
                     if (handshake.IsServerFinished())
                     {
                         var id = GetNextSessionId();
-                        var session = CreateKcpSession(id, endPoint, (IPEndPoint)_serverSocket.LocalEndPoint);
+                        var session = CreateKcpSession(id, endPoint, socket.LocalEndPoint as IPEndPoint ?? throw new InvalidOperationException("Server socket must be bound to an IP endpoint."));
 
                         next = handshake.CreateFinal(id);
 
@@ -156,12 +161,12 @@ namespace Hive.Network.Kcp
 
         private KcpServerSession CreateKcpSession(int id, IPEndPoint remoteEndPoint, IPEndPoint localEndPoint)
         {
-            var session = _sessionFactory.Invoke(ServiceProvider, new object[]
-            {
+            var session = _sessionFactory.Invoke(ServiceProvider,
+            [
                 id,
                 remoteEndPoint,
                 localEndPoint
-            });
+            ]);
             session.OnSendAsync += SendAsync;
 
             return session;

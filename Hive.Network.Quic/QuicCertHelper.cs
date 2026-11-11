@@ -27,10 +27,10 @@ public static class QuicCertHelper
             using var ec = ECDsa.Create(ECCurve.NamedCurves.nistP256);
             CertificateRequest req = new("CN=localhost", ec, HashAlgorithmName.SHA256);
             // Adds purpose
-            req.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension(new OidCollection
-            {
+            req.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension(
+            [
                 new("1.3.6.1.5.5.7.3.1") // serverAuth
-            }, false));
+            ], false));
             // Adds usage
             req.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, false));
             // Adds subject alternate names
@@ -39,7 +39,7 @@ public static class QuicCertHelper
             using var
                 crt = req.CreateSelfSigned(now,
                     now.AddDays(14)); // 14 days is the max duration of a certificate for this
-            cert = new X509Certificate2(crt.Export(X509ContentType.Pfx));
+            cert = X509CertificateLoader.LoadPkcs12(crt.Export(X509ContentType.Pfx), null);
 
             // Save
             store.Add(cert);

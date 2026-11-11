@@ -13,8 +13,8 @@ public class ECSBenchmark
 {
     [Params(10000)] public static int EntityCount;
 
-    private readonly List<object> _temp = new();
-    private ECSCore core;
+    private readonly List<object> _temp = [];
+    private ECSCore core = null!;
 
     [GlobalSetup]
     public void Init()
@@ -74,7 +74,7 @@ public class ECSBenchmark
     {
         public void OnLogicUpdate(IEntity entity)
         {
-            entity.UpdateComponent((ref NumberComponent comp) => { comp.Number += 2; });
+            entity.UpdateComponent<NumberComponent>((ref comp) => { comp.Number += 2; });
         }
     }
 
@@ -83,7 +83,7 @@ public class ECSBenchmark
     {
         public void OnLogicUpdate(IEntity entity)
         {
-            entity.UpdateComponent((ref NumberComponent component) => { component.Number *= 2; });
+            entity.UpdateComponent<NumberComponent>((ref component) => { component.Number *= 2; });
         }
     }
 
@@ -93,7 +93,7 @@ public class ECSBenchmark
     {
         public void OnLogicUpdate(IEntity entity)
         {
-            entity.UpdateComponent((ref NumberComponent component) => { component.Number *= 3; });
+            entity.UpdateComponent<NumberComponent>((ref component) => { component.Number *= 3; });
         }
     }
 
@@ -102,7 +102,7 @@ public class ECSBenchmark
     {
         public void OnLogicUpdate(IEntity entity)
         {
-            entity.UpdateComponent((ref NumberComponent component) => { component.Number -= 2; });
+            entity.UpdateComponent<NumberComponent>((ref component) => { component.Number -= 2; });
         }
     }
 }

@@ -1,6 +1,4 @@
-﻿using MemoryPack;
-
-namespace Hive.Server.Cluster;
+﻿namespace Hive.Server.Cluster;
 
 public struct ServiceAgent
 {

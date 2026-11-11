@@ -7,14 +7,20 @@ namespace Hive.Common.Shared.Helpers
     {
         private static readonly Random Random = new();
 
-        public static T RandomSelect<T>(this IList<T> list)
+        extension<T>(IList<T> list)
         {
-            return list[Random.Next(list.Count)];
+            public T RandomSelect()
+            {
+                return list[Random.Next(list.Count)];
+            }
         }
 
-        public static T RandomSelect<T>(this IReadOnlyList<T> list)
+        extension<T>(IReadOnlyList<T> list)
         {
-            return list[Random.Next(list.Count)];
+            public T RandomSelect()
+            {
+                return list[Random.Next(list.Count)];
+            }
         }
     }
 }

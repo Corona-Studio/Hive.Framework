@@ -30,8 +30,6 @@ public class DispatcherTest
         var mem = ms.GetBuffer().AsMemory()[..(int)ms.Length];
         var buffer = new ReadOnlySequence<byte>(mem);
 
-        ComplexMessage? receivedMessage = null;
-
         var cnt = 0;
         dispatcher.Dispatch(dummySession, buffer);
         dispatcher.AddHandler<ComplexMessage>(Dispatcher);
@@ -65,8 +63,6 @@ public class DispatcherTest
 
         var mem = ms.GetBuffer().AsMemory()[..(int)ms.Length];
         var buffer = new ReadOnlySequence<byte>(mem);
-
-        ComplexMessage? receivedMessage = null;
 
         var cnt = 0;
 
@@ -105,9 +101,6 @@ public class DispatcherTest
         var codec = serviceProvider.GetRequiredService<IPacketCodec>();
         codec.Encode(originMessage, ms);
         var mem = ms.GetBuffer().AsMemory().Slice(0, (int)ms.Length);
-        ComplexMessage? receivedMessage = null;
-
-        var cnt = 0;
 
         DelaySendMessage(dispatcher, dummySession, mem, 100);
         CancellationTokenSource cts = new();
@@ -120,7 +113,7 @@ public class DispatcherTest
         Assert.That(receivedSecond == null);
     }
 
-    private async void DelaySendMessage(IDispatcher dispatcher, ISession session, Memory<byte> message,
+    private static async void DelaySendMessage(IDispatcher dispatcher, ISession session, Memory<byte> message,
         int delay)
     {
         var buffer = new ReadOnlySequence<byte>(message);

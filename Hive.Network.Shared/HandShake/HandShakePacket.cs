@@ -18,7 +18,7 @@ namespace Hive.Network.Shared.HandShake
             BitConverter.TryWriteBytes(span[12..], SessionId);
         }
 
-        public readonly bool IsHeaderValid(Span<byte> span)
+        public static bool IsHeaderValid(Span<byte> span)
         {
             return BitConverter.ToInt32(span[4..]) == 0x1140403;
         }

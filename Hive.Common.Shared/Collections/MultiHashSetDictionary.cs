@@ -24,7 +24,7 @@ namespace Hive.Common.Shared.Collections
             TryGetValue(key, out var list);
             if (list == null)
             {
-                list = new HashSet<TV>();
+                list = [];
                 base[key] = list;
             }
 

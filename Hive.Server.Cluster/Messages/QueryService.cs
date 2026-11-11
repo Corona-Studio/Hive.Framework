@@ -1,5 +1,4 @@
-﻿using System.Net;
-using Hive.Codec.Shared;
+﻿using Hive.Codec.Shared;
 using MemoryPack;
 
 namespace Hive.Server.Cluster.Messages;
@@ -8,7 +7,7 @@ namespace Hive.Server.Cluster.Messages;
 [MessageDefine]
 public partial class QueryServiceReq
 {
-    public string ServiceName;
+    public string ServiceName = string.Empty;
 }
 
 
@@ -17,7 +16,7 @@ public partial class QueryServiceReq
 public partial class QueryServiceResp
 {
     public int NodeId;
-    public string ServiceName;
-    public string ServiceAddress;
+    public string ServiceName = string.Empty;
+    public string ServiceAddress = string.Empty;
     public int ServicePort;
 }

@@ -81,7 +81,7 @@ public class DefaultClientService<TSession> : BackgroundService, IClientService 
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _acceptor.StartAcceptLoop(stoppingToken);
+        _ = _acceptor.StartAcceptLoop(stoppingToken);
 
         while (!stoppingToken.IsCancellationRequested)
         {

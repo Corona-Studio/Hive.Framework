@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace Hive.Common.Shared.Collections
 {
@@ -24,7 +23,7 @@ namespace Hive.Common.Shared.Collections
             TryGetValue(t, out var list);
             if (list == null)
             {
-                list = new List<TV>();
+                list = [];
                 base[t] = list;
             }
 
@@ -51,7 +50,7 @@ namespace Hive.Common.Shared.Collections
         public TV[] GetAll(TK t)
         {
             TryGetValue(t, out var list);
-            return list == null ? Array.Empty<TV>() : list.ToArray();
+            return list == null ? [] : [.. list];
         }
 
         public TV? GetOne(TK t)

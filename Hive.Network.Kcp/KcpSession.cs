@@ -141,7 +141,7 @@ namespace Hive.Network.Kcp
 
                             while (seqSent < seq.Length)
                             {
-                                var sendThisTime = Kcp!.Send(seq.Span[sentLen..]);
+                                var sendThisTime = Kcp.Send(seq.Span[sentLen..]);
 
                                 seqSent += sendThisTime;
                             }

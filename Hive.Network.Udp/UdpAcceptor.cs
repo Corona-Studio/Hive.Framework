@@ -18,7 +18,7 @@ namespace Hive.Network.Udp
 
         private readonly byte[] _receiveBuffer = new byte[NetworkSettings.DefaultBufferSize];
         private readonly ObjectFactory<UdpServerSession> _sessionFactory;
-        private readonly Dictionary<int, UdpServerSession> _udpSessions = new();
+        private readonly Dictionary<int, UdpServerSession> _udpSessions = [];
         private Socket? _serverSocket;
 
         public UdpAcceptor(
@@ -27,8 +27,8 @@ namespace Hive.Network.Udp
             : base(serviceProvider, logger)
         {
             _sessionFactory =
-                ActivatorUtilities.CreateFactory<UdpServerSession>(new[]
-                    { typeof(int), typeof(IPEndPoint), typeof(IPEndPoint) });
+                ActivatorUtilities.CreateFactory<UdpServerSession>(
+                    [typeof(int), typeof(IPEndPoint), typeof(IPEndPoint)]);
         }
 
         public override IPEndPoint? EndPoint => _serverSocket?.LocalEndPoint as IPEndPoint;
@@ -184,12 +184,12 @@ namespace Hive.Network.Udp
 
         private UdpServerSession CreateUdpSession(int id, IPEndPoint remoteEndPoint, IPEndPoint localEndPoint)
         {
-            var session = _sessionFactory.Invoke(ServiceProvider, new object[]
-            {
+            var session = _sessionFactory.Invoke(ServiceProvider,
+            [
                 id,
                 remoteEndPoint,
                 localEndPoint
-            });
+            ]);
             session.OnSendAsync += SendAsync;
 
             return session;

@@ -6,7 +6,7 @@ public class Class1
     // ActorRef _actorRef = _actorSystem.ActorOf<ActorRef>("ActorRef");
     // Call
     // _actorRef.Tell(new ActorMessage());
-    public void UseCase()
+    public static void UseCase()
     {
         
     }

@@ -49,7 +49,7 @@ namespace Hive.Both.General.Dispatchers
 
         public override string ToString()
         {
-            return $"(HandleId){Id.ToString()}";
+            return $"(HandleId){Id}";
         }
     }
 }

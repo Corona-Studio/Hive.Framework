@@ -54,7 +54,7 @@ public class ChannelTest
                     await channel.WriteAsync(session, message);
                 }
             }
-            catch (OperationCanceledException e)
+            catch (OperationCanceledException)
             {
                 //ignore
             }
@@ -119,7 +119,7 @@ public class ChannelTest
                     await channel.WriteAsync(message);
                 }
             }
-            catch (OperationCanceledException e)
+            catch (OperationCanceledException)
             {
                 //ignore
             }

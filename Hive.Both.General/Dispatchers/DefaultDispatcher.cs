@@ -3,7 +3,9 @@ using System.Buffers;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Threading;
+#if NET10_0_OR_GREATER
 using System.Runtime.CompilerServices;
+#endif
 using Hive.Common.Shared.Pooling;
 using System.Threading.Tasks;
 using Hive.Codec.Abstractions;
@@ -21,7 +23,11 @@ namespace Hive.Both.General.Dispatchers
         private readonly ILogger<DefaultDispatcher> _logger;
         private readonly IPacketCodec _packetCodec;
         private readonly ConcurrentDictionary<Type, IHandleWarp[]> _typeToHandlers = new();
+#if NET9_0_OR_GREATER
+        private readonly Lock _handlerLock = new();
+#else
         private readonly object _handlerLock = new();
+#endif
 
         private int _idCounter;
 
@@ -239,7 +245,7 @@ namespace Hive.Both.General.Dispatchers
                 _delegateToId[warp.HandlerDelegate] = warp.Id;
                 _idToTypes[warp.Id] = warp;
                 _typeToHandlers.TryGetValue(warp.Type, out var handlers);
-                handlers ??= Array.Empty<IHandleWarp>();
+                handlers ??= [];
                 var updated = new IHandleWarp[handlers.Length + 1];
                 Array.Copy(handlers, updated, handlers.Length);
                 updated[handlers.Length] = warp;

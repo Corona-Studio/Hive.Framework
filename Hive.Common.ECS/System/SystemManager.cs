@@ -8,13 +8,13 @@ namespace Hive.Common.ECS.System;
 
 public class SystemManager : IBelongToECSArch
 {
-    private readonly MultiDictionary<PhaseInterfaceType, SystemInstance> _phaseToSortedSystemInstList = new();
+    private readonly MultiDictionary<PhaseInterfaceType, SystemInstance> _phaseToSortedSystemInstList = [];
 
-    private readonly Dictionary<PhaseInterfaceType, SystemGraph> _phaseToSystemGraph = new();
+    private readonly Dictionary<PhaseInterfaceType, SystemGraph> _phaseToSystemGraph = [];
 
-    private readonly Dictionary<PhaseInterfaceType, Dictionary<Type, SystemInstance>> _phaseToSystemInstDict = new();
+    private readonly Dictionary<PhaseInterfaceType, Dictionary<Type, SystemInstance>> _phaseToSystemInstDict = [];
 
-    private readonly Dictionary<Type, SystemInstance> _typeToSystemDict = new();
+    private readonly Dictionary<Type, SystemInstance> _typeToSystemDict = [];
 
 
     public SystemManager(IECSArch arch)
@@ -22,8 +22,8 @@ public class SystemManager : IBelongToECSArch
         Arch = arch;
         foreach (var systemType in PhaseInterfaceType.AllInterfaceTypes)
         {
-            _phaseToSystemInstDict.Add(systemType, new Dictionary<Type, SystemInstance>());
-            _phaseToSortedSystemInstList.Add(systemType, new List<SystemInstance>());
+            _phaseToSystemInstDict.Add(systemType, []);
+            _phaseToSortedSystemInstList.Add(systemType, []);
             _phaseToSystemGraph.Add(systemType, new SystemGraph());
         }
     }
@@ -42,9 +42,9 @@ public class SystemManager : IBelongToECSArch
 
         var interfaceTypes = type.GetInterfaces();
         foreach (var interfaceType in interfaceTypes)
-            if (_phaseToSystemInstDict.ContainsKey(interfaceType))
+            if (_phaseToSystemInstDict.TryGetValue(interfaceType, out var systemInstDict))
             {
-                _phaseToSystemInstDict[interfaceType].Add(type, systemWarp);
+                systemInstDict.Add(type, systemWarp);
                 _phaseToSystemGraph[interfaceType].AddSystemWarp(systemWarp);
             }
     }
@@ -60,15 +60,17 @@ public class SystemManager : IBelongToECSArch
         lock (_phaseToSortedSystemInstList)
         {
             var sortedSequence = _phaseToSystemGraph[interfaceType].GetTopologicalSortedSequence();
-            var orderedSystemsOfThisSystemType = _phaseToSortedSystemInstList[interfaceType];
-            orderedSystemsOfThisSystemType.Clear();
-            orderedSystemsOfThisSystemType.AddRange(sortedSequence);
+            if (_phaseToSortedSystemInstList.TryGetValue(interfaceType, out var orderedSystemsOfThisSystemType))
+            {
+                orderedSystemsOfThisSystemType.Clear();
+                orderedSystemsOfThisSystemType.AddRange(sortedSequence);
+            }
         }
     }
 
     public IEnumerable<SystemInstance> GetOrderedExecutionSequence(PhaseInterfaceType interfaceType)
     {
-        return _phaseToSortedSystemInstList[interfaceType];
+        return _phaseToSortedSystemInstList.TryGetValue(interfaceType, out var list) ? list : [];
     }
 
     public void ExecuteSystems(SystemPhase phase)
@@ -83,9 +85,7 @@ public class SystemManager : IBelongToECSArch
     {
         var interfaceType = PhaseInterfaceType.GetInterfaceBySystemPhase(phase);
 
-        if (!_phaseToSortedSystemInstList.ContainsKey(interfaceType)) return;
-
-        var systemWarps = _phaseToSortedSystemInstList[interfaceType];
+        if (!_phaseToSortedSystemInstList.TryGetValue(interfaceType, out var systemWarps)) return;
 
         // ReSharper disable once ForCanBeConvertedToForeach
         for (var i = 0; i < systemWarps.Count; i++)

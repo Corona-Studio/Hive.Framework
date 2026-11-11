@@ -80,10 +80,7 @@ public sealed class QuicSession : AbstractSession
             QuicStream = null;
         }
 
-        if (QuicConnection != null)
-        {
-            QuicConnection.DisposeAsync().AsTask().Wait();
-            QuicConnection = null;
-        }
+        QuicConnection?.DisposeAsync().AsTask().Wait();
+        QuicConnection = null;
     }
 }

@@ -22,11 +22,11 @@ namespace Hive.Network.Udp
         {
             _logger = logger;
             _serviceProvider = serviceProvider;
-            _sessionFactory = ActivatorUtilities.CreateFactory<UdpClientSession>(new[]
-            {
+            _sessionFactory = ActivatorUtilities.CreateFactory<UdpClientSession>(
+            [
                 typeof(int),
                 typeof(Socket), typeof(IPEndPoint)
-            });
+            ]);
         }
 
         public async ValueTask<UdpSession?> ConnectAsync(IPEndPoint remoteEndPoint, CancellationToken token = default)
@@ -39,12 +39,12 @@ namespace Hive.Network.Udp
                 if (!shakeResult.HasValue) return null;
 
                 var sessionId = shakeResult.Value.SessionId;
-                return _sessionFactory.Invoke(_serviceProvider, new object[]
-                {
+                return _sessionFactory.Invoke(_serviceProvider,
+                [
                     (int)sessionId,
                     socket,
                     remoteEndPoint
-                });
+                ]);
             }
             catch (SocketException e)
             {

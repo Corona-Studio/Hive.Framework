@@ -8,7 +8,7 @@ namespace Hive.Common.ECS.Entity;
 
 public class EntityManager : ICanManageEntity, IBelongToECSArch
 {
-    private static readonly Dictionary<Type, ICompositor> TypeToCompositorDict = new();
+    private static readonly Dictionary<Type, ICompositor> TypeToCompositorDict = [];
 
     private readonly EntityExtensions.EntityBFSEnumerable _bfsEnumerable;
 
@@ -19,8 +19,8 @@ public class EntityManager : ICanManageEntity, IBelongToECSArch
     {
         Arch = arch;
         var entityDepthComparison = new EntityDepthComparer();
-        _entitiesToAwakeSet = new SortedSet<IEntity>(entityDepthComparison);
-        _entitiesToDestroySet = new SortedSet<IEntity>(entityDepthComparison);
+        _entitiesToAwakeSet = [with(entityDepthComparison)];
+        _entitiesToDestroySet = [with(entityDepthComparison)];
 
         Root = new RootEntity(arch);
         CurrentWorld = new WorldEntity
@@ -34,14 +34,13 @@ public class EntityManager : ICanManageEntity, IBelongToECSArch
 
     public RootEntity Root { get; }
     public WorldEntity CurrentWorld { get; }
-    public List<IEntity> EntityBfsEnumerateList { get; } = new();
+    public List<IEntity> EntityBfsEnumerateList { get; } = [];
     public IECSArch Arch { get; }
 
     public void Instantiate<TCompositor>(IEntity? parent = null) where TCompositor : ICompositor
     {
-        var compositor = GetOrCreateCompositor<TCompositor>();
-        if (compositor == null)
-            throw new InvalidOperationException(
+        var compositor = GetOrCreateCompositor<TCompositor>()
+            ?? throw new InvalidOperationException(
                 $"Fail to get compositor of type: '{typeof(TCompositor).FullName}'");
 
         parent ??= Root;
@@ -79,7 +78,7 @@ public class EntityManager : ICanManageEntity, IBelongToECSArch
         return instance;
     }
 
-    private void RemoveEntityFromEntityTree(IEntity entity)
+    private static void RemoveEntityFromEntityTree(IEntity entity)
     {
         entity.Parent = null;
     }
@@ -103,7 +102,7 @@ public class EntityManager : ICanManageEntity, IBelongToECSArch
     {
         if (_entitiesToDestroySet.Count > 0)
         {
-            var enumerable = _entitiesToDestroySet.Where(entity => !_entitiesToDestroySet.Contains(entity.Parent));
+            var enumerable = _entitiesToDestroySet.Where(entity => entity.Parent == null || !_entitiesToDestroySet.Contains(entity.Parent));
             foreach (var entity in enumerable) RemoveEntityFromEntityTree(entity);
             _entitiesToDestroySet.Clear();
         }

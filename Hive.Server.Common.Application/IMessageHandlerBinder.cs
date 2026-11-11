@@ -1,6 +1,5 @@
 ﻿using System.Threading.Tasks.Sources;
 using Hive.Both.General.Dispatchers;
-using Hive.Network.Abstractions.Session;
 
 namespace Hive.Server.Common.Application;
 
@@ -11,7 +10,7 @@ public interface IMessageHandlerBinder
 
 internal class HandlerAwaiter<T> : IValueTaskSource<T>, IValueTaskSource
 {
-    private ManualResetValueTaskSourceCore<T> _core = new();
+    private ManualResetValueTaskSourceCore<T> _core;
 
     public short Version => _core.Version;
     

@@ -6,7 +6,7 @@ namespace Hive.Common.ECS.System;
 
 public class SystemGraph
 {
-    private readonly Dictionary<Type, SystemNode> _typeToNodeDict = new();
+    private readonly Dictionary<Type, SystemNode> _typeToNodeDict = [];
 
     public void AddSystemWarp(SystemInstance current)
     {
@@ -65,13 +65,13 @@ public class SystemGraph
         public SystemNode(SystemInstance instance)
         {
             SystemInstance = instance;
-            Previous = new HashSet<Type>(instance.ExecuteAfterSystems);
+            Previous = [.. instance.ExecuteAfterSystems];
         }
 
         public SystemNode(in SystemNode node)
         {
             SystemInstance = node.SystemInstance;
-            Previous = new HashSet<Type>(node.Previous);
+            Previous = [.. node.Previous];
         }
     }
 }

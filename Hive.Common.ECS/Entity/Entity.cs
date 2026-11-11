@@ -11,14 +11,13 @@ public class Entity : IEntity
     private static readonly ReadOnlyCollection<IEntity> EmptyChildrenCollection = new(Array.Empty<IEntity>());
 
     private List<IEntity>? _children;
-    private ReadOnlyCollection<IEntity>? _readOnlyChildrenCollection;
-    protected IEntity parent;
+    protected IEntity? parent;
 
     internal Entity()
     {
     }
 
-    public IECSArch ECSArch { get; protected set; }
+    public IECSArch ECSArch { get; protected set; } = null!;
     public string Name { get; set; } = string.Empty;
     public int Depth { get; private set; }
 
@@ -29,7 +28,7 @@ public class Entity : IEntity
             if (_children == null)
                 return EmptyChildrenCollection;
 
-            return _readOnlyChildrenCollection ??= new ReadOnlyCollection<IEntity>(_children);
+            return field ??= new ReadOnlyCollection<IEntity>(_children);
         }
     }
 
@@ -57,7 +56,7 @@ public class Entity : IEntity
 
     protected virtual void AddChildren(IEntity entity)
     {
-        _children ??= new List<IEntity>();
+        _children ??= [];
 
         _children.Add(entity);
     }

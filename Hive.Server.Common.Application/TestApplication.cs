@@ -1,4 +1,5 @@
-﻿using Hive.Both.General.Dispatchers;
+﻿using System.Diagnostics.CodeAnalysis;
+using Hive.Both.General.Dispatchers;
 using Hive.Both.Messages.C2S;
 using Hive.Both.Messages.S2C;
 
@@ -13,7 +14,7 @@ public class TestApplication : ServerApplicationBase
     
     
     [MessageHandler]
-    
+    [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Invoked as an instance member by AppMessageHandlerBinderGen.")]
     public async ValueTask<ResultContext<SCHeartBeat>> HelloHandler(CSHeartBeat request)
     {
         return new ResultContext<SCHeartBeat>(new SCHeartBeat());

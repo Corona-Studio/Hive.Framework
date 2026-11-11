@@ -8,8 +8,8 @@ namespace Hive.Common.ECS.System;
 
 public class SystemInstance
 {
-    private static readonly HashSet<Type> EmptyTypeSet = new();
-    public readonly List<IEntity> ConcernedEntityList = new();
+    private static readonly HashSet<Type> EmptyTypeSet = [];
+    public readonly List<IEntity> ConcernedEntityList = [];
     public readonly HashSet<Type> ExecuteAfterSystems = EmptyTypeSet;
     public readonly HashSet<Type> ExecuteBeforeSystems = EmptyTypeSet;
 
@@ -25,7 +25,7 @@ public class SystemInstance
                 Length: > 0
             } executeBeforeAttributes)
         {
-            ExecuteBeforeSystems = new HashSet<Type>();
+            ExecuteBeforeSystems = [];
             foreach (var executeBefore in executeBeforeAttributes) ExecuteBeforeSystems.Add(executeBefore.SystemType);
         }
 
@@ -34,7 +34,7 @@ public class SystemInstance
                 Length: > 0
             } executeAfterAttributes)
         {
-            ExecuteAfterSystems = new HashSet<Type>();
+            ExecuteAfterSystems = [];
             foreach (var executeBefore in executeAfterAttributes) ExecuteAfterSystems.Add(executeBefore.SystemType);
         }
     }

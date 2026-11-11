@@ -9,7 +9,7 @@ public class EntityTest
     [Description("测试Entity的层序遍历")]
     public void TestEntityBfsEnumerator()
     {
-        IEntity root = new RootEntity(null) { InstanceId = 0 };
+        IEntity root = new RootEntity(null!) { InstanceId = 0 };
         var world = new WorldEntity { InstanceId = 1 };
         world.Parent = root;
         new ObjectEntity { InstanceId = 2 }.Parent = world;

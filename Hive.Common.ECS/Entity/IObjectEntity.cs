@@ -6,5 +6,5 @@ public interface IObjectEntity
 {
     public ICompositor Compositor { get; }
 
-    public WorldEntity WorldEntity { get; }
+    public WorldEntity? WorldEntity { get; }
 }

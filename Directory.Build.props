@@ -1,4 +1,8 @@
 <Project>
+  <PropertyGroup Condition="'$(UsingMicrosoftNETSdk)' == 'true'">
+    <LangVersion>15.0</LangVersion>
+    <WarningsAsErrors>$(WarningsAsErrors);CS8509;CS8655</WarningsAsErrors>
+  </PropertyGroup>
   <PropertyGroup>
     <AssemblyVersion>2.25.4.15</AssemblyVersion>
     <FileVersion>$(AssemblyVersion)</FileVersion>

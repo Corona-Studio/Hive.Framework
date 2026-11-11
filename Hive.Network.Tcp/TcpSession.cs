@@ -1,6 +1,8 @@
 using System;
 using System.Buffers;
+#if NET10_0_OR_GREATER
 using System.Runtime.CompilerServices;
+#endif
 using Hive.Network.Abstractions.Session;
 using System.Net;
 using System.Net.Sockets;

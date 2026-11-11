@@ -5,9 +5,12 @@ namespace Hive.Common.Shared.Helpers
 {
     public static class BufferWriterExtensions
     {
-        public static void WriteGuid(this IBufferWriter<byte> writer, Guid val)
+        extension(IBufferWriter<byte> writer)
         {
-            writer.Write(val.ToByteArray());
+            public void WriteGuid(Guid val)
+            {
+                writer.Write(val.ToByteArray());
+            }
         }
     }
 }

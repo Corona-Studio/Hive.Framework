@@ -54,31 +54,31 @@ namespace Hive.Common.Shared.Helpers
             }
         }
 
-        /// <summary>
-        ///     await一个task，可以抛出其中的异常
-        /// </summary>
-        /// <param name="task"></param>
-        /// <param name="exceptionTypes"></param>
-        public static async void CatchException(
-            this Task task,
-            params Type[] exceptionTypes)
+        extension(Task task)
         {
-            try
+            /// <summary>
+            ///     await一个task，可以抛出其中的异常
+            /// </summary>
+            /// <param name="exceptionTypes"></param>
+            public async void CatchException(params Type[] exceptionTypes)
             {
-                await task;
-            }
-            catch (TaskCanceledException)
-            {
-                Console.WriteLine("Task canceled");
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
+                try
+                {
+                    await task;
+                }
+                catch (TaskCanceledException)
+                {
+                    Console.WriteLine("Task canceled");
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e);
 
-                if (exceptionTypes?.Any(a => a == e.GetType()) ?? false)
-                    return;
+                    if (exceptionTypes?.Any(a => a == e.GetType()) ?? false)
+                        return;
 
-                throw;
+                    throw;
+                }
             }
         }
     }
@@ -289,7 +289,7 @@ namespace Hive.Common.Shared.Helpers
         {
             // Validate the timeout
             var totalMilliseconds = (long)timeout.TotalMilliseconds;
-            if (totalMilliseconds < -1 || totalMilliseconds > int.MaxValue)
+            if (totalMilliseconds is < -1 or > int.MaxValue)
                 throw new ArgumentOutOfRangeException(
                     nameof(timeout), timeout, "SpinUntil timeout out of range.");
 
@@ -323,7 +323,7 @@ namespace Hive.Common.Shared.Helpers
                 throw new ArgumentNullException(nameof(condition), "SpinUntil condition can't be null.");
 
             uint startTime = 0;
-            if (millisecondsTimeout != 0 && millisecondsTimeout != Timeout.Infinite)
+            if (millisecondsTimeout is not 0 and not Timeout.Infinite)
                 startTime = (uint)Environment.TickCount;
 
             var spinner = new SpinWaitAsync();

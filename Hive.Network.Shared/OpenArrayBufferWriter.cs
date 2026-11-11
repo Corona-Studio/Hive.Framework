@@ -21,7 +21,7 @@ namespace Hive.Network.Shared
         /// </summary>
         public OpenArrayBufferWriter()
         {
-            _buffer = Array.Empty<T>();
+            _buffer = [];
             WrittenCount = 0;
         }
 

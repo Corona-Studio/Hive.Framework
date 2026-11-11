@@ -13,21 +13,21 @@ public class ReflectionExecutor: IRemoteServiceCallExecutor
         _serviceProvider = serviceProvider;
     }
 
-    private Type GetServiceType(ServiceAddress serviceAddress)
+    private static Type GetServiceType(ServiceAddress serviceAddress)
     {
         return typeof(object);
     }
     
-    [ThreadStatic] private static byte[]? _buffer;
-
-    private static byte[] Buffer => _buffer ??= new byte[1024];
+    [field: ThreadStatic]
+    private static byte[] Buffer => field ??= new byte[1024];
 
     public void OnCall(ServiceAddress serviceAddress, string methodName, Stream serializedArguments, Stream serializedResult)
     {
         var targetServiceType = GetServiceType(serviceAddress);
         var service = _serviceProvider.GetService(targetServiceType);
         
-        var method = targetServiceType.GetMethod(methodName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic);
+        var method = targetServiceType.GetMethod(methodName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new MissingMethodException(targetServiceType.FullName, methodName);
         
         var arguments = new List<object>();
         
@@ -36,11 +36,11 @@ public class ReflectionExecutor: IRemoteServiceCallExecutor
             arguments.Add(ReadParameter(parameter.ParameterType, serializedArguments));
         }
         
-        var result = method.Invoke(service, arguments.ToArray());
-        WriteParameter(method.ReturnType, result, serializedResult);
+        var result = method.Invoke(service, [.. arguments]);
+        WriteParameter(method.ReturnType, result!, serializedResult);
     }
 
-    private void WriteParameter(Type parameterType, object obj, Stream stream)
+    private static void WriteParameter(Type parameterType, object obj, Stream stream)
     {
         switch (parameterType)
         {
@@ -148,54 +148,39 @@ public class ReflectionExecutor: IRemoteServiceCallExecutor
         }
     }
     
-    private object ReadParameter(Type parameterType, Stream stream)
+    private static object ReadParameter(Type parameterType, Stream stream)
     {
-        switch (parameterType)
+        return parameterType switch
         {
-            case var _ when parameterType == typeof(bool):
-                return ReadParameter(stream, 1, buffer => BitConverter.ToBoolean(buffer.Span));
-            case var _ when parameterType == typeof(byte):
-                return ReadParameter(stream, 1, buffer => buffer.Span[0]);
-            case var _ when parameterType == typeof(sbyte):
-                return ReadParameter(stream, 1, buffer => (sbyte) buffer.Span[0]);
-            case var _ when parameterType == typeof(short):
-                return ReadParameter(stream, 2, buffer => BitConverter.ToInt16(buffer.Span));
-            case var _ when parameterType == typeof(ushort):
-                return ReadParameter(stream, 2, buffer => BitConverter.ToUInt16(buffer.Span));
-            case var _ when parameterType == typeof(int):
-                return ReadParameter(stream, 4, buffer => BitConverter.ToInt32(buffer.Span));
-            case var _ when parameterType == typeof(uint):
-                return ReadParameter(stream, 4, buffer => BitConverter.ToUInt32(buffer.Span));
-            case var _ when parameterType == typeof(long):
-                return ReadParameter(stream, 8, buffer => BitConverter.ToInt64(buffer.Span));
-            case var _ when parameterType == typeof(ulong):
-                return ReadParameter(stream, 8, buffer => BitConverter.ToUInt64(buffer.Span));
-            case var _ when parameterType == typeof(float):
-                return ReadParameter(stream, 4, buffer => BitConverter.ToSingle(buffer.Span));
-            case var _ when parameterType == typeof(double):
-                return ReadParameter(stream, 8, buffer => BitConverter.ToDouble(buffer.Span));
-            case var _ when parameterType == typeof(decimal):
-                return ReadVarLenParameter(stream, buffer =>
+            _ when parameterType == typeof(bool) => ReadParameter(stream, 1, buffer => BitConverter.ToBoolean(buffer.Span)),
+            _ when parameterType == typeof(byte) => ReadParameter(stream, 1, buffer => buffer.Span[0]),
+            _ when parameterType == typeof(sbyte) => ReadParameter(stream, 1, buffer => (sbyte) buffer.Span[0]),
+            _ when parameterType == typeof(short) => ReadParameter(stream, 2, buffer => BitConverter.ToInt16(buffer.Span)),
+            _ when parameterType == typeof(ushort) => ReadParameter(stream, 2, buffer => BitConverter.ToUInt16(buffer.Span)),
+            _ when parameterType == typeof(int) => ReadParameter(stream, 4, buffer => BitConverter.ToInt32(buffer.Span)),
+            _ when parameterType == typeof(uint) => ReadParameter(stream, 4, buffer => BitConverter.ToUInt32(buffer.Span)),
+            _ when parameterType == typeof(long) => ReadParameter(stream, 8, buffer => BitConverter.ToInt64(buffer.Span)),
+            _ when parameterType == typeof(ulong) => ReadParameter(stream, 8, buffer => BitConverter.ToUInt64(buffer.Span)),
+            _ when parameterType == typeof(float) => ReadParameter(stream, 4, buffer => BitConverter.ToSingle(buffer.Span)),
+            _ when parameterType == typeof(double) => ReadParameter(stream, 8, buffer => BitConverter.ToDouble(buffer.Span)),
+            _ when parameterType == typeof(decimal) => ReadVarLenParameter(stream, buffer =>
+            {
+                var length = BitConverter.ToInt32(buffer.Span);
+                Span<int> bits = stackalloc int[length];
+                for (var i = 0; i < length; i++)
                 {
-                    var length = BitConverter.ToInt32(buffer.Span);
-                    Span<int> bits = stackalloc int[length];
-                    for (var i = 0; i < length; i++)
-                    {
-                        bits[i] = BitConverter.ToInt32(buffer.Span.Slice(4 + i * 4));
-                    }
+                    bits[i] = BitConverter.ToInt32(buffer.Span.Slice(4 + i * 4));
+                }
 
-                    return new decimal(bits);
-                });
-            
-            case var _ when parameterType == typeof(string):
-                return ReadVarLenParameter(stream, buffer =>
-                {
-                    var length = BitConverter.ToInt32(buffer.Span);
-                    return Encoding.UTF8.GetString(buffer.Span.Slice(4, length));
-                });
-            default:
-                throw new NotSupportedException();
-        }
+                return new decimal(bits);
+            }),
+            _ when parameterType == typeof(string) => ReadVarLenParameter(stream, buffer =>
+            {
+                var length = BitConverter.ToInt32(buffer.Span);
+                return Encoding.UTF8.GetString(buffer.Span.Slice(4, length));
+            }),
+            _ => throw new NotSupportedException()
+        };
     }
 
     private static object ReadParameter(Stream stream,int size,Func<Memory<byte>,object> converter)

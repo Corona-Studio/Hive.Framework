@@ -11,7 +11,11 @@ public class DummySession : ISession
     public IPEndPoint? RemoteEndPoint { get; }
     public long LastHeartBeatTime { get; }  
 
-    public event SessionReceivedHandler? OnMessageReceived;
+    public event SessionReceivedHandler? OnMessageReceived
+    {
+        add { }
+        remove { }
+    }
 
     public Task StartAsync(CancellationToken token)
     {

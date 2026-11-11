@@ -2,8 +2,4 @@
 
 public class ActorRef
 {
-    void Tell<T>(T message)
-    {
-        
-    }
 }

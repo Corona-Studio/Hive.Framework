@@ -9,6 +9,6 @@ public interface IEntity
     int Depth { get; }
     ReadOnlyCollection<IEntity> Children { get; }
 
-    public IEntity Parent { get; set; }
+    public IEntity? Parent { get; set; }
     public long InstanceId { get; init; }
 }

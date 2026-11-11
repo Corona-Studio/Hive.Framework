@@ -91,7 +91,7 @@ namespace Hive.Codec.Abstractions
 
         public override string ToString()
         {
-            return $"(PacketId){Id.ToString()}";
+            return $"(PacketId){Id}";
         }
     }
 }

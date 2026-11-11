@@ -132,7 +132,7 @@ public class ComponentList<T> where T : IEntityComponent
     public void Update(long entityId, RefAction<T> modifier)
     {
         _rwLock.EnterReadLock();
-        ref var component = ref Unsafe.NullRef<T>();
+        ref T component = ref Unsafe.NullRef<T>();
         try
         {
             component = ref GetRefByEntityIdUnsafe(entityId);
@@ -163,14 +163,13 @@ public class ComponentList<T> where T : IEntityComponent
         private readonly ComponentList<T> _list;
         private int _index;
         private readonly int _version;
-        private T? _current;
 
         internal Enumerator(ComponentList<T> list)
         {
             _list = list;
             _index = 0;
             _version = list._version;
-            _current = default;
+            Current = default!;
         }
 
         public void Dispose()
@@ -183,7 +182,7 @@ public class ComponentList<T> where T : IEntityComponent
 
             if (_version == localList._version && (uint)_index < (uint)localList._size)
             {
-                _current = localList._items[_index];
+                Current = localList._items[_index];
                 _index++;
                 return true;
             }
@@ -196,11 +195,11 @@ public class ComponentList<T> where T : IEntityComponent
             if (_version != _list._version) throw new InvalidOperationException("The list's version has changed.");
 
             _index = _list._size + 1;
-            _current = default;
+            Current = default!;
             return false;
         }
 
-        public T Current => _current!;
+        public T Current { get; private set; }
 
         object? IEnumerator.Current
         {
@@ -217,15 +216,13 @@ public class ComponentList<T> where T : IEntityComponent
             if (_version != _list._version) throw new InvalidOperationException("");
 
             _index = 0;
-            _current = default;
+            Current = default!;
         }
     }
 
-#pragma warning disable CA1825
     // ReSharper disable once UseArrayEmptyMethod
-    private static readonly T[] SEmptyArray = new T[0];
+    private static readonly T[] SEmptyArray = [];
     private int _version = 1;
-#pragma warning restore CA1825
 
 
     #region List Implement
@@ -240,7 +237,7 @@ public class ComponentList<T> where T : IEntityComponent
     /// <returns>The new capacity of this list.</returns>
     public int EnsureCapacity(int capacity)
     {
-        if (capacity < 0) throw new ArgumentOutOfRangeException(nameof(capacity));
+        ArgumentOutOfRangeException.ThrowIfNegative(capacity);
 
         if (_items.Length >= capacity) return _items.Length;
         Grow(capacity);
@@ -267,30 +264,25 @@ public class ComponentList<T> where T : IEntityComponent
         // Capacities exceeding Array.MaxLength will be surfaced as OutOfMemoryException by Array.Resize.
         if (newcapacity < capacity) newcapacity = capacity;
 
-        Capacity = newcapacity;
+        SetCapacity(newcapacity);
     }
 
-    private int Capacity
+    private void SetCapacity(int value)
     {
-        // ReSharper disable once UnusedMember.Local
-        get => _items.Length;
-        set
+        ArgumentOutOfRangeException.ThrowIfLessThan(value, _size);
+
+        if (value == _items.Length) return;
+
+        if (value > 0)
         {
-            if (value < _size) throw new ArgumentOutOfRangeException(nameof(value));
+            var newItems = new T[value];
+            if (_size > 0) Array.Copy(_items, newItems, _size);
 
-            if (value == _items.Length) return;
-
-            if (value > 0)
-            {
-                var newItems = new T[value];
-                if (_size > 0) Array.Copy(_items, newItems, _size);
-
-                _items = newItems;
-            }
-            else
-            {
-                _items = SEmptyArray;
-            }
+            _items = newItems;
+        }
+        else
+        {
+            _items = SEmptyArray;
         }
     }
 

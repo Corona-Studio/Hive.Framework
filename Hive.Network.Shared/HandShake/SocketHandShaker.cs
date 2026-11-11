@@ -7,41 +7,44 @@ namespace Hive.Network.Shared.HandShake
 {
     public static class SocketHandShaker
     {
-        public static async ValueTask<HandShakePacket?> HandShakeWith(this Socket socket, EndPoint remoteEndPoint)
+        extension(Socket socket)
         {
-            var buffer = new byte[NetworkSettings.PacketBodyOffset + HandShakePacket.Size];
-            var segment = new ArraySegment<byte>(buffer, 0, NetworkSettings.PacketBodyOffset + HandShakePacket.Size);
-            var syn = new Random(DateTimeOffset.Now.Millisecond).Next();
-
-            var shakeFirst = new HandShakePacket
+            public async ValueTask<HandShakePacket?> HandShakeWith(EndPoint remoteEndPoint)
             {
-                Syn = syn
-            };
-            var length = HandShakePacket.Size + NetworkSettings.PacketBodyOffset;
-            BitConverter.TryWriteBytes(segment.AsSpan(), length);
-            BitConverter.TryWriteBytes(segment.AsSpan()[NetworkSettings.SessionIdOffset..],
-                NetworkSettings.HandshakeSessionId);
+                var buffer = new byte[NetworkSettings.PacketBodyOffset + HandShakePacket.Size];
+                var segment = new ArraySegment<byte>(buffer, 0, NetworkSettings.PacketBodyOffset + HandShakePacket.Size);
+                var syn = new Random(DateTimeOffset.Now.Millisecond).Next();
 
-            shakeFirst.WriteTo(segment.AsSpan()[NetworkSettings.PacketBodyOffset..]);
+                var shakeFirst = new HandShakePacket
+                {
+                    Syn = syn
+                };
+                var length = HandShakePacket.Size + NetworkSettings.PacketBodyOffset;
+                BitConverter.TryWriteBytes(segment.AsSpan(), length);
+                BitConverter.TryWriteBytes(segment.AsSpan()[NetworkSettings.SessionIdOffset..],
+                    NetworkSettings.HandshakeSessionId);
 
-            await socket.SendToAsync(segment, SocketFlags.None, remoteEndPoint);
-            await socket.ReceiveFromAsync(segment, SocketFlags.None, remoteEndPoint);
+                shakeFirst.WriteTo(segment.AsSpan()[NetworkSettings.PacketBodyOffset..]);
 
-            var responseFirst = HandShakePacket.ReadFrom(segment.AsSpan()[NetworkSettings.PacketBodyOffset..]);
-            if (!responseFirst.IsResponseOf(shakeFirst)) return null;
+                await socket.SendToAsync(segment, SocketFlags.None, remoteEndPoint);
+                await socket.ReceiveFromAsync(segment, SocketFlags.None, remoteEndPoint);
 
-            var secondShake = responseFirst.Next();
-            secondShake.WriteTo(buffer.AsSpan()[NetworkSettings.PacketBodyOffset..]);
+                var responseFirst = HandShakePacket.ReadFrom(segment.AsSpan()[NetworkSettings.PacketBodyOffset..]);
+                if (!responseFirst.IsResponseOf(shakeFirst)) return null;
 
-            await socket.SendToAsync(segment, SocketFlags.None, remoteEndPoint);
-            await socket.ReceiveFromAsync(segment, SocketFlags.None, remoteEndPoint);
+                var secondShake = responseFirst.Next();
+                secondShake.WriteTo(buffer.AsSpan()[NetworkSettings.PacketBodyOffset..]);
 
-            var secondResponse = HandShakePacket.ReadFrom(segment.AsSpan()[NetworkSettings.PacketBodyOffset..]);
-            if (!secondResponse.IsResponseOf(secondShake) ||
-                !secondResponse.IsClientFinished())
-                return null;
+                await socket.SendToAsync(segment, SocketFlags.None, remoteEndPoint);
+                await socket.ReceiveFromAsync(segment, SocketFlags.None, remoteEndPoint);
 
-            return secondResponse;
+                var secondResponse = HandShakePacket.ReadFrom(segment.AsSpan()[NetworkSettings.PacketBodyOffset..]);
+                if (!secondResponse.IsResponseOf(secondShake) ||
+                    !secondResponse.IsClientFinished())
+                    return null;
+
+                return secondResponse;
+            }
         }
     }
 }

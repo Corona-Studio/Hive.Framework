@@ -28,7 +28,7 @@ public sealed class PositionalEntity : ObjectEntity
         }
     }
 
-    public override IEntity Parent
+    public override IEntity? Parent
     {
         get => parent;
         set

@@ -1,18 +1,23 @@
 ﻿using System;
 using System.Collections.Generic;
+#if NET9_0_OR_GREATER
+using System.Threading;
+#endif
 using System.Threading.Tasks;
 
 namespace Hive.Common.Shared
 {
     public class AsyncEventHandler<TEventArgs> where TEventArgs : EventArgs
     {
-        private readonly List<Func<object, TEventArgs, Task>> _invocationList;
-        private readonly object _locker;
+        private readonly List<Func<object, TEventArgs, Task>> _invocationList = [];
+#if NET9_0_OR_GREATER
+        private readonly Lock _locker = new();
+#else
+        private readonly object _locker = new();
+#endif
 
         private AsyncEventHandler()
         {
-            _invocationList = new List<Func<object, TEventArgs, Task>>();
-            _locker = new object();
         }
 
         public static AsyncEventHandler<TEventArgs> operator +(
@@ -52,7 +57,7 @@ namespace Hive.Common.Shared
             List<Func<object, TEventArgs, Task>> tmpInvocationList;
             lock (_locker)
             {
-                tmpInvocationList = new List<Func<object, TEventArgs, Task>>(_invocationList);
+                tmpInvocationList = [.. _invocationList];
             }
 
             foreach (var callback in tmpInvocationList)

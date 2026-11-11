@@ -12,7 +12,11 @@ namespace Hive.Common.Shared.Pooling
 
         public override IMemoryOwner<byte> Rent(int minBufferSize = -1)
         {
+#if NET8_0_OR_GREATER
+            ArgumentOutOfRangeException.ThrowIfLessThan(minBufferSize, -1);
+#else
             if (minBufferSize < -1) throw new ArgumentOutOfRangeException(nameof(minBufferSize));
+#endif
             var size = Math.Max(1, minBufferSize == -1 ? 4096 : minBufferSize);
             var owner = PooledBufferStream.Rent(size);
             try

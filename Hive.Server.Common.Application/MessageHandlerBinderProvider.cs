@@ -17,7 +17,7 @@ public static class MessageHandlerBinderProvider
     private static readonly Dictionary<Type,IMessageHandlerBinder> BinderCache;
     static MessageHandlerBinderProvider()
     {
-        BinderCache = new Dictionary<Type, IMessageHandlerBinder>();
+        BinderCache = [];
         var assemblies = AppDomain.CurrentDomain.GetAssemblies();
         foreach (var assembly in assemblies)
         {

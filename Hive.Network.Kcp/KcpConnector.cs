@@ -22,11 +22,11 @@ namespace Hive.Network.Kcp
         {
             _logger = logger;
             _serviceProvider = serviceProvider;
-            _sessionFactory = ActivatorUtilities.CreateFactory<KcpClientSession>(new[]
-            {
+            _sessionFactory = ActivatorUtilities.CreateFactory<KcpClientSession>(
+            [
                 typeof(int),
                 typeof(Socket), typeof(IPEndPoint)
-            });
+            ]);
         }
 
         public async ValueTask<KcpSession?> ConnectAsync(IPEndPoint remoteEndPoint, CancellationToken token = default)
@@ -40,12 +40,12 @@ namespace Hive.Network.Kcp
 
                 var sessionId = shakeResult.Value.SessionId;
 
-                return _sessionFactory.Invoke(_serviceProvider, new object[]
-                {
+                return _sessionFactory.Invoke(_serviceProvider,
+                [
                     (int)sessionId,
                     socket,
                     remoteEndPoint
-                });
+                ]);
             }
             catch (SocketException e)
             {

@@ -18,7 +18,6 @@ namespace Hive.Network.Shared.Session
     public abstract class AbstractAcceptor<TSession> : IAcceptor<TSession> where TSession : ISession
     {
         private readonly ConcurrentDictionary<SessionId, TSession> _idToSessionDict = new();
-        private readonly List<TSession> _sessionsToClose = new();
         protected readonly ILogger<AbstractAcceptor<TSession>> Logger;
         protected readonly IServiceProvider ServiceProvider;
 

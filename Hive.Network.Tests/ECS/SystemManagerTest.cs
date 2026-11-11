@@ -11,7 +11,7 @@ public class SystemManagerTest
     [Test]
     public void TestExecutionOrderComputation()
     {
-        var systemManager = new SystemManager(null);
+        var systemManager = new SystemManager(null!);
         var systems = new IAwakeSystem[]
         {
             new TestSystem1(),
@@ -27,7 +27,7 @@ public class SystemManagerTest
         var orderedExecutionSequence = systemManager.GetOrderedExecutionSequence(typeof(IAwakeSystem)).ToList();
 
         var indexOfSystem =
-            orderedExecutionSequence.ToDictionary(warp => warp.System, warp => orderedExecutionSequence.IndexOf(warp));
+            orderedExecutionSequence.ToDictionary(warp => warp.System, orderedExecutionSequence.IndexOf);
 
         Assert.That(indexOfSystem[systems[3]] > indexOfSystem[systems[1]] &&
                     indexOfSystem[systems[3]] < indexOfSystem[systems[2]]);

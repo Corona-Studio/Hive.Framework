@@ -10,68 +10,71 @@ public static class EntityExtensions
 {
     private static readonly Queue<IEntity> AuxQueueForBfs = new(1024);
 
-    // ReSharper disable once InconsistentNaming
-    public static EntityBFSEnumerable GetBFSEnumerator(this IEntity entity)
+    extension(IEntity entity)
     {
-        return new EntityBFSEnumerable(entity);
-    }
-
-    public static WorldEntity? GetWorld(this IEntity entity)
-    {
-        return entity switch
+        // ReSharper disable once InconsistentNaming
+        public EntityBFSEnumerable GetBFSEnumerator()
         {
-            WorldEntity worldEntity => worldEntity,
-            ObjectEntity objectEntity => objectEntity.WorldEntity,
-            _ => null
-        };
-    }
+            return new EntityBFSEnumerable(entity);
+        }
 
-    public static RootEntity GetRoot(this IEntity entity)
-    {
-        return entity switch
+        public WorldEntity? GetWorld()
         {
-            WorldEntity worldEntity => worldEntity.Parent as RootEntity,
-            ObjectEntity objectEntity => objectEntity.WorldEntity.Parent as RootEntity,
-            RootEntity rootEntity => rootEntity,
-            _ => throw new ArgumentOutOfRangeException(nameof(entity), entity, null)
-        } ?? throw new InvalidOperationException();
-    }
+            return entity switch
+            {
+                WorldEntity worldEntity => worldEntity,
+                ObjectEntity objectEntity => objectEntity.WorldEntity,
+                _ => null
+            };
+        }
 
-    public static void InstantiateChild<TCompositor>(this IEntity parent) where TCompositor : ICompositor
-    {
-        parent.ECSArch.EntityManager.Instantiate<TCompositor>(parent);
-    }
+        public RootEntity GetRoot()
+        {
+            return entity switch
+            {
+                WorldEntity worldEntity => worldEntity.Parent as RootEntity,
+                ObjectEntity objectEntity => objectEntity.WorldEntity?.Parent as RootEntity,
+                RootEntity rootEntity => rootEntity,
+                _ => throw new ArgumentOutOfRangeException(nameof(entity), entity, null)
+            } ?? throw new InvalidOperationException();
+        }
 
-    public static void Destroy<TCompositor>(this IEntity entity) where TCompositor : ICompositor
-    {
-        entity.ECSArch.EntityManager.Destroy(entity);
-    }
+        public void InstantiateChild<TCompositor>() where TCompositor : ICompositor
+        {
+            entity.ECSArch.EntityManager.Instantiate<TCompositor>(entity);
+        }
 
-    public static void UpdateComponent<TComponent>(this IEntity entity, RefAction<TComponent> supplier)
-        where TComponent : IEntityComponent
-    {
-        entity.ECSArch.ComponentManager.UpdateComponent(entity.InstanceId, supplier);
-    }
+        public void Destroy<TCompositor>() where TCompositor : ICompositor
+        {
+            entity.ECSArch.EntityManager.Destroy(entity);
+        }
 
-    public static TComponent? GetComponent<TComponent>(this IEntity entity) where TComponent : IEntityComponent
-    {
-        return entity.ECSArch.ComponentManager.GetComponent<TComponent>(entity.InstanceId);
-    }
+        public void UpdateComponent<TComponent>(RefAction<TComponent> supplier)
+            where TComponent : IEntityComponent
+        {
+            entity.ECSArch.ComponentManager.UpdateComponent(entity.InstanceId, supplier);
+        }
 
-    public static void AddComponent<TComponent>(this IEntity entity) where TComponent : IEntityComponent, new()
-    {
-        entity.ECSArch.ComponentManager.AddComponent<TComponent>(entity.InstanceId);
-    }
+        public TComponent? GetComponent<TComponent>() where TComponent : IEntityComponent
+        {
+            return entity.ECSArch.ComponentManager.GetComponent<TComponent>(entity.InstanceId);
+        }
 
-    public static void AddComponent<TComponent>(this IEntity entity, TComponent component)
-        where TComponent : IEntityComponent
-    {
-        entity.ECSArch.ComponentManager.AddComponent(entity.InstanceId, component);
-    }
+        public void AddComponent<TComponent>() where TComponent : IEntityComponent, new()
+        {
+            entity.ECSArch.ComponentManager.AddComponent<TComponent>(entity.InstanceId);
+        }
 
-    public static void RemoveComponent<TComponent>(this IEntity entity) where TComponent : IEntityComponent
-    {
-        entity.ECSArch.ComponentManager.RemoveComponent<TComponent>(entity.InstanceId);
+        public void AddComponent<TComponent>(TComponent component)
+            where TComponent : IEntityComponent
+        {
+            entity.ECSArch.ComponentManager.AddComponent(entity.InstanceId, component);
+        }
+
+        public void RemoveComponent<TComponent>() where TComponent : IEntityComponent
+        {
+            entity.ECSArch.ComponentManager.RemoveComponent<TComponent>(entity.InstanceId);
+        }
     }
 
     // ReSharper disable once InconsistentNaming

@@ -57,7 +57,7 @@ public class SystemTest
     {
         public void OnLogicUpdate(IEntity entity)
         {
-            entity.UpdateComponent((ref NumberComponent comp) => { comp.Number += 2; });
+            entity.UpdateComponent<NumberComponent>((ref comp) => { comp.Number += 2; });
         }
     }
 
@@ -66,7 +66,7 @@ public class SystemTest
     {
         public void OnLogicUpdate(IEntity entity)
         {
-            entity.UpdateComponent((ref NumberComponent component) => { component.Number *= 2; });
+            entity.UpdateComponent<NumberComponent>((ref component) => { component.Number *= 2; });
         }
     }
 
@@ -76,7 +76,7 @@ public class SystemTest
     {
         public void OnLogicUpdate(IEntity entity)
         {
-            entity.UpdateComponent((ref NumberComponent component) => { component.Number *= 3; });
+            entity.UpdateComponent<NumberComponent>((ref component) => { component.Number *= 3; });
         }
     }
 
@@ -85,7 +85,7 @@ public class SystemTest
     {
         public void OnLogicUpdate(IEntity entity)
         {
-            entity.UpdateComponent((ref NumberComponent component) => { component.Number -= 2; });
+            entity.UpdateComponent<NumberComponent>((ref component) => { component.Number -= 2; });
         }
     }
 }

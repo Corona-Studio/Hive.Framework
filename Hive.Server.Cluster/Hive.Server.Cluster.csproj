@@ -15,7 +15,6 @@
 
     <ItemGroup>
       <PackageReference Include="MemoryPack" />
-      <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
     </ItemGroup>
 
 

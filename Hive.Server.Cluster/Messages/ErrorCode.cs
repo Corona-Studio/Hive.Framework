@@ -1,6 +1,4 @@
-﻿using MemoryPack;
-
-namespace Hive.Server.Cluster.Messages;
+﻿namespace Hive.Server.Cluster.Messages;
 
 public enum ErrorCode
 {

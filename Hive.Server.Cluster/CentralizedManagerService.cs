@@ -15,7 +15,6 @@ public class CentralizedManagerService : BackgroundService
 {
     private readonly IAcceptor _sessionAcceptor;
     private readonly IDispatcher _dispatcher;
-    private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<CentralizedManagerService> _logger;
     
     // todo use a better data structure
@@ -37,7 +36,7 @@ public class CentralizedManagerService : BackgroundService
     public CentralizedManagerService(CentralizedManagerServiceOptions options, IServiceProvider serviceProvider, IAcceptor sessionAcceptor,
         IDispatcher dispatcher, ILogger<CentralizedManagerService> logger)
     {
-        _serviceProvider = serviceProvider;
+        _ = serviceProvider;
         _sessionAcceptor = sessionAcceptor;
         _dispatcher = dispatcher;
         _logger = logger;
@@ -132,7 +131,7 @@ public class CentralizedManagerService : BackgroundService
     /// <param name="serviceAddress">The address of the service</param>
     private void AddService(ServiceKey serviceKey, ServiceAddress serviceAddress)
     {
-        var serviceAddresses = _serviceKeyToAddresses.GetOrAdd(serviceKey, new ConcurrentBag<ServiceAddress>());
+        var serviceAddresses = _serviceKeyToAddresses.GetOrAdd(serviceKey, []);
         serviceAddresses.Add(serviceAddress);
     }
 
@@ -198,7 +197,7 @@ public class CentralizedManagerService : BackgroundService
             
             // todo check signature and public key
             
-            var nodeInfo = new ClusterNodeInfo(nodeId, endPoint, message.MachineId, services.ToArray());
+            var nodeInfo = new ClusterNodeInfo(nodeId, endPoint, message.MachineId, [.. services]);
 
             if (TryAddNode(nodeInfo))
             {
@@ -248,7 +247,7 @@ public class CentralizedManagerService : BackgroundService
         }
     }
 
-    private int _nodeId = 0;
+    private int _nodeId;
 
     private ClusterNodeId GetNodeId()
     {

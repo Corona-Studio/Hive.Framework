@@ -14,7 +14,7 @@ namespace Hive.Common.Shared.Pooling
     {
         private const int RetainedCapacity = 128 * 1024;
         private static readonly BoundedObjectPool<PooledBufferStream> Pool = new(() => new PooledBufferStream());
-        private byte[] _buffer = Array.Empty<byte>();
+        private byte[] _buffer = [];
         private int _length;
         private int _position;
         private int _references;
@@ -24,7 +24,11 @@ namespace Hive.Common.Shared.Pooling
 
         public static PooledBufferStream Rent(int limit = ushort.MaxValue)
         {
+#if NET8_0_OR_GREATER
+            ArgumentOutOfRangeException.ThrowIfNegative(limit);
+#else
             if (limit < 0) throw new ArgumentOutOfRangeException(nameof(limit));
+#endif
             var stream = Pool.Rent();
             stream._length = stream._position = 0;
             stream._limit = limit;
@@ -37,7 +41,11 @@ namespace Hive.Common.Shared.Pooling
             while (true)
             {
                 var references = Volatile.Read(ref _references);
+#if NET7_0_OR_GREATER
+                ObjectDisposedException.ThrowIf(references <= 0, this);
+#else
                 if (references <= 0) throw new ObjectDisposedException(nameof(PooledBufferStream));
+#endif
                 if (Interlocked.CompareExchange(ref _references, references + 1, references) == references) return this;
             }
         }
@@ -76,8 +84,16 @@ namespace Hive.Common.Shared.Pooling
 
         private void EnsureCapacity(int sizeHint)
         {
+#if NET7_0_OR_GREATER
+            ObjectDisposedException.ThrowIf(_references <= 0, this);
+#else
             if (_references <= 0) throw new ObjectDisposedException(nameof(PooledBufferStream));
+#endif
+#if NET8_0_OR_GREATER
+            ArgumentOutOfRangeException.ThrowIfNegative(sizeHint);
+#else
             if (sizeHint < 0) throw new ArgumentOutOfRangeException(nameof(sizeHint));
+#endif
             var required = (long)_position + Math.Max(1, sizeHint);
             if (required > _limit) throw new InvalidDataException("Packet exceeds the configured buffer limit.");
             if (required <= _buffer.Length) return;
@@ -142,7 +158,7 @@ namespace Hive.Common.Shared.Pooling
             if (_buffer.Length > RetainedCapacity || !Pool.TryReturn(this))
             {
                 var buffer = _buffer;
-                _buffer = Array.Empty<byte>();
+                _buffer = [];
                 if (buffer.Length != 0) ArrayPool<byte>.Shared.Return(buffer);
                 if (buffer.Length > RetainedCapacity) Pool.TryReturn(this);
             }

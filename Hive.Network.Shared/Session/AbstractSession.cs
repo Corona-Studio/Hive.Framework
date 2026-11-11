@@ -1,6 +1,8 @@
 using System;
 using System.Buffers;
+#if NET10_0_OR_GREATER
 using System.Runtime.CompilerServices;
+#endif
 using System.IO;
 using System.IO.Pipelines;
 using System.Net;
@@ -193,7 +195,7 @@ namespace Hive.Network.Shared.Session
 #endif
         protected async ValueTask<bool> SendWritableFrameAsync(Memory<byte> frame, CancellationToken token)
         {
-            if (frame.Length < NetworkSettings.PacketBodyOffset || frame.Length > ushort.MaxValue)
+            if (frame.Length is < NetworkSettings.PacketBodyOffset or > ushort.MaxValue)
                 throw new ArgumentOutOfRangeException(nameof(frame));
             var acquired = false;
             var started = false;

@@ -11,7 +11,11 @@ namespace Hive.Common.Shared.Pooling
 
         public BoundedObjectPool(Func<T> factory, int capacity = 32)
         {
+#if NET8_0_OR_GREATER
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(capacity);
+#else
             if (capacity <= 0) throw new ArgumentOutOfRangeException(nameof(capacity));
+#endif
             _factory = factory ?? throw new ArgumentNullException(nameof(factory));
             _slots = new T?[capacity];
         }

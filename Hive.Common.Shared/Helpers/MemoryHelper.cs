@@ -5,49 +5,61 @@ namespace Hive.Common.Shared.Helpers
 {
     public static class MemoryHelper
     {
-        public static Span<T> SliceAndIncrement<T>(this Span<T> span, ref int index, int length)
+        extension<T>(Span<T> span)
         {
-            var result = span.Slice(index, length);
+            public Span<T> SliceAndIncrement(ref int index, int length)
+            {
+                var result = span.Slice(index, length);
 
-            index += length;
+                index += length;
 
-            return result;
+                return result;
+            }
         }
 
-        public static ReadOnlySpan<T> SliceAndIncrement<T>(this ReadOnlySpan<T> span, ref int index, int length)
+        extension<T>(ReadOnlySpan<T> span)
         {
-            var result = span.Slice(index, length);
+            public ReadOnlySpan<T> SliceAndIncrement(ref int index, int length)
+            {
+                var result = span.Slice(index, length);
 
-            index += length;
+                index += length;
 
-            return result;
+                return result;
+            }
         }
 
-        public static Memory<T> SliceAndIncrement<T>(this Memory<T> span, ref int index, int length)
+        extension<T>(Memory<T> memory)
         {
-            var result = span.Slice(index, length);
+            public Memory<T> SliceAndIncrement(ref int index, int length)
+            {
+                var result = memory.Slice(index, length);
 
-            index += length;
+                index += length;
 
-            return result;
+                return result;
+            }
+
+            public Memory<T> Copy()
+            {
+                var result = new Memory<T>(new T[memory.Length]);
+
+                memory.CopyTo(result);
+
+                return result;
+            }
         }
 
-        public static Memory<T> Copy<T>(this Memory<T> old)
+        extension<T>(ReadOnlyMemory<T> old)
         {
-            var result = new Memory<T>(new T[old.Length]);
+            public ReadOnlyMemory<T> Copy()
+            {
+                var result = new Memory<T>(new T[old.Length]);
 
-            old.CopyTo(result);
+                old.CopyTo(result);
 
-            return result;
-        }
-
-        public static ReadOnlyMemory<T> Copy<T>(this ReadOnlyMemory<T> old)
-        {
-            var result = new Memory<T>(new T[old.Length]);
-
-            old.CopyTo(result);
-
-            return result;
+                return result;
+            }
         }
 
         public static ReadOnlyMemory<byte> CombineMemory(params ReadOnlyMemory<byte>[] memories)

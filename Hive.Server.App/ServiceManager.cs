@@ -5,8 +5,8 @@ namespace Hive.Server.App;
 public class ServiceManager
 {
     private readonly ReaderWriterLockSlim _lock = new();
-    private Dictionary<string, ServiceAddress> Services { get; } = new();
-    private MultiHashSetDictionary<int, string> HostToServiceNames { get; } = new();
+    private Dictionary<string, ServiceAddress> Services { get; } = [];
+    private MultiHashSetDictionary<int, string> HostToServiceNames { get; } = [];
 
     public bool AddService(ServiceAddress serviceAddress)
     {

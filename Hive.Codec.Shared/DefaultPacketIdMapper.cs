@@ -11,7 +11,11 @@ namespace Hive.Codec.Shared;
 
 public class DefaultPacketIdMapper : IPacketIdMapper
 {
+#if NET9_0_OR_GREATER
+    private readonly Lock _lock = new();
+#else
     private readonly object _lock = new();
+#endif
 
     private readonly ILogger<DefaultPacketIdMapper> _logger;
     private sealed class Mapping
@@ -24,7 +28,7 @@ public class DefaultPacketIdMapper : IPacketIdMapper
             Ids = ids;
         }
     }
-    private Mapping _mapping = new(new Dictionary<Type, PacketId>(), new Dictionary<PacketId, Type>());
+    private Mapping _mapping = new([], []);
 
     public DefaultPacketIdMapper(
         IOptions<PacketIdMapperOptions> registerOptions,
