@@ -75,19 +75,17 @@ namespace Hive.Network.Shared.Session
 
         public event SessionReceivedHandler? OnMessageReceived;
 
-        private SessionReceivedAsyncHandler? _receiveHandler;
-
         /// <summary>The receive loop awaits this consumer before advancing the pipe.</summary>
         public SessionReceivedAsyncHandler? ReceiveHandler
         {
-            get => Volatile.Read(ref _receiveHandler);
+            get => Volatile.Read(ref field);
             set
             {
                 // A multicast async delegate only returns the last ValueTask,
                 // which could release the buffer while another consumer uses it.
                 if (value != null && value.GetInvocationList().Length != 1)
                     throw new ArgumentException("Only one asynchronous receive consumer is supported.", nameof(value));
-                Volatile.Write(ref _receiveHandler, value);
+                Volatile.Write(ref field, value);
             }
         }
 

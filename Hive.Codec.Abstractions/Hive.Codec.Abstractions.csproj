@@ -1,7 +1,7 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.1;net10.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.1;net11.0</TargetFrameworks>
     <Nullable>enable</Nullable>
     <RootNamespace>$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>
   </PropertyGroup>
@@ -10,7 +10,7 @@
     <ProjectReference Include="..\Hive.Common.Shared\Hive.Common.Shared.csproj" />
   </ItemGroup>
 
-  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net11.0'">
     <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
 

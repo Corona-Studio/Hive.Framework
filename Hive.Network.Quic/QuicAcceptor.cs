@@ -10,7 +10,6 @@ using Microsoft.Extensions.Options;
 
 namespace Hive.Network.Quic;
 
-[RequiresPreviewFeatures]
 [SupportedOSPlatform(nameof(OSPlatform.Windows))]
 [SupportedOSPlatform(nameof(OSPlatform.Linux))]
 [SupportedOSPlatform(nameof(OSPlatform.OSX))]
@@ -104,7 +103,6 @@ public sealed class QuicAcceptor : AbstractAcceptor<QuicSession>
     }
 }
 
-[RequiresPreviewFeatures]
 internal static partial class QuicAcceptorLoggers
 {
     [LoggerMessage(LogLevel.Debug, "Session {sessionId} QUIC error: {quicError}")]

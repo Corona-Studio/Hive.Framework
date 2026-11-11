@@ -52,13 +52,11 @@ public class SessionTestTcp : SessionTest<TcpSession>
 }
 
 [Ignore("NEED FIX")]
-[RequiresPreviewFeatures]
 [SupportedOSPlatform(nameof(OSPlatform.Windows))]
 [SupportedOSPlatform(nameof(OSPlatform.Linux))]
 [SupportedOSPlatform(nameof(OSPlatform.OSX))]
 public class SessionTestQuic : SessionTest<QuicSession>
 {
-    [RequiresPreviewFeatures]
     protected override IServiceProvider GetServiceProvider()
     {
         var serviceProvider = ServiceProviderHelper

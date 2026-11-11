@@ -7,7 +7,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Hive.Network.Quic;
 
-[RequiresPreviewFeatures]
 [SupportedOSPlatform(nameof(OSPlatform.Windows))]
 [SupportedOSPlatform(nameof(OSPlatform.Linux))]
 [SupportedOSPlatform(nameof(OSPlatform.OSX))]

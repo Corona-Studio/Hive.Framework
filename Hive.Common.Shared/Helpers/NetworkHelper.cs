@@ -27,11 +27,13 @@ namespace Hive.Common.Shared.Helpers
             //返回本地计算机上的Internet协议版本4(IPV4 传输控制协议(TCP)连接的信息。            
             var tcpConnInfoArray = ipGlobalProperties.GetActiveTcpConnections();
 
-            var allPorts = ipsTCP.Select(ep => ep.Port).ToList();
-            allPorts.AddRange(ipsUDP.Select(ep => ep.Port));
-            allPorts.AddRange(tcpConnInfoArray.Select(conn => conn.LocalEndPoint.Port));
-
-            return new HashSet<int>(allPorts);
+            return
+            [
+                with(capacity: ipsTCP.Length + ipsUDP.Length + tcpConnInfoArray.Length),
+                .. ipsTCP.Select(static ep => ep.Port),
+                .. ipsUDP.Select(static ep => ep.Port),
+                .. tcpConnInfoArray.Select(static conn => conn.LocalEndPoint.Port)
+            ];
         }
 
         public static int GetRandomPort()

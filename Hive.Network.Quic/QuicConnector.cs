@@ -9,7 +9,6 @@ using Microsoft.Extensions.Options;
 
 namespace Hive.Network.Quic;
 
-[RequiresPreviewFeatures]
 [SupportedOSPlatform(nameof(OSPlatform.Windows))]
 [SupportedOSPlatform(nameof(OSPlatform.Linux))]
 [SupportedOSPlatform(nameof(OSPlatform.OSX))]
@@ -63,7 +62,6 @@ public class QuicConnector : IConnector<QuicSession>
     }
 }
 
-[RequiresPreviewFeatures]
 internal static partial class QuicConnectorLoggers
 {
     [LoggerMessage(LogLevel.Error, "Connect to {remote} failed")]
